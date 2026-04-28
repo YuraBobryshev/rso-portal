@@ -1,0 +1,33 @@
+// Этот блок говорит Присме, что мы генерируем JS-клиент
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Этот блок указывает на нашу облачную БД из .env
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// === НАША ПЕРВАЯ ТАБЛИЦА: ПОЛЬЗОВАТЕЛИ ===
+model User {
+  id        String   @id @default(uuid()) // Уникальный ID (набор букв и цифр)
+  email     String   @unique              // Почта для входа (не может повторяться)
+  password  String                        // Зашифрованный пароль
+  firstName String                        // Имя
+  lastName  String                        // Фамилия
+  
+  // Роль пользователя: по умолчанию все регистрируются как кандидаты
+  role      Role     @default(CANDIDATE)
+  
+  createdAt DateTime @default(now())      // Дата регистрации
+  updatedAt DateTime @updatedAt           // Дата последнего изменения
+}
+
+// Перечисление доступных ролей (Enum)
+enum Role {
+  CANDIDATE  // Кандидат
+  FIGHTER    // Боец
+  COMMANDER  // Комсостав (Командир/Комиссар/Мастер)
+  ADMIN      // Администратор портала (Ты)
+}

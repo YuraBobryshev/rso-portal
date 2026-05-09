@@ -1,33 +1,116 @@
-// Этот блок говорит Присме, что мы генерируем JS-клиент
+// Настройки подключения
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client-js" // Было "prisma-client-id" - исправляем на "js"
 }
 
-// Этот блок указывает на нашу облачную БД из .env
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
-// === НАША ПЕРВАЯ ТАБЛИЦА: ПОЛЬЗОВАТЕЛИ ===
-model User {
-  id        String   @id @default(uuid()) // Уникальный ID (набор букв и цифр)
-  email     String   @unique              // Почта для входа (не может повторяться)
-  password  String                        // Зашифрованный пароль
-  firstName String                        // Имя
-  lastName  String                        // Фамилия
-  
-  // Роль пользователя: по умолчанию все регистрируются как кандидаты
-  role      Role     @default(CANDIDATE)
-  
-  createdAt DateTime @default(now())      // Дата регистрации
-  updatedAt DateTime @updatedAt           // Дата последнего изменения
+
+// 1. ВСЕ НАШИ РОЛИ
+enum Role {
+  USER        // Просто зарегистрированный человек
+  CANDIDATE   // Подал заявку и был одобрен командиром
+  BOETS       // Полноценный член отряда
+  COMMANDER   // Глава отряда (документы, отчеты)
+  COMMISSAR   // Замглавы по мероприятиям
+  MASTER      // Замглавы по работе
+  MEDIA       // Контент-мейкер (новости, фото)
+  REG_HQ      // РЕГИОНАЛЬНЫЙ ШТАБ (Админ всей системы)
 }
 
-// Перечисление доступных ролей (Enum)
-enum Role {
-  CANDIDATE  // Кандидат
-  FIGHTER    // Боец
-  COMMANDER  // Комсостав (Командир/Комиссар/Мастер)
-  ADMIN      // Администратор портала (Ты)
+// 2. МОДЕЛЬ ПОЛЬЗОВАТЕЛЯ
+model User {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  password    String
+  firstName   String
+  lastName    String
+  role        Role      @default(USER) // По умолчанию все просто пользователи
+  
+  // Связь с отрядом (может быть пустым, если человек еще не в отряде)
+  brigadeId   String?
+  brigade     Brigade?  @relation(fields: [brigadeId], references: [id])
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  applications Application[]
+
+  // ДОБАВЬ ЭТИ СТРОЧКИ:
+  achievements Achievement[] // Личные достижения бойца
+  participations EventParticipant[]
+
+  vkUrl   String? @default("")
+  tgUrl   String? @default("")
+}
+
+// 3. МОДЕЛЬ ОТРЯДА
+model Brigade {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  
+  // Список всех людей в этом отряде
+  members     User[]
+
+  createdAt   DateTime @default(now())
+  applications Application[]
+  events       Event[]       // Мероприятия этого отряда
+  achievements Achievement[] // Общие достижения отряда (кубки, флаги)
+  }
+
+// Добавь статус в список перечислений (можно в любое место, где enum)
+enum AppStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// Новая модель заявки
+model Application {
+  id          String    @id @default(uuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id])
+  brigadeId   String
+  brigade     Brigade   @relation(fields: [brigadeId], references: [id])
+  status      AppStatus @default(PENDING)
+  comment     String?   // Причина отказа или доп. инфо
+  createdAt   DateTime  @default(now())
+}
+
+model Event {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  date        DateTime
+  location    String?
+  type        String   @default("LOCAL") // LOCAL или REGIONAL
+  brigadeId   String?  // Если пусто — это региональное
+  brigade     Brigade? @relation(fields: [brigadeId], references: [id])
+  createdAt   DateTime @default(now())
+  participations EventParticipant[]
+}
+
+model Achievement {
+  id          String   @id @default(uuid())
+  title       String
+  imageUrl    String?
+  value       Int      @default(1) // "Ценность" в рейтинге
+  userId      String?
+  user        User?    @relation(fields: [userId], references: [id])
+  brigadeId   String?
+  brigade     Brigade? @relation(fields: [brigadeId], references: [id])
+}
+
+model EventParticipant {
+  id        String  @id @default(uuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  eventId   String
+  event     Event   @relation(fields: [eventId], references: [id])
+  attended  Boolean @default(false) // Отметка Мастера: был или нет
+
+  @@unique([userId, eventId]) // Запрещаем записываться дважды
 }

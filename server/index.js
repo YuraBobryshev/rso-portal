@@ -1,124 +1,241 @@
-// Импортируем нужные библиотеки
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcrypt'); // Библиотека для шифрования паролей
-const { PrismaClient } = require('@prisma/client'); // Наш клиент для работы с БД
-const jwt = require('jsonwebtoken'); // Библиотека для создания токенов
+const bcrypt = require('bcrypt'); 
+const { PrismaClient } = require('@prisma/client');
+const jwt = require('jsonwebtoken');
+const authMiddleware = require('./middleware/auth');
 
-// Инициализируем сервер и Prisma
 const app = express();
 const prisma = new PrismaClient();
 
-// Настраиваем middleware
-app.use(cors()); // Разрешаем фронтенду обращаться к нашему бэкенду
-app.use(express.json()); // Учим сервер понимать JSON из тела запроса
+app.use(cors());
+app.use(express.json());
 
-// ==========================================
-// РОУТ 1: РЕГИСТРАЦИЯ ПОЛЬЗОВАТЕЛЯ
-// ==========================================
+// --- ВСПОМОГАТЕЛЬНЫЙ MIDDLEWARE ДЛЯ ПРОВЕРКИ РОЛЕЙ ---
+const checkRole = (allowedRoles) => async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    if (!user || !allowedRoles.includes(user.role)) {
+      return res.status(403).json({ message: 'Доступ запрещен: недостаточно прав' });
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка проверки прав доступа' });
+  }
+};
+
+// =============================================================================
+// 🔐 БЛОК 1: АВТОРИЗАЦИЯ И ПРОФИЛЬ
+// =============================================================================
+
 app.post('/api/auth/register', async (req, res) => {
   try {
-    // 1. Получаем данные от пользователя
     const { email, password, firstName, lastName } = req.body;
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) return res.status(400).json({ message: 'Email уже занят' });
 
-    // 2. Проверяем, нет ли уже такого email в базе
-    const existingUser = await prisma.user.findUnique({
-      where: { email: email }
-    });
-
-    if (existingUser) {
-      return res.status(400).json({ message: 'Пользователь с таким email уже существует' });
-    }
-
-    // 3. БЕЗОПАСНОСТЬ: Шифруем (хэшируем) пароль
-    // '10' — это так называемая "соль" (salt rounds), определяющая сложность шифрования
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 4. Сохраняем пользователя в базу данных (с зашифрованным паролем!)
-    const newUser = await prisma.user.create({
-      data: {
-        email: email,
-        password: hashedPassword,
-        firstName: firstName,
-        lastName: lastName,
-        // Роль 'CANDIDATE' присвоится автоматически, как мы указали в схеме
-      }
+    const user = await prisma.user.create({
+      data: { email, password: hashedPassword, firstName, lastName }
     });
 
-    // 5. Отвечаем фронтенду об успехе (пароль в ответ НЕ отдаем ради безопасности)
-    res.status(201).json({
-      message: 'Регистрация прошла успешно!',
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        firstName: newUser.firstName,
-        lastName: newUser.lastName,
-        role: newUser.role
-      }
-    });
-
-  } catch (error) {
-    console.error('Ошибка при регистрации:', error);
-    res.status(500).json({ message: 'Внутренняя ошибка сервера' });
-  }
+    res.status(201).json({ message: 'Успешно!', user: { id: user.id, email, firstName, lastName, role: user.role } });
+  } catch (error) { res.status(500).json({ message: 'Ошибка сервера' }); }
 });
 
-
-// ==========================================
-// РОУТ 2: ВХОД (АВТОРИЗАЦИЯ)
-// ==========================================
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    // 1. Ищем пользователя по email
-    const user = await prisma.user.findUnique({
-      where: { email: email }
-    });
-
-    // Если такого email нет
-    if (!user) {
-      return res.status(401).json({ message: 'Неверный email или пароль' });
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ message: 'Неверные данные' });
     }
 
-    // 2. БЕЗОПАСНОСТЬ: Проверяем пароль
-    // bcrypt сам берет обычный пароль, шифрует его солью из базы и сравнивает хэши
-    const isPasswordValid = await bcrypt.compare(password, user.password);
-    
-    if (!isPasswordValid) {
-      // Сообщение об ошибке всегда одинаковое, чтобы хакер не понял, угадал он почту или нет
-      return res.status(401).json({ message: 'Неверный email или пароль' });
-    }
+    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token, user: { id: user.id, email, firstName: user.firstName, lastName: user.lastName, role: user.role } });
+  } catch (error) { res.status(500).json({ message: 'Ошибка сервера' }); }
+});
 
-    // 3. СОЗДАЕМ ПРОПУСК (JWT ТОКЕН)
-    // Вшиваем внутрь токена ID и Роль, чтобы сервер всегда знал, кто делает запрос
-    const token = jwt.sign(
-      { userId: user.id, role: user.role },
-      process.env.JWT_SECRET, // Подписываем нашим секретным ключом из .env
-      { expiresIn: '24h' }    // Срок годности "браслета" — 24 часа
-    );
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.userId },
+    select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true, brigade: true, vkUrl: true, tgUrl: true }
+  });
+  res.json(user);
+});
 
-    // 4. Отдаем токен фронтенду
-    res.json({
-      message: 'Вход выполнен успешно!',
-      token: token,
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        role: user.role
+// Роут для обновления ссылок профиля (ВК и ТГ)
+app.patch('/api/auth/profile', authMiddleware, async (req, res) => {
+  try {
+    const { vkUrl, tgUrl } = req.body;
+    await prisma.user.update({
+      where: { id: req.user.userId },
+      data: { 
+        vkUrl: vkUrl || "", 
+        tgUrl: tgUrl || "" 
       }
     });
-
+    res.json({ message: "Успешно" });
   } catch (error) {
-    console.error('Ошибка при входе:', error);
-    res.status(500).json({ message: 'Внутренняя ошибка сервера' });
+    res.status(500).json({ message: "Ошибка сервера" });
   }
 });
 
-// Запускаем сервер на порту 5000
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Сервер успешно запущен на порту ${PORT}`);
+// =============================================================================
+// ⚙️ БЛОК 2: АДМИНИСТРИРОВАНИЕ (Только для REG_HQ)
+// =============================================================================
+
+// Список всех пользователей для админки
+app.get('/api/admin/users', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  const users = await prisma.user.findMany({
+    select: { id: true, email: true, firstName: true, lastName: true, role: true, brigadeId: true }
+  });
+  res.json(users);
 });
+
+// Смена роли бойца
+app.patch('/api/admin/update-role', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  const { userId, newRole } = req.body;
+  await prisma.user.update({ where: { id: userId }, data: { role: newRole } });
+  res.json({ message: 'Роль обновлена' });
+});
+
+// Создание нового отряда (ЛСО)
+app.post('/api/admin/create-brigade', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  const { name, description } = req.body;
+  const brigade = await prisma.brigade.create({ data: { name, description } });
+  res.json({ message: 'Отряд создан', brigade });
+});
+
+// Прямое распределение бойца в отряд
+app.patch('/api/admin/update-user-brigade', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  const { userId, brigadeId } = req.body;
+  await prisma.user.update({
+    where: { id: userId },
+    data: { brigadeId: brigadeId === 'none' ? null : brigadeId }
+  });
+  res.json({ message: 'Боец распределен' });
+});
+
+// =============================================================================
+// 🤝 БЛОК 3: ОТРЯДЫ И ЗАЯВКИ
+// =============================================================================
+
+app.get('/api/brigades', async (req, res) => {
+  const brigades = await prisma.brigade.findMany();
+  res.json(brigades);
+});
+
+app.post('/api/applications/apply', authMiddleware, async (req, res) => {
+  const { brigadeId } = req.body;
+  const userId = req.user.userId;
+  
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+  if (user.brigadeId) return res.status(400).json({ message: 'Вы уже в отряде' });
+
+  await prisma.application.create({ data: { userId, brigadeId } });
+  res.json({ message: 'Заявка отправлена' });
+});
+
+// Обработка заявок Командиром
+app.post('/api/commander/process-application', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
+  const { appId, status, comment } = req.body;
+  const application = await prisma.application.update({ where: { id: appId }, data: { status, comment } });
+  
+  if (status === 'APPROVED') {
+    await prisma.user.update({
+      where: { id: application.userId },
+      data: { role: 'CANDIDATE', brigadeId: application.brigadeId }
+    });
+  }
+  res.json({ message: 'Заявка обработана' });
+});
+
+// =============================================================================
+// 📅 БЛОК 4: МЕРОПРИЯТИЯ И ПОСЕЩАЕМОСТЬ
+// =============================================================================
+
+// Создание мероприятия
+app.post('/api/events', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'REG_HQ']), async (req, res) => {
+  const { title, description, date, type } = req.body;
+  const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+  
+  const event = await prisma.event.create({
+    data: { 
+      title, 
+      description, 
+      date: new Date(date), 
+      type, 
+      brigadeId: type === 'REGIONAL' ? null : user.brigadeId 
+    }
+  });
+  res.json(event);
+});
+
+// 1. УМНЫЙ СПИСОК (С проверкой участия текущего юзера)
+app.get('/api/events', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    
+    const events = await prisma.event.findMany({
+      where: {
+        OR: [{ brigadeId: user.brigadeId }, { type: 'REGIONAL' }]
+      },
+      include: {
+        participants: {
+          where: { userId: userId } // Ищем запись именно этого юзера
+        }
+      },
+      orderBy: { date: 'asc' }
+    });
+
+    // Добавляем флаг isJoined для фронтенда
+    const formattedEvents = events.map(event => ({
+      ...event,
+      isJoined: event.participants.length > 0
+    }));
+
+    res.json(formattedEvents);
+  } catch (error) { res.status(500).json({ message: "Ошибка загрузки мероприятий" }); }
+});
+
+// 2. НАПОМИНАНИЕ ДЛЯ ПРОФИЛЯ (Ближайшее мероприятие)
+app.get('/api/events/my-nearest', authMiddleware, async (req, res) => {
+  try {
+    const nearest = await prisma.eventParticipant.findFirst({
+      where: { 
+        userId: req.user.userId,
+        event: { date: { gte: new Date() } } // Только будущие
+      },
+      include: { event: true },
+      orderBy: { event: { date: 'asc' } }
+    });
+    res.json(nearest ? nearest.event : null);
+  } catch (e) { res.status(500).json(null); }
+});
+
+// Запись на мероприятие
+app.post('/api/events/:id/join', authMiddleware, async (req, res) => {
+  try {
+    await prisma.eventParticipant.create({ data: { userId: req.user.userId, eventId: req.params.id } });
+    res.json({ message: "Вы записаны" });
+  } catch (error) {
+    res.status(500).json({ message: "Ошибка записи" });
+  }
+});
+
+// Отметка посещаемости командиром
+app.patch('/api/events/attendance', authMiddleware, checkRole(['MASTER', 'COMMANDER']), async (req, res) => {
+  await prisma.eventParticipant.update({
+    where: { id: req.body.participantId },
+    data: { attended: req.body.attended }
+  });
+  res.json({ message: "Статус обновлен" });
+});
+
+// =============================================================================
+// 🚀 ЗАПУСК
+// =============================================================================
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

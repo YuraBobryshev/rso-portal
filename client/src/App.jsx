@@ -1,19 +1,24 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import Header from './components/Header';
-import Home from './pages/Home'; // ИМПОРТИРУЕМ НАШУ НОВУЮ СТРАНИЦУ
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Home from './pages/Home';
+// Эти страницы мы сейчас создадим
+import Register from './pages/Register';
+import Login from './pages/Login';
+import Profile from './pages/Profile';
+import AdminPanel from './pages/AdminPanel';
+import Squads from './pages/Squads';
 
 function App() {
   return (
-    <BrowserRouter>
-      <Header />
-      
+    <Router>
       <Routes>
-        {/* Когда путь совпадает с "/", рендерим компонент <Home /> */}
         <Route path="/" element={<Home />} />
-        
-        <Route path="/login" element={<div className="p-8">Страница входа</div>} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/admin" element={<AdminPanel />} />
+        <Route path="/squads" element={<Squads />} />
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }
 

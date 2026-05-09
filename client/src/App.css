@@ -182,3 +182,19 @@
     border-right-color: var(--border);
   }
 }
+
+@layer utilities {
+  .text-outline {
+    -webkit-text-stroke: 2px black;
+    color: transparent;
+  }
+}
+
+/* Анимация для "живого" баннера */
+@keyframes brutal-bounce {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-5px) rotate(1deg); }
+}
+.animate-brutal {
+  animation: brutal-bounce 3s infinite ease-in-out;
+}

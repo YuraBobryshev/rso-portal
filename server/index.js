@@ -117,6 +117,114 @@ app.patch('/api/admin/update-user-brigade', authMiddleware, checkRole(['REG_HQ']
   res.json({ message: 'Боец распределен' });
 });
 
+// --- ДОПОЛНЕНИЯ В БЛОК 2: АДМИНИСТРИРОВАНИЕ ---
+
+// Удаление пользователя (полная терминация)
+app.delete('/api/admin/users/:id', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Защита: нельзя удалить самого себя
+    if (id === req.user.userId) {
+      return res.status(400).json({ message: "Самоликвидация запрещена" });
+    }
+
+    await prisma.user.delete({ where: { id } });
+    res.json({ message: "Объект успешно удален из системы" });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Ошибка при удалении" });
+  }
+});
+
+// Отмена участия в мероприятии
+app.delete('/api/events/:id/leave', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params; // Получаем ID мероприятия из URL
+    const userId = req.user.userId; // Получаем ID пользователя из токена
+
+    // Удаляем талон участника из базы
+    await prisma.eventParticipant.deleteMany({
+      where: {
+        userId: userId,
+        eventId: id
+      }
+    });
+
+    res.json({ message: "Участие успешно отменено" });
+  } catch (error) {
+    console.error("Ошибка при выходе из мероприятия:", error);
+    res.status(500).json({ message: "Ошибка сервера при удалении записи" });
+  }
+});
+
+// Обновление отряда (уже был, но проверим/обновим логику)
+app.patch('/api/admin/update-user-brigade', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  try {
+    const { userId, brigadeId } = req.body;
+    await prisma.user.update({
+      where: { id: userId },
+      data: { brigadeId: brigadeId === 'none' ? null : brigadeId }
+    });
+    res.json({ message: "Дислокация изменена" });
+  } catch (error) {
+    res.status(500).json({ message: "Ошибка распределения" });
+  }
+});
+
+// Получение всех мероприятий для админки со списком участников (Бронебойный вариант)
+app.get('/api/admin/events', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  try {
+    // 1. Берем все мероприятия
+    const events = await prisma.event.findMany({
+      orderBy: { date: 'desc' }
+    });
+
+    // 2. Берем все записи об участии (талоны)
+    const allParticipants = await prisma.eventParticipant.findMany();
+
+    // 3. Берем всех пользователей (чтобы знать их имена)
+    const users = await prisma.user.findMany({
+      select: { id: true, firstName: true, lastName: true, brigadeId: true }
+    });
+
+    // 4. Берем все отряды (чтобы знать их названия)
+    const brigades = await prisma.brigade.findMany();
+
+    // 5. Вручную склеиваем данные, как конструктор
+    const formattedEvents = events.map(event => {
+      // Ищем, кто записался именно на это мероприятие
+      const eventParts = allParticipants.filter(p => p.eventId === event.id);
+
+      // Обогащаем записи именами и названиями отрядов
+      const enrichedParticipants = eventParts.map(ep => {
+        const user = users.find(u => u.id === ep.userId) || {};
+        const brigade = brigades.find(b => b.id === user.brigadeId) || null;
+
+        return {
+          id: ep.id,
+          user: {
+            id: user.id || 'unknown',
+            firstName: user.firstName || 'Удаленный',
+            lastName: user.lastName || 'Пользователь',
+            brigade: brigade
+          }
+        };
+      });
+
+      return {
+        ...event,
+        participants: enrichedParticipants
+      };
+    });
+
+    res.json(formattedEvents);
+  } catch (error) {
+    console.error("ОШИБКА ЗАГРУЗКИ АДМИНКИ МЕРОПРИЯТИЙ:", error);
+    res.status(500).json({ message: "Ошибка сервера при загрузке мероприятий" });
+  }
+});
+
 // =============================================================================
 // 🤝 БЛОК 3: ОТРЯДЫ И ЗАЯВКИ
 // =============================================================================
@@ -156,48 +264,68 @@ app.post('/api/commander/process-application', authMiddleware, checkRole(['COMMA
 // =============================================================================
 
 // Создание мероприятия
+// Создание мероприятия
 app.post('/api/events', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'REG_HQ']), async (req, res) => {
-  const { title, description, date, type } = req.body;
-  const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+  console.log("=== ПОПЫТКА СОЗДАНИЯ МЕРОПРИЯТИЯ ===");
+  console.log("Полученные данные:", req.body);
   
-  const event = await prisma.event.create({
-    data: { 
-      title, 
-      description, 
-      date: new Date(date), 
-      type, 
-      brigadeId: type === 'REGIONAL' ? null : user.brigadeId 
-    }
-  });
-  res.json(event);
+  try {
+    const { title, description, date, type } = req.body;
+    
+    // Получаем юзера, чтобы знать его отряд (если мероприятие отрядное)
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+
+    const event = await prisma.event.create({
+      data: { 
+        title: title, 
+        description: description || "Описание не указано", 
+        date: new Date(date), 
+        type: type || "REGIONAL", 
+        brigadeId: type === 'REGIONAL' ? null : user.brigadeId 
+      }
+    });
+    
+    console.log("Успешно сохранено:", event.title);
+    res.status(201).json(event);
+  } catch (error) {
+    console.error("КРИТИЧЕСКАЯ ОШИБКА PRISMA:", error);
+    res.status(500).json({ message: "Ошибка сохранения в базу данных" });
+  }
 });
 
-// 1. УМНЫЙ СПИСОК (С проверкой участия текущего юзера)
+// 1. УМНЫЙ СПИСОК (Бронебойный вариант без include)
 app.get('/api/events', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
     
+    // Получаем сами мероприятия
     const events = await prisma.event.findMany({
       where: {
-        OR: [{ brigadeId: user.brigadeId }, { type: 'REGIONAL' }]
-      },
-      include: {
-        participants: {
-          where: { userId: userId } // Ищем запись именно этого юзера
-        }
+        OR: [{ brigadeId: user.brigadeId || undefined }, { type: 'REGIONAL' }]
       },
       orderBy: { date: 'asc' }
     });
 
-    // Добавляем флаг isJoined для фронтенда
+    // Отдельно получаем список ID мероприятий, на которые записан юзер
+    const userParticipations = await prisma.eventParticipant.findMany({
+      where: { userId: userId }
+    });
+    
+    // Создаем массив ID для быстрой проверки
+    const joinedEventIds = userParticipations.map(p => p.eventId);
+
+    // Склеиваем данные для фронтенда
     const formattedEvents = events.map(event => ({
       ...event,
-      isJoined: event.participants.length > 0
+      isJoined: joinedEventIds.includes(event.id)
     }));
 
     res.json(formattedEvents);
-  } catch (error) { res.status(500).json({ message: "Ошибка загрузки мероприятий" }); }
+  } catch (error) { 
+    console.error("ОШИБКА ЗАГРУЗКИ МЕРОПРИЯТИЙ:", error);
+    res.status(500).json({ message: "Ошибка загрузки мероприятий" }); 
+  }
 });
 
 // 2. НАПОМИНАНИЕ ДЛЯ ПРОФИЛЯ (Ближайшее мероприятие)
@@ -232,6 +360,40 @@ app.patch('/api/events/attendance', authMiddleware, checkRole(['MASTER', 'COMMAN
     data: { attended: req.body.attended }
   });
   res.json({ message: "Статус обновлен" });
+});
+
+// =============================================================================
+// 🛡️ БЛОК 5: ПАНЕЛЬ КОМАНДИРА (Управление отрядом)
+// =============================================================================
+
+// Получение дашборда командира (состав + заявки)
+app.get('/api/commander/dashboard', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    if (!user.brigadeId) return res.status(400).json({ message: "Вы не привязаны к отряду" });
+
+    const brigade = await prisma.brigade.findUnique({ where: { id: user.brigadeId } });
+    
+    // Получаем всех бойцов этого отряда
+    const members = await prisma.user.findMany({
+      where: { brigadeId: user.brigadeId },
+      select: { id: true, firstName: true, lastName: true, role: true, email: true },
+      orderBy: { role: 'desc' }
+    });
+
+    // Получаем заявки, которые ждут ответа (PENDING)
+    const applications = await prisma.application.findMany({
+      where: { brigadeId: user.brigadeId, status: 'PENDING' },
+      include: { 
+        user: { select: { id: true, firstName: true, lastName: true, email: true } } 
+      }
+    });
+
+    res.json({ brigade, members, applications });
+  } catch (error) {
+    console.error("Ошибка загрузки панели командира:", error);
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
 });
 
 // =============================================================================

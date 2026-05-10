@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import Squads from './pages/Squads';
+import News from './pages/News'; // Импорт новой страницы
 
 function App() {
   return (
@@ -17,6 +18,7 @@ function App() {
         <Route path="/profile" element={<Profile />} />
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/squads" element={<Squads />} />
+        <Route path="/news" element={<News />} />
       </Routes>
     </Router>
   );

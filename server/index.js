@@ -458,6 +458,86 @@ app.get('/api/commander/dashboard', authMiddleware, checkRole(['COMMANDER']), as
   }
 });
 
+app.get('/api/posts', async (req, res) => {
+  try {
+    const posts = await prisma.post.findMany({
+      include: {
+        author: { 
+          select: { id: true, firstName: true, lastName: true, avatarUrl: true } 
+        },
+        comments: {
+          include: { 
+            author: { select: { firstName: true, avatarUrl: true } } 
+          },
+          orderBy: { createdAt: 'asc' }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(posts);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Ошибка загрузки ленты" });
+  }
+});
+
+// 2. Создать новость (только для Командиров и РСО)
+app.get('/api/posts', async (req, res) => {
+  try {
+    const posts = await prisma.post.findMany({
+      include: {
+        author: { 
+          select: { id: true, firstName: true, lastName: true, avatarUrl: true } 
+        },
+        // Если ошибка повторится, закомментируй блок comments ниже для теста
+        comments: {
+          include: { 
+            author: { select: { firstName: true, avatarUrl: true } } 
+          },
+          orderBy: { createdAt: 'asc' }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(posts);
+  } catch (error) {
+    console.error("ОШИБКА PRISMA:", error);
+    res.status(500).json({ 
+      message: "Ошибка загрузки ленты", 
+      dev_info: error.message 
+    });
+  }
+});
+
+// 1. Оставить комментарий
+app.post('/api/posts/:id/comment', authMiddleware, async (req, res) => {
+  try {
+    const { content } = req.body;
+    const comment = await prisma.comment.create({
+      data: {
+        content,
+        authorId: req.user.userId,
+        postId: req.params.id
+      },
+      include: { author: { select: { firstName: true, lastName: true, avatarUrl: true } } }
+    });
+    res.json(comment);
+  } catch (e) { res.status(500).json({ message: "Ошибка комментария" }); }
+});
+
+// 2. Удалить пост (Только автор или Админ)
+app.delete('/api/posts/:id', authMiddleware, async (req, res) => {
+  try {
+    const post = await prisma.post.findUnique({ where: { id: req.params.id } });
+    if (post.authorId !== req.user.userId && req.user.role !== 'REG_HQ') {
+      return res.status(403).json({ message: "Нет прав на удаление" });
+    }
+    await prisma.post.delete({ where: { id: req.params.id } });
+    res.json({ message: "Новость удалена" });
+  } catch (e) { res.status(500).json({ message: "Ошибка удаления" }); }
+});
+
+
 // =============================================================================
 // 🚀 ЗАПУСК
 // =============================================================================

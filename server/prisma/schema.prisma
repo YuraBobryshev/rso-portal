@@ -39,6 +39,8 @@ model User {
   applications Application[]
   achievements Achievement[]
   participations EventParticipant[]
+  posts        Post[] // Связь: один пользователь может написать много постов
+  comments     Comment[] // ВОТ ЭТУ СТРОКУ НУЖНО ДОБАВИТЬ СЕЙЧАС
 }
 
 // 3. МОДЕЛЬ ОТРЯДА
@@ -106,6 +108,29 @@ model EventParticipant {
   eventId   String
   event     Event   @relation(fields: [eventId], references: [id])
   attended  Boolean @default(false) // Отметка Мастера: был или нет
-
   @@unique([userId, eventId]) // Запрещаем записываться дважды
+}
+
+model Post {
+  id        String    @id @default(uuid())
+  title     String
+  content   String    @db.Text
+  imageUrl  String?
+  createdAt DateTime  @default(now())
+  
+  authorId  String
+  author    User      @relation(fields: [authorId], references: [id])
+  
+  // ВОТ ЭТА СТРОКА ДОЛЖНА БЫТЬ:
+  comments  Comment[] 
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  content   String
+  createdAt DateTime @default(now())
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id])
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
 }

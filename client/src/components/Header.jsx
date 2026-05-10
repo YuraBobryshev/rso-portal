@@ -1,3 +1,4 @@
+// src/components/Header.jsx
 import React, { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
@@ -10,16 +11,13 @@ export default function Header() {
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
-  // Закрытие меню при клике вне его области
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (menuRef.current && !menuRef.current.contains(event.target)) {
-        setIsMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const navItems = [
+    { label: 'ГЛАВНАЯ', path: '/' },
+    { label: 'О НАС', path: '/about' },
+    { label: 'ГАЛЕРЕЯ', path: '/gallery' },
+    { label: 'НОВОСТИ', path: '/news' },
+    { label: 'ОТРЯДЫ', path: '/brigades' },
+  ];
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -29,92 +27,51 @@ export default function Header() {
           headers: { Authorization: `Bearer ${token}` }
         });
         setUser(res.data);
-      } catch (err) {
-        console.error("Ошибка авторизации");
-      }
+      } catch (err) { console.error("Ошибка авторизации"); }
     };
     fetchUser();
   }, [token]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    navigate('/login');
-  };
-
   return (
-    <header className="border-b-[1px] border-rso-blue bg-white sticky top-0 z-[100]">
-      {/* Контейнер-ограничитель, чтобы элементы не разъезжались */}
+    <header className="border-b-[1px] border-rso-blue bg-white sticky top-0 z-[100] font-sans">
       <div className="max-w-[1400px] mx-auto px-6 h-20 flex justify-between items-center">
-        
-        {/* ЛОГОТИП */}
-        <Link to="/" className="flex items-center hover:opacity-80 transition-opacity">
+        <Link to="/" className="hover:opacity-80 transition-opacity">
           <img src={logoUrl} alt="РСО" className="h-8 object-contain" />
         </Link>
 
-        {/* НАВИГАЦИЯ (Центр) */}
         <nav className="hidden lg:flex gap-10 items-center">
-          {['ГЛАВНАЯ', 'О НАС', 'ГАЛЕРЕЯ', 'НОВОСТИ', 'ОТРЯДЫ'].map((item) => (
-            <Link 
-              key={item} 
-              to={item === 'ГЛАВНАЯ' ? '/' : `/${item.toLowerCase()}`}
-              className="text-[10px] font-black text-rso-blue hover:text-black transition-colors tracking-[0.2em]"
-            >
-              {item}
-            </Link>
+          {navItems.map((item) => (
+            <Link key={item.label} to={item.path} className="text-[10px] font-black text-rso-blue hover:text-black transition-colors tracking-[0.2em]">{item.label}</Link>
           ))}
         </nav>
 
-        {/* ПРОФИЛЬ / ВХОД (Право) */}
         <div className="flex items-center gap-6">
           {user ? (
             <div className="relative" ref={menuRef}>
-              <button 
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="flex items-center gap-3 group outline-none"
-              >
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="flex items-center gap-3 group outline-none">
                 <div className="text-right hidden md:block">
                   <div className="text-[9px] font-black uppercase text-rso-blue leading-none">{user.firstName}</div>
                   <div className="text-[7px] font-bold opacity-40 uppercase tracking-widest mt-1">{user.role}</div>
                 </div>
-                
-                <div className="w-10 h-10 border-[1px] border-rso-blue rounded-full overflow-hidden flex items-center justify-center bg-blue-50 transition-all group-hover:shadow-[0_0_15px_rgba(8,4,255,0.2)]">
-                  {user.avatarUrl ? (
-                    <img src={user.avatarUrl} alt="Me" className="w-full h-full object-cover" />
-                  ) : (
-                    <span className="text-rso-blue font-black text-sm">{user.firstName.charAt(0)}</span>
-                  )}
+                <div className="w-10 h-10 border-[1px] border-rso-blue rounded-full overflow-hidden bg-blue-50">
+                  {user.avatarUrl ? <img src={user.avatarUrl} className="w-full h-full object-cover" alt="" /> : <span className="text-rso-blue font-black text-sm">{user.firstName.charAt(0)}</span>}
                 </div>
               </button>
 
-              {/* ВЫПАДАЮЩЕЕ ОКНО */}
               {isMenuOpen && (
-                <div className="absolute top-full right-0 mt-2 w-48 bg-white border-[1px] border-rso-blue shadow-xl animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="p-4 border-b-[1px] border-rso-blue/10">
-                    <p className="text-[8px] font-bold opacity-40 uppercase mb-1">Авторизован как</p>
-                    <p className="text-[10px] font-black uppercase truncate text-rso-blue">{user.email}</p>
-                  </div>
-                  <div className="p-2">
-                    <Link 
-                      to="/profile" 
-                      onClick={() => setIsMenuOpen(false)}
-                      className="block w-full text-left px-3 py-2 text-[10px] font-bold uppercase hover:bg-blue-50 text-rso-blue"
-                    >
-                      Личный кабинет
+                <div className="absolute top-full right-0 mt-2 w-56 bg-white border-[1px] border-rso-blue shadow-xl p-2 animate-in fade-in slide-in-from-top-2">
+                  {user.role === 'REG_HQ' && (
+                    <Link to="/admin" onClick={() => setIsMenuOpen(false)} className="block w-full px-3 py-2 text-[10px] font-black uppercase bg-red-50 text-red-600 mb-2 border-l-2 border-red-500">
+                      [ Администрирование ]
                     </Link>
-                    <button 
-                      onClick={handleLogout}
-                      className="block w-full text-left px-3 py-2 text-[10px] font-bold uppercase hover:bg-red-50 text-red-500"
-                    >
-                      Выйти из системы
-                    </button>
-                  </div>
+                  )}
+                  <Link to="/profile" onClick={() => setIsMenuOpen(false)} className="block px-3 py-2 text-[10px] font-bold uppercase hover:bg-blue-50 text-rso-blue">Профиль</Link>
+                  <button onClick={() => { localStorage.removeItem('token'); navigate('/login'); }} className="block w-full text-left px-3 py-2 text-[10px] font-bold uppercase hover:bg-gray-100 text-gray-400">Выйти</button>
                 </div>
               )}
             </div>
           ) : (
-            <Link to="/login" className="text-[10px] font-black border-[1px] border-rso-blue px-6 py-2.5 hover:bg-rso-blue hover:text-white transition-all uppercase tracking-widest">
-              Войти
-            </Link>
+            <Link to="/login" className="text-[10px] font-black border-[1px] border-rso-blue px-6 py-2.5 hover:bg-rso-blue hover:text-white transition-all uppercase tracking-widest">Войти</Link>
           )}
         </div>
       </div>

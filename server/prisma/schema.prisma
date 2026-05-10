@@ -23,27 +23,22 @@ enum Role {
 
 // 2. МОДЕЛЬ ПОЛЬЗОВАТЕЛЯ
 model User {
-  id          String    @id @default(uuid())
-  email       String    @unique
-  password    String
-  firstName   String
-  lastName    String
-  role        Role      @default(USER) // По умолчанию все просто пользователи
-  
-  // Связь с отрядом (может быть пустым, если человек еще не в отряде)
-  brigadeId   String?
-  brigade     Brigade?  @relation(fields: [brigadeId], references: [id])
-
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id           String             @id @default(uuid())
+  email        String             @unique
+  password     String
+  firstName    String
+  lastName     String
+  role         Role               @default(USER)
+  avatarUrl    String?            // ПРОВЕРЬ ЭТУ СТРОКУ
+  vkUrl        String?            @default("")
+  tgUrl        String?            @default("")
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+  brigadeId    String?
+  brigade      Brigade?           @relation(fields: [brigadeId], references: [id])
   applications Application[]
-
-  // ДОБАВЬ ЭТИ СТРОЧКИ:
-  achievements Achievement[] // Личные достижения бойца
+  achievements Achievement[]
   participations EventParticipant[]
-
-  vkUrl   String? @default("")
-  tgUrl   String? @default("")
 }
 
 // 3. МОДЕЛЬ ОТРЯДА

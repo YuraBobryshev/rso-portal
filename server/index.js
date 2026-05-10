@@ -1,9 +1,10 @@
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcrypt'); 
+const bcrypt = require('bcryptjs'); // было bcrypt
 const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
 const authMiddleware = require('./middleware/auth');
+const { upload } = require('./s3Config'); // Теперь импортируем из S3
 
 const app = express();
 const prisma = new PrismaClient();
@@ -31,16 +32,45 @@ const checkRole = (allowedRoles) => async (req, res, next) => {
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, firstName, lastName } = req.body;
+    
+    // 1. Проверяем, нет ли такого юзера
     const existingUser = await prisma.user.findUnique({ where: { email } });
-    if (existingUser) return res.status(400).json({ message: 'Email уже занят' });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Этот Email уже занят' });
+    }
 
+    // 2. Шифруем пароль
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // 3. Создаем запись в базе
     const user = await prisma.user.create({
-      data: { email, password: hashedPassword, firstName, lastName }
+      data: { 
+        email, 
+        password: hashedPassword, 
+        firstName, 
+        lastName,
+        vkUrl: "", 
+        tgUrl: ""
+      }
     });
 
-    res.status(201).json({ message: 'Успешно!', user: { id: user.id, email, firstName, lastName, role: user.role } });
-  } catch (error) { res.status(500).json({ message: 'Ошибка сервера' }); }
+    // 4. СРАЗУ СОЗДАЕМ ТОКЕН (чтобы юзеру не нужно было логиниться)
+    const token = jwt.sign(
+      { userId: user.id, role: user.role }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '24h' }
+    );
+
+    // Отправляем токен на фронтенд
+    res.status(201).json({ 
+      token, 
+      user: { id: user.id, email, firstName, lastName, role: user.role } 
+    });
+
+  } catch (error) {
+    console.error("Ошибка при регистрации:", error);
+    res.status(500).json({ message: 'Ошибка сервера при создании аккаунта' });
+  }
 });
 
 app.post('/api/auth/login', async (req, res) => {
@@ -59,11 +89,21 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user.userId },
-    select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true, brigade: true, vkUrl: true, tgUrl: true }
+    select: { 
+      id: true, 
+      email: true, 
+      firstName: true, 
+      lastName: true, 
+      role: true, 
+      createdAt: true, 
+      brigade: true, 
+      vkUrl: true, 
+      tgUrl: true,
+      avatarUrl: true // ОБЯЗАТЕЛЬНО ДОБАВЬ ЭТУ СТРОКУ
+    }
   });
   res.json(user);
 });
-
 // Роут для обновления ссылок профиля (ВК и ТГ)
 app.patch('/api/auth/profile', authMiddleware, async (req, res) => {
   try {
@@ -78,6 +118,28 @@ app.patch('/api/auth/profile', authMiddleware, async (req, res) => {
     res.json({ message: "Успешно" });
   } catch (error) {
     res.status(500).json({ message: "Ошибка сервера" });
+  }
+});
+
+// Загрузка аватарки
+app.post('/api/auth/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ message: "Файл не получен" });
+    }
+
+    // В multer-s3 ссылка на файл лежит в req.file.location
+    const imageUrl = req.file.location;
+
+    const updatedUser = await prisma.user.update({
+      where: { id: req.user.userId },
+      data: { avatarUrl: imageUrl }
+    });
+
+    res.json({ message: "Аватар обновлен в S3", avatarUrl: imageUrl });
+  } catch (error) {
+    console.error("S3 Upload Error:", error);
+    res.status(500).json({ message: "Ошибка загрузки в хранилище" });
   }
 });
 

@@ -8,55 +8,53 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-
 // 1. ВСЕ НАШИ РОЛИ
 enum Role {
-  USER        // Просто зарегистрированный человек
-  CANDIDATE   // Подал заявку и был одобрен командиром
-  BOETS       // Полноценный член отряда
-  COMMANDER   // Глава отряда (документы, отчеты)
-  COMMISSAR   // Замглавы по мероприятиям
-  MASTER      // Замглавы по работе
-  MEDIA       // Контент-мейкер (новости, фото)
-  REG_HQ      // РЕГИОНАЛЬНЫЙ ШТАБ (Админ всей системы)
+  USER // Просто зарегистрированный человек
+  CANDIDATE // Подал заявку и был одобрен командиром
+  BOETS // Полноценный член отряда
+  COMMANDER // Глава отряда (документы, отчеты)
+  COMMISSAR // Замглавы по мероприятиям
+  MASTER // Замглавы по работе
+  MEDIA // Контент-мейкер (новости, фото)
+  REG_HQ // РЕГИОНАЛЬНЫЙ ШТАБ (Админ всей системы)
 }
 
 // 2. МОДЕЛЬ ПОЛЬЗОВАТЕЛЯ
 model User {
-  id           String             @id @default(uuid())
-  email        String             @unique
-  password     String
-  firstName    String
-  lastName     String
-  role         Role               @default(USER)
-  avatarUrl    String?            // ПРОВЕРЬ ЭТУ СТРОКУ
-  vkUrl        String?            @default("")
-  tgUrl        String?            @default("")
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-  brigadeId    String?
-  brigade      Brigade?           @relation(fields: [brigadeId], references: [id])
-  applications Application[]
-  achievements Achievement[]
+  id             String             @id @default(uuid())
+  email          String             @unique
+  password       String
+  firstName      String
+  lastName       String
+  role           Role               @default(USER)
+  avatarUrl      String? // ПРОВЕРЬ ЭТУ СТРОКУ
+  vkUrl          String?            @default("")
+  tgUrl          String?            @default("")
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  brigadeId      String?
+  brigade        Brigade?           @relation(fields: [brigadeId], references: [id])
+  applications   Application[]
+  achievements   Achievement[]
   participations EventParticipant[]
-  posts        Post[] // Связь: один пользователь может написать много постов
-  comments     Comment[] // ВОТ ЭТУ СТРОКУ НУЖНО ДОБАВИТЬ СЕЙЧАС
+  posts          Post[] // Связь: один пользователь может написать много постов
+  comments       Comment[] // ВОТ ЭТУ СТРОКУ НУЖНО ДОБАВИТЬ СЕЙЧАС
 }
 
-// 3. МОДЕЛЬ ОТРЯДА
 model Brigade {
-  id          String   @id @default(uuid())
-  name        String   @unique
-  description String?
-  
-  // Список всех людей в этом отряде
-  members     User[]
-
-  createdAt   DateTime @default(now())
+  id           String        @id @default(uuid())
+  name         String        @unique
+  description  String        @db.Text
+  type         String // Направление (ССО, СПО и т.д.)
+  logoUrl      String? // Аватарка/Эмблема в S3
+  colorScheme  String?       @default("#0804FF") // Цветовая гамма (HEX-код) 
+  createdAt    DateTime      @default(now())
+  users        User[]
   applications Application[]
-  events       Event[]       // Мероприятия этого отряда
-  achievements Achievement[] // Общие достижения отряда (кубки, флаги)
-  }
+  events       Event[]
+  achievements Achievement[]
+}
 
 // Добавь статус в список перечислений (можно в любое место, где enum)
 enum AppStatus {
@@ -67,62 +65,63 @@ enum AppStatus {
 
 // Новая модель заявки
 model Application {
-  id          String    @id @default(uuid())
-  userId      String
-  user        User      @relation(fields: [userId], references: [id])
-  brigadeId   String
-  brigade     Brigade   @relation(fields: [brigadeId], references: [id])
-  status      AppStatus @default(PENDING)
-  comment     String?   // Причина отказа или доп. инфо
-  createdAt   DateTime  @default(now())
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  brigadeId String
+  brigade   Brigade   @relation(fields: [brigadeId], references: [id])
+  status    AppStatus @default(PENDING)
+  comment   String? // Причина отказа или доп. инфо
+  createdAt DateTime  @default(now())
 }
 
 model Event {
-  id          String   @id @default(uuid())
-  title       String
-  description String?
-  date        DateTime
-  location    String?
-  type        String   @default("LOCAL") // LOCAL или REGIONAL
-  brigadeId   String?  // Если пусто — это региональное
-  brigade     Brigade? @relation(fields: [brigadeId], references: [id])
-  createdAt   DateTime @default(now())
+  id             String             @id @default(uuid())
+  title          String
+  description    String?
+  date           DateTime
+  location       String?
+  type           String             @default("LOCAL") // LOCAL или REGIONAL
+  brigadeId      String? // Если пусто — это региональное
+  brigade        Brigade?           @relation(fields: [brigadeId], references: [id])
+  createdAt      DateTime           @default(now())
   participations EventParticipant[]
 }
 
 model Achievement {
-  id          String   @id @default(uuid())
-  title       String
-  imageUrl    String?
-  value       Int      @default(1) // "Ценность" в рейтинге
-  userId      String?
-  user        User?    @relation(fields: [userId], references: [id])
-  brigadeId   String?
-  brigade     Brigade? @relation(fields: [brigadeId], references: [id])
+  id        String   @id @default(uuid())
+  title     String
+  imageUrl  String?
+  value     Int      @default(1) // "Ценность" в рейтинге
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  brigadeId String?
+  brigade   Brigade? @relation(fields: [brigadeId], references: [id])
 }
 
 model EventParticipant {
-  id        String  @id @default(uuid())
-  userId    String
-  user      User    @relation(fields: [userId], references: [id])
-  eventId   String
-  event     Event   @relation(fields: [eventId], references: [id])
-  attended  Boolean @default(false) // Отметка Мастера: был или нет
+  id       String  @id @default(uuid())
+  userId   String
+  user     User    @relation(fields: [userId], references: [id])
+  eventId  String
+  event    Event   @relation(fields: [eventId], references: [id])
+  attended Boolean @default(false) // Отметка Мастера: был или нет
+
   @@unique([userId, eventId]) // Запрещаем записываться дважды
 }
 
 model Post {
-  id        String    @id @default(uuid())
+  id        String   @id @default(uuid())
   title     String
-  content   String    @db.Text
+  content   String   @db.Text
   imageUrl  String?
-  createdAt DateTime  @default(now())
-  
-  authorId  String
-  author    User      @relation(fields: [authorId], references: [id])
-  
+  createdAt DateTime @default(now())
+
+  authorId String
+  author   User   @relation(fields: [authorId], references: [id])
+
   // ВОТ ЭТА СТРОКА ДОЛЖНА БЫТЬ:
-  comments  Comment[] 
+  comments Comment[]
 }
 
 model Comment {

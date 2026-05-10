@@ -163,10 +163,29 @@ app.patch('/api/admin/update-role', authMiddleware, checkRole(['REG_HQ']), async
 });
 
 // Создание нового отряда (ЛСО)
-app.post('/api/admin/create-brigade', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
-  const { name, description } = req.body;
-  const brigade = await prisma.brigade.create({ data: { name, description } });
-  res.json({ message: 'Отряд создан', brigade });
+// Создание нового отряда с расширенными полями
+app.post('/api/admin/create-brigade', authMiddleware, checkRole(['REG_HQ']), upload.single('logo'), async (req, res) => {
+  try {
+    const { name, description, type, colorScheme } = req.body;
+    
+    // Если файл загружен, берем его путь из S3 
+    const logoUrl = req.file ? req.file.location : null;
+
+    const brigade = await prisma.brigade.create({
+      data: { 
+        name, 
+        description, 
+        type, 
+        colorScheme: colorScheme || "#0804FF",
+        logoUrl 
+      }
+    });
+
+    res.status(201).json({ message: 'Отряд успешно создан', brigade });
+  } catch (error) {
+    console.error("Ошибка создания отряда:", error);
+    res.status(500).json({ message: 'Ошибка сервера при создании отряда' });
+  }
 });
 
 // Прямое распределение бойца в отряд

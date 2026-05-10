@@ -5,20 +5,27 @@ import Header from '../components/Header';
 
 const ИконкаЗвезды = () => <span className="text-rso-blue text-xl select-none">✦</span>;
 
+const brigadeTypes = ['ССО', 'СПО', 'ССервО', 'СОП', 'ССхО', 'СМО'];
+
 export default function AdminPanel() {
   const [users, setUsers] = useState([]);
   const [brigades, setBrigades] = useState([]);
-  const [adminEvents, setAdminEvents] = useState([]); // Все мероприятия для штаба
+  const [adminEvents, setAdminEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('users'); 
-  const [newBrigadeName, setNewBrigadeName] = useState('');
   
-  // Для мероприятий
+  // Состояния для нового отряда
+  const [newBrigadeName, setNewBrigadeName] = useState('');
+  const [newBrigadeType, setNewBrigadeType] = useState('ССО');
+  const [newBrigadeDescription, setNewBrigadeDescription] = useState('');
+  const [newBrigadeColor, setNewBrigadeColor] = useState('#0804FF');
+  const [newBrigadeLogo, setNewBrigadeLogo] = useState(null);
+  
+  // Состояния для мероприятий
   const [newEventTitle, setNewEventTitle] = useState('');
   const [newEventDate, setNewEventDate] = useState('');
   const [newEventType, setNewEventType] = useState('REGIONAL');
   
-  // Для просмотра участников
   const [selectedEventInfo, setSelectedEventInfo] = useState(null);
 
   const navigate = useNavigate();
@@ -30,7 +37,7 @@ export default function AdminPanel() {
       const [usersRes, brigadesRes, eventsRes] = await Promise.all([
         axios.get('http://localhost:5000/api/admin/users', { headers }),
         axios.get('http://localhost:5000/api/brigades', { headers }),
-        axios.get('http://localhost:5000/api/admin/events', { headers }) // Новый запрос
+        axios.get('http://localhost:5000/api/admin/events', { headers })
       ]);
       setUsers(usersRes.data);
       setBrigades(brigadesRes.data);
@@ -72,11 +79,30 @@ export default function AdminPanel() {
     } catch (err) { alert(err.response?.data?.message || "Ошибка при удалении аккаунта"); }
   };
 
+  // ОБНОВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ОТРЯДА
   const handleCreateBrigade = async (e) => {
     e.preventDefault();
+    const formData = new FormData();
+    formData.append('name', newBrigadeName);
+    formData.append('type', newBrigadeType);
+    formData.append('description', newBrigadeDescription);
+    formData.append('colorScheme', newBrigadeColor);
+    if (newBrigadeLogo) formData.append('logo', newBrigadeLogo);
+
     try {
-      await axios.post('http://localhost:5000/api/admin/create-brigade', { name: newBrigadeName, description: "Создано из панели" }, { headers: { Authorization: `Bearer ${token}` } });
+      await axios.post('http://localhost:5000/api/admin/create-brigade', formData, { 
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data'
+        } 
+      });
+      // Сброс полей
       setNewBrigadeName('');
+      setNewBrigadeDescription('');
+      setNewBrigadeType('ССО');
+      setNewBrigadeColor('#0804FF');
+      setNewBrigadeLogo(null);
+      alert("Новый отряд успешно внесен в реестр!");
       fetchData();
     } catch (err) { alert("Ошибка при создании отряда"); }
   };
@@ -88,7 +114,7 @@ export default function AdminPanel() {
       alert("Мероприятие опубликовано!");
       setNewEventTitle('');
       setNewEventDate('');
-      fetchData(); // Перезапрашиваем события
+      fetchData();
     } catch (err) { alert("Ошибка при создании мероприятия"); }
   };
 
@@ -153,7 +179,6 @@ export default function AdminPanel() {
           <button onClick={() => setActiveTab('events')} className={`px-8 py-4 text-sm font-bold uppercase transition-colors whitespace-nowrap ${activeTab === 'events' ? 'bg-rso-blue text-white' : 'hover:bg-blue-50'}`}>Мероприятия</button>
         </div>
 
-        {/* ... (Вкладки users и brigades остались без изменений) ... */}
         {activeTab === 'users' && (
           <div className="border-[1px] border-rso-blue overflow-x-auto">
             <div className="min-w-[1000px]">
@@ -174,36 +199,75 @@ export default function AdminPanel() {
           </div>
         )}
 
+        {/* ОБНОВЛЕННАЯ ВКЛАДКА ОТРЯДОВ */}
         {activeTab === 'brigades' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-            <div className="border-[1px] border-rso-blue p-8 relative h-fit">
-              <div className="absolute -top-3 left-6 bg-white px-3 text-rso-blue font-bold uppercase text-xs">Создание отряда</div>
-              <form onSubmit={handleCreateBrigade} className="space-y-8 mt-4">
-                <div className="group relative">
-                  <label className="block text-xs uppercase font-bold opacity-70 mb-2">Название отряда</label>
-                  <input type="text" value={newBrigadeName} onChange={e => setNewBrigadeName(e.target.value)} placeholder="Например: ССО «Атлант»" className="w-full bg-transparent border-b-[1px] border-rso-blue py-2 outline-none font-bold text-lg focus:border-b-2 transition-all" required />
+          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_2fr] gap-10">
+            {/* Форма создания с новыми полями */}
+            <div className="border-[1px] border-rso-blue p-8 relative h-fit bg-gray-50/30">
+              <div className="absolute -top-3 left-6 bg-white px-3 text-rso-blue font-bold uppercase text-xs">Регистрация ЛСО</div>
+              <form onSubmit={handleCreateBrigade} className="space-y-6 mt-4">
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-[10px] uppercase font-black opacity-50 mb-1">Название отряда</label>
+                    <input type="text" value={newBrigadeName} onChange={e => setNewBrigadeName(e.target.value)} placeholder="Напр. Гандвик" className="w-full bg-transparent border-b-[1px] border-rso-blue py-2 outline-none font-bold text-sm focus:border-b-2 transition-all uppercase" required />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-black opacity-50 mb-1">Направление</label>
+                    <select value={newBrigadeType} onChange={e => setNewBrigadeType(e.target.value)} className="w-full bg-transparent border-b-[1px] border-rso-blue py-2 outline-none font-bold text-sm focus:border-b-2 transition-all cursor-pointer uppercase">
+                      {brigadeTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
                 </div>
-                <button type="submit" className="w-full bg-rso-blue text-white py-4 text-sm font-bold uppercase hover:bg-black transition-colors">Создать отряд</button>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-black opacity-50 mb-1">Описание деятельности</label>
+                  <textarea value={newBrigadeDescription} onChange={e => setNewBrigadeDescription(e.target.value)} placeholder="История, традиции и объекты..." className="w-full bg-transparent border-b-[1px] border-rso-blue py-2 outline-none font-medium text-sm focus:border-b-2 transition-all min-h-[80px] resize-none" required />
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
+                  <div>
+                    <label className="block text-[10px] uppercase font-black opacity-50 mb-2">Эмблема (Логотип)</label>
+                    <input type="file" onChange={e => setNewBrigadeLogo(e.target.files[0])} className="text-[10px] font-mono" />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-black opacity-50 mb-2">Фирменный цвет</label>
+                    <div className="flex items-center gap-3">
+                      <input type="color" value={newBrigadeColor} onChange={e => setNewBrigadeColor(e.target.value)} className="w-10 h-10 border-none bg-transparent cursor-pointer" />
+                      <span className="font-mono text-xs font-bold uppercase">{newBrigadeColor}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <button type="submit" className="w-full bg-rso-blue text-white py-4 text-sm font-bold uppercase hover:bg-black transition-colors shadow-lg shadow-blue-500/10">Сформировать отряд</button>
               </form>
             </div>
-            <div className="border-[1px] border-rso-blue flex flex-col h-[500px]">
-               <div className="bg-rso-blue text-white p-4 text-xs font-bold uppercase text-center flex-shrink-0 tracking-wider">Активные отряды (Всего: {brigades.length})</div>
-               <div className="divide-y-[1px] divide-rso-blue overflow-y-auto flex-1">
-                 {brigades.map((brigade, idx) => (
-                   <div key={brigade.id} className="p-5 hover:bg-blue-50 transition-colors flex justify-between items-center group">
-                     <div className="flex items-center gap-4"><span className="text-xs font-mono opacity-40">{(idx + 1).toString().padStart(2, '0')}</span><span className="font-black uppercase text-lg">{brigade.name}</span></div>
-                     <span className="text-[10px] border-[1px] border-rso-blue px-3 py-1 uppercase opacity-50 font-mono">ID: {brigade.id.slice(0,6)}</span>
-                   </div>
-                 ))}
-               </div>
+
+            {/* Список отрядов (без изменений) */}
+            <div className="border-[1px] border-rso-blue flex flex-col h-[600px]">
+                <div className="bg-rso-blue text-white p-4 text-xs font-bold uppercase text-center flex-shrink-0 tracking-wider">Реестр ЛСО (Всего: {brigades.length})</div>
+                <div className="divide-y-[1px] divide-rso-blue overflow-y-auto flex-1">
+                  {brigades.map((brigade, idx) => (
+                    <div key={brigade.id} className="p-5 hover:bg-blue-50 transition-colors flex justify-between items-center group">
+                      <div className="flex items-center gap-4">
+                        <div className="w-8 h-8 bg-blue-50 border border-rso-blue flex items-center justify-center overflow-hidden">
+                           {brigade.logoUrl ? <img src={brigade.logoUrl} className="w-full h-full object-cover" alt="" /> : <span className="text-[8px] font-black opacity-30">{brigade.type}</span>}
+                        </div>
+                        <div>
+                          <div className="font-black uppercase text-base leading-none">{brigade.name}</div>
+                          <div className="text-[9px] font-bold opacity-40 uppercase mt-1 tracking-widest" style={{ color: brigade.colorScheme || '#0804FF' }}>{brigade.type}</div>
+                        </div>
+                      </div>
+                      <span className="text-[10px] border-[1px] border-rso-blue px-3 py-1 uppercase opacity-50 font-mono">ID: {brigade.id.slice(0,6)}</span>
+                    </div>
+                  ))}
+                </div>
             </div>
           </div>
         )}
 
-        {/* НОВАЯ ВКЛАДКА: МЕРОПРИЯТИЯ ДЛЯ АДМИНА */}
         {activeTab === 'events' && (
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-10">
-            
             {/* Форма создания */}
             <div className="border-[1px] border-rso-blue p-8 relative h-fit">
               <div className="absolute -top-3 left-6 bg-white px-3 text-rso-blue font-bold uppercase text-xs">Публикация</div>

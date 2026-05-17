@@ -501,28 +501,33 @@ app.get('/api/posts', async (req, res) => {
 });
 
 // 2. Создать новость (только для Командиров и РСО)
-app.get('/api/posts', async (req, res) => {
+// 2. Создать новость (только для Командиров и РСО)
+app.post('/api/posts', authMiddleware, checkRole(['COMMANDER', 'REG_HQ']), upload.single('image'), async (req, res) => {
   try {
-    const posts = await prisma.post.findMany({
+    const { title, content } = req.body;
+    
+    // Ссылка на картинку из S3 (если файл прикреплен)
+    const imageUrl = req.file ? req.file.location : null;
+
+    const post = await prisma.post.create({
+      data: {
+        title,
+        content,
+        imageUrl,
+        authorId: req.user.userId // ID из токена
+      },
       include: {
         author: { 
           select: { id: true, firstName: true, lastName: true, avatarUrl: true } 
-        },
-        // Если ошибка повторится, закомментируй блок comments ниже для теста
-        comments: {
-          include: { 
-            author: { select: { firstName: true, avatarUrl: true } } 
-          },
-          orderBy: { createdAt: 'asc' }
         }
-      },
-      orderBy: { createdAt: 'desc' }
+      }
     });
-    res.json(posts);
+
+    res.status(201).json(post);
   } catch (error) {
-    console.error("ОШИБКА PRISMA:", error);
+    console.error("КРИТИЧЕСКАЯ ОШИБКА СОЗДАНИЯ ПОСТА:", error);
     res.status(500).json({ 
-      message: "Ошибка загрузки ленты", 
+      message: "Ошибка при публикации", 
       dev_info: error.message 
     });
   }
@@ -556,6 +561,32 @@ app.delete('/api/posts/:id', authMiddleware, async (req, res) => {
   } catch (e) { res.status(500).json({ message: "Ошибка удаления" }); }
 });
 
+// Получение детальной информации об отряде
+app.get('/api/brigades/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const brigade = await prisma.brigade.findUnique({
+      where: { id },
+      include: {
+        users: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            role: true,
+            avatarUrl: true
+          },
+          orderBy: { role: 'desc' } // Сначала командиры, потом остальные
+        }
+      }
+    });
+
+    if (!brigade) return res.status(404).json({ message: "Отряд не найден" });
+    res.json(brigade);
+  } catch (error) {
+    res.status(500).json({ message: "Ошибка сервера" });
+  }
+});
 
 // =============================================================================
 // 🚀 ЗАПУСК

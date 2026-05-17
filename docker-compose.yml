@@ -1,0 +1,42 @@
+services:
+  # Наша новая база данных
+  db:
+    image: postgres:15-alpine
+    container_name: rso_db
+    restart: always
+    environment:
+      POSTGRES_USER: rso_user
+      POSTGRES_PASSWORD: rso_password
+      POSTGRES_DB: rso_portal
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5433:5432" # Наш рабочий порт для Beekeeper
+
+  # Бэкенд
+  server:
+    build: ./server
+    container_name: rso_api
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - "5000:5000"
+    env_file:
+      - ./server/.env # <-- МАГИЯ: Докер сам заберет ВСЕ ключи S3 и JWT из твоего файла!
+    environment:
+      # Перебиваем DATABASE_URL из .env, чтобы бэк внутри докера шел в контейнер 'db', а не в localhost
+      DATABASE_URL: "postgresql://rso_user:rso_password@db:5432/rso_portal?schema=public"
+
+  # Фронтенд
+  client:
+    build: ./client
+    container_name: rso_frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
+volumes:
+  pgdata:

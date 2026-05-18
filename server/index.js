@@ -193,14 +193,18 @@ app.get('/api/admin/events', authMiddleware, checkRole(['REG_HQ']), async (req, 
 // 🤝 БЛОК 3: ОТРЯДЫ И ЗАЯВКИ
 // =============================================================================
 
+// ОЧИЩЕННЫЙ И ИСПРАВЛЕННЫЙ РОУТ ОТРЯДОВ:
 app.get('/api/brigades', async (req, res) => {
   try {
     const brigades = await prisma.brigade.findMany({
       include: { _count: { select: { users: true } } }
     });
-    res.json(distributors);
+    // Строку res.json(distributors); СТЕРЛИ НАВСЕГДА
     res.json(brigades);
-  } catch (e) { res.status(500).json([]); }
+  } catch (e) { 
+    console.error(e);
+    res.status(500).json({ message: "Ошибка при получении реестра отрядов" }); 
+  }
 });
 
 // ИСПРАВЛЕНО: Добавлена антиспам защита (блокировка дублирования активных заявок)

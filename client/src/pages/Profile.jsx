@@ -159,8 +159,7 @@ export default function Profile() {
   const isCommander = user && user.role === 'COMMANDER';
 
   // Извлекаем последнюю заявку для трекинга статуса
-  const latestApplication = user.applications && user.applications[0];
-
+const latestApplication = user?.applications?.[0];
   // Календарь математика
   const year = calendarDate.getFullYear();
   const month = calendarDate.getMonth();

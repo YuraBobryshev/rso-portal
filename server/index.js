@@ -93,7 +93,6 @@ app.post('/api/auth/upload-avatar', authMiddleware, upload.single('avatar'), asy
 // ⚙️ БЛОК 2: АДМИНИСТРИРОВАНИЕ
 // =============================================================================
 
-// ИСПРАВЛЕНО: Теперь роут отдает аватарку и подгружает имя связанного отряда
 app.get('/api/admin/users', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
   try {
     const users = await prisma.user.findMany({
@@ -118,7 +117,20 @@ app.patch('/api/admin/update-role', authMiddleware, checkRole(['REG_HQ']), async
   res.json({ message: 'Роль обновлена' });
 });
 
-// Роут создания отряда
+// НОВЫЙ РОУТ: Верификация Кандидата до официального Бойца Региональным штабом
+app.patch('/api/admin/verify-boets', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
+    if (user.role !== 'CANDIDATE') {
+      return res.status(400).json({ message: 'Пользователь должен иметь статус Кандидата' });
+    }
+    await prisma.user.update({ where: { id: userId }, data: { role: 'BOETS' } });
+    res.json({ message: 'Пользователь успешно верифицирован как официальный Боец!' });
+  } catch (e) { res.status(500).json({ message: "Ошибка сервера" }); }
+});
+
 app.post('/api/admin/create-brigade', authMiddleware, checkRole(['REG_HQ']), upload.single('logo'), async (req, res) => {
   try {
     const { name, description, type, colorScheme } = req.body;
@@ -181,67 +193,117 @@ app.get('/api/admin/events', authMiddleware, checkRole(['REG_HQ']), async (req, 
 // 🤝 БЛОК 3: ОТРЯДЫ И ЗАЯВКИ
 // =============================================================================
 
-// ИСПРАВЛЕНО: Теперь при выгрузке отрядов бэкенд считает количество привязанных бойцов
 app.get('/api/brigades', async (req, res) => {
   try {
     const brigades = await prisma.brigade.findMany({
-      include: {
-        _count: {
-          select: { users: true }
-        }
-      }
+      include: { _count: { select: { users: true } } }
     });
+    res.json(distributors);
     res.json(brigades);
   } catch (e) { res.status(500).json([]); }
 });
 
+// ИСПРАВЛЕНО: Добавлена антиспам защита (блокировка дублирования активных заявок)
 app.post('/api/applications/apply', authMiddleware, async (req, res) => {
-  const { brigadeId } = req.body;
-  const userId = req.user.userId;
-  const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (user.brigadeId) return res.status(400).json({ message: 'Вы уже в отряде' });
-
-  await prisma.application.create({ data: { userId, brigadeId } });
-  res.json({ message: 'Заявка отправлена' });
-});
-
-app.post('/api/commander/process-application', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
-  const { appId, status } = req.body;
-  const application = await prisma.application.update({ where: { id: appId }, data: { status } });
-  if (status === 'APPROVED') {
-    await prisma.user.update({ where: { id: application.userId }, data: { role: 'CANDIDATE', brigadeId: application.brigadeId } });
-  }
-  res.json({ message: 'Заявка обработана' });
-});
-
-// =============================================================================
-// 📅 БЛОК 4: МЕРОПРИЯТИЯ И ПОСЕЩАЕМОСТЬ
-// =============================================================================
-
-app.post('/api/events', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'REG_HQ']), async (req, res) => {
   try {
-    const { title, description, date, type } = req.body;
+    const { brigadeId } = req.body;
+    const userId = req.user.userId;
+    
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user.brigadeId) return res.status(400).json({ message: 'Вы уже состоите в отряде' });
+
+    const existingPending = await prisma.application.findFirst({
+      where: { userId, status: 'PENDING' }
+    });
+    if (existingPending) {
+      return res.status(400).json({ message: 'У вас уже есть активная заявка на рассмотрении' });
+    }
+
+    await prisma.application.create({ data: { userId, brigadeId } });
+    res.json({ message: 'Заявка успешно отправлена' });
+  } catch (e) { res.status(500).json({ message: 'Ошибка сервера' }); }
+});
+
+// ИСПРАВЛЕНО: Теперь сохраняет текстовый комментарий/причину отказа в базу данных
+app.post('/api/commander/process-application', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
+  try {
+    const { appId, status, comment } = req.body;
+    const application = await prisma.application.update({ 
+      where: { id: appId }, 
+      data: { status, comment: comment || null } 
+    });
+    
+    if (status === 'APPROVED') {
+      await prisma.user.update({ 
+        where: { id: application.userId }, 
+        data: { role: 'CANDIDATE', brigadeId: application.brigadeId } 
+      });
+    }
+    res.json({ message: 'Заявка обработана комсоставом' });
+  } catch (e) { res.status(500).json({ message: 'Ошибка обработки заявки' }); }
+});
+
+// =============================================================================
+// 📅 БЛОК 4: МЕРОПРИЯТИЯ И ПОСЕЩАЕМОСТЬ (Полная синхронизация и защита)
+// =============================================================================
+
+// ИСПРАВЛЕНО: Расширены права создания и добавлена четкая сегментация типов
+app.post('/api/events', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'MASTER', 'REG_HQ']), async (req, res) => {
+  try {
+    const { title, description, date, location, type } = req.body;
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    
+    let targetBrigadeId = null;
+    let eventType = "LOCAL";
+
+    if (user.role === 'REG_HQ') {
+      eventType = type || "REGIONAL";
+      targetBrigadeId = eventType === 'REGIONAL' ? null : req.body.brigadeId;
+    } else {
+      if (!user.brigadeId) return res.status(403).json({ message: "Вы не привязаны к ЛСО" });
+      targetBrigadeId = user.brigadeId;
+    }
+
     const event = await prisma.event.create({
-      data: { title, description: description || "Описание не указано", date: new Date(date), type: type || "REGIONAL", brigadeId: type === 'REGIONAL' ? null : user.brigadeId }
+      data: { 
+        title, 
+        description: description || "Описание не указано", 
+        date: new Date(date), 
+        location: location || "Не указано",
+        type: eventType, 
+        brigadeId: targetBrigadeId 
+      }
     });
     res.status(201).json(event);
-  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
+  } catch (error) { res.status(500).json({ message: "Ошибка создания мероприятия" }); }
 });
 
+// ИСПРАВЛЕНО: Умная фильтрация ленты. Обычные бойцы видят только СВОЙ отряд + РЕГИОНАЛЬНЫЕ
 app.get('/api/events', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
+    
+    let queryConditions = {};
+    if (user.role !== 'REG_HQ') {
+      queryConditions = {
+        OR: [
+          { type: 'REGIONAL' },
+          { brigadeId: user.brigadeId || undefined }
+        ]
+      };
+    }
+
     const events = await prisma.event.findMany({
-      where: { OR: [{ brigadeId: user.brigadeId || undefined }, { type: 'REGIONAL' }] },
+      where: queryConditions,
       orderBy: { date: 'asc' }
     });
+
     const userParticipations = await prisma.eventParticipant.findMany({ where: { userId } });
     const joinedEventIds = userParticipations.map(p => p.eventId);
     const formattedEvents = events.map(event => ({ ...event, isJoined: joinedEventIds.includes(event.id) }));
     res.json(formattedEvents);
-  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
+  } catch (error) { res.status(500).json({ message: "Ошибка загрузки ленты" }); }
 });
 
 app.get('/api/events/my-nearest', authMiddleware, async (req, res) => {
@@ -255,16 +317,35 @@ app.get('/api/events/my-nearest', authMiddleware, async (req, res) => {
   } catch (e) { res.status(500).json(null); }
 });
 
-app.post('/api/events/:id/join', authMiddleware, async (req, res) => {
+// ИСПРАВЛЕНО: Защита от записи на закрытые мероприятия чужих отрядов
+app.post('/api/events/:id/join', authMiddleware, checkRole(['USER', 'CANDIDATE', 'BOETS', 'COMMANDER', 'COMMISSAR', 'MASTER', 'MEDIA']), async (req, res) => {
   try {
-    await prisma.eventParticipant.create({ data: { userId: req.user.userId, eventId: req.params.id } });
-    res.json({ message: "Вы записаны" });
-  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
+    const userId = req.user.userId;
+    const eventId = req.params.id;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) return res.status(404).json({ message: "Мероприятие не найдено" });
+
+    if (event.type === 'LOCAL' && event.brigadeId !== user.brigadeId && user.role !== 'REG_HQ') {
+      return res.status(403).json({ message: "Доступ запрещен: это закрытое событие чужого ЛСО" });
+    }
+
+    await prisma.eventParticipant.create({ data: { userId, eventId } });
+    res.json({ message: "Вы успешно записаны" });
+  } catch (error) { res.status(500).json({ message: "Ошибка записи" }); }
 });
 
-app.patch('/api/events/attendance', authMiddleware, checkRole(['MASTER', 'COMMANDER']), async (req, res) => {
-  await prisma.eventParticipant.update({ where: { id: req.body.participantId }, data: { attended: req.body.attended } });
-  res.json({ message: "Статус обновлен" });
+// ИСПРАВЛЕНО: Теперь роут доступен также Мастеру и учитывает ID из тела запроса
+app.patch('/api/events/attendance', authMiddleware, checkRole(['MASTER', 'COMMANDER', 'REG_HQ']), async (req, res) => {
+  try {
+    const { participantId, attended } = req.body;
+    await prisma.eventParticipant.update({ 
+      where: { id: participantId }, 
+      data: { attended } 
+    });
+    res.json({ message: "Статус посещаемости успешно обновлен" });
+  } catch (e) { res.status(500).json({ message: "Ошибка обновления статуса" }); }
 });
 
 // =============================================================================

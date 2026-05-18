@@ -81,18 +81,40 @@ export default function Admin() {
     }
   }, [activeTab]);
 
-  // 🔥 ХЕНДЛЕР: Изменение роли бойца на бэкенде
+  // Функция изменения роли бойца на бэкенде
   const handleRoleChange = async (userId, newRole) => {
     if (!token) return;
     const headers = { Authorization: `Bearer ${token}` };
     try {
       await axios.patch(`${API_URL}/api/admin/update-role`, { userId, newRole }, { headers });
       
-      // Мгновенно обновляем стейт локально, чтобы плашка перекрасилась сама
+      // Обновляем локальный стейт, чтобы интерфейс мгновенно перерисовал плашку роли
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
     } catch (err) {
-      console.error("Ошибка изменения роли", err);
-      alert(err.response?.data?.message || "Не удалось обновить роль пользователя");
+      console.error("Ошибка при изменении системной роли", err);
+      alert(err.response?.data?.message || "Не удалось update-нуть роль пользователя");
+    }
+  };
+
+  // 🔥 НОВАЯ ФУНКЦИЯ: Динамическое распределение бойца в линейный отряд
+  const handleBrigadeChange = async (userId, brigadeId) => {
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    try {
+      await axios.patch(`${API_URL}/api/admin/update-user-brigade`, { userId, brigadeId }, { headers });
+      
+      // Ищем объект отряда в стейте, чтобы мгновенно подставить актуальное имя в таблицу
+      const targetBrigade = brigades.find(b => b.id === brigadeId) || null;
+
+      // Обновляем локальный стейт
+      setUsers(users.map(u => u.id === userId ? { 
+        ...u, 
+        brigadeId: brigadeId === 'none' ? null : brigadeId,
+        brigade: targetBrigade
+      } : u));
+    } catch (err) {
+      console.error("Ошибка распределения в ЛСО", err);
+      alert(err.response?.data?.message || "Не удалось изменить отряд пользователя");
     }
   };
 
@@ -185,8 +207,8 @@ export default function Admin() {
                       <th className="p-4 w-16">Фото</th>
                       <th className="p-4">ФИО бойца</th>
                       <th className="p-4">Электронная почта</th>
-                      <th className="p-4">Системная роль (Управление)</th>
-                      <th className="p-4">Линейный отряд</th>
+                      <th className="p-4">Системная роль</th>
+                      <th className="p-4">Линейный отряд (Распределение)</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-50 text-xs font-bold uppercase">
@@ -206,7 +228,6 @@ export default function Admin() {
                         <td className="p-4 text-black font-extrabold">{u.lastName} {u.firstName}</td>
                         <td className="p-4 text-gray-500 lowercase font-medium">{u.email}</td>
                         
-                        {/* ИСПРАВЛЕНО: Статичный span заменен на интерактивный выпадающий список */}
                         <td className="p-4">
                           <select
                             value={u.role}
@@ -226,7 +247,22 @@ export default function Admin() {
                           </select>
                         </td>
 
-                        <td className="p-4 text-gray-600 font-black">{u.brigade?.name || '—'}</td>
+                        {/* 🔥 ИСПРАВЛЕНО: Текст заменен на интерактивный выпадающий список со всеми ЛСО */}
+                        <td className="p-4">
+                          <select
+                            value={u.brigadeId || 'none'}
+                            onChange={(e) => handleBrigadeChange(u.id, e.target.value)}
+                            className="px-3 py-1.5 rounded-xl text-xs font-black bg-gray-50 border border-gray-100 text-black outline-none cursor-pointer shadow-xs transition-all hover:bg-white hover:border-gray-200"
+                          >
+                            <option value="none" className="text-gray-400 font-bold italic">Вне отряда (Резерв)</option>
+                            {brigades.map(b => (
+                              <option key={b.id} value={b.id} className="text-black font-bold uppercase text-xs">
+                                {b.name}
+                              </option>
+                            ))}
+                          </select>
+                        </td>
+
                       </tr>
                     ))}
                   </tbody>

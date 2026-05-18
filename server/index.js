@@ -450,5 +450,82 @@ app.get('/api/brigades/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ message: "Ошибка" }); }
 });
 
+// ГЛОБАЛЬНЫЙ АНАЛИТИЧЕСКИЙ ЭНДПОИНТ: ПОДСЧЕТ РЕЙТИНГА И СТАТИСТИКИ ГОРОДА
+app.get('/api/admin/rating-stats', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  try {
+    // 1. Выкачиваем все отряды вместе с их бойцами и наградами
+    const brigades = await prisma.brigade.findMany({
+      include: {
+        users: true,
+        achievements: true
+      }
+    });
+
+    // 2. Запускаем цикл агрегации данных по каждому отряду
+    const rankedBrigades = await Promise.all(brigades.map(async (brigade) => {
+      const totalMembers = brigade.users.length;
+      
+      // Считаем баллы за прямые награды отряда
+      const achievementPoints = brigade.achievements.reduce((sum, ach) => sum + ach.value, 0);
+
+      // Ищем все отметки присутствия пользователей этого отряда
+      const userIds = brigade.users.map(u => u.id);
+      const attendedParticipations = await prisma.eventParticipant.findMany({
+        where: {
+          userId: { in: userIds },
+          attended: true
+        },
+        include: { event: true }
+      });
+
+      let eventPoints = 0;
+      let regionalAttendedCount = 0;
+
+      // Раскладываем баллы согласно нашей утвержденной формуле
+      attendedParticipations.forEach(p => {
+        if (p.event.type === 'REGIONAL') {
+          eventPoints += 10;
+          regionalAttendedCount++;
+        } else if (p.event.type === 'LOCAL') {
+          eventPoints += 2;
+        }
+      });
+
+      const totalPoints = achievementPoints + eventPoints;
+
+      return {
+        id: brigade.id,
+        name: brigade.name,
+        type: brigade.type,
+        logoUrl: brigade.logoUrl,
+        colorScheme: brigade.colorScheme,
+        memberCount: totalMembers,
+        totalPoints,
+        regionalAttendedCount
+      };
+    }));
+
+    // Сортируем отряды по убыванию общего количества баллов (Лидерборд)
+    rankedBrigades.sort((a, b) => b.totalPoints - a.totalPoints);
+
+    // Собираем глобальные системные метрики для верхних Bento-карточек
+    const totalUsersCount = await prisma.user.count();
+    const totalBrigadesCount = brigades.length;
+    const leaderBrigade = rankedBrigades[0] ? rankedBrigades[0].name : 'Отряды отсутствуют';
+
+    res.json({
+      stats: {
+        totalUsers: totalUsersCount,
+        totalBrigades: totalBrigadesCount,
+        leader: leaderBrigade
+      },
+      ranking: rankedBrigades
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Ошибка сервера при калькуляции рейтинга штаба" });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

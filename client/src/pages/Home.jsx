@@ -151,54 +151,53 @@ export default function Home() {
         </section>
 
 
-        {/* ================= 4. НАПРАВЛЕНИЯ: ГАРАНТИРОВАННАЯ ЦВЕТОПЕРЕДАЧА SVG ================= */}
-        <section className="max-w-[1500px] mx-auto px-6">
-          <div className="mb-10">
-            <span className="text-xs font-bold text-rso-blue uppercase tracking-wider">Наши векторы</span>
-            <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-black mt-1">Выбери свой фронт</h2>
+        {/* ================= 4. НАПРАВЛЕНИЯ: ГАРАНТИРОВАННАЯ ЦВЕТОПЕРЕДАЧА ДЛЯ МОБИЛОК ================= */}
+<section className="max-w-[1500px] mx-auto px-6">
+  <div className="mb-10">
+    <span className="text-xs font-bold text-rso-blue uppercase tracking-wider">Наши векторы</span>
+    <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-black mt-1">Выбери свой фронт</h2>
+  </div>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {vectors.map((item, index) => (
+      <div 
+        key={index} 
+        className={`p-6 md:p-8 ${item.bgLight} border border-gray-100/70 rounded-3xl flex flex-col justify-between h-[300px] hover:bg-white hover:border-gray-200 hover:shadow-md transition-all duration-300 group relative overflow-hidden`}
+      >
+        <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full blur-2xl opacity-15 transition-transform group-hover:scale-150" style={{ backgroundColor: item.accent }} />
+
+        <div>
+          <div className="flex justify-between items-center mb-5">
+            <span className="text-[10px] font-bold uppercase text-gray-400 opacity-90">➔ {item.slogan}</span>
           </div>
+          
+          {/* ЖЕЛЕЗОБЕТОННЫЙ СЕНЬОРСКИЙ ВАРИАНТ ЧЕРЕЗ МАСКУ */}
+          <div 
+            className="h-20 w-full mb-6 shrink-0 transition-transform duration-300 group-hover:scale-102" 
+            style={{
+              backgroundColor: item.accent,
+              mask: `url(${item.logo}) no-repeat left center / contain`,
+              WebkitMask: `url(${item.logo}) no-repeat left center / contain`
+            }}
+          />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {vectors.map((item, index) => (
-              <div 
-                key={index} 
-                className={`p-6 md:p-8 ${item.bgLight} border border-gray-100/70 rounded-3xl flex flex-col justify-between h-[300px] hover:bg-white hover:border-gray-200 hover:shadow-md transition-all duration-300 group relative overflow-hidden`}
-              >
-                <div className="absolute -top-12 -right-12 w-24 h-24 rounded-full blur-2xl opacity-15 transition-transform group-hover:scale-150" style={{ backgroundColor: item.accent }} />
-
-                <div>
-                  <div className="flex justify-between items-center mb-5">
-                    <span className="text-[10px] font-bold uppercase text-gray-400 opacity-90">➔ {item.slogan}</span>
-                  </div>
-                  
-                  {/* ПРИМЕНИЛИ СУПЕР-ХАК: Сдвигаем картинку влево, а её цветную тень выводим в поле видимости */}
-                  <div className="h-20 w-full overflow-hidden relative mb-6 shrink-0">
-                    <img 
-                      src={item.logo} 
-                      className="h-full w-auto absolute left-[-200px] transition-transform duration-300 group-hover:scale-102" 
-                      style={{ filter: `drop-shadow(200px 0 0 ${item.accent})` }}
-                      alt={item.title} 
-                    />
-                  </div>
-
-                  <p className="text-xs text-gray-400 font-medium leading-relaxed mt-2 line-clamp-2 max-w-xs">
-                    {item.desc}
-                  </p>
-                </div>
-                
-                {/* Ссылка-Якорь */}
-                <Link 
-                  to={`/brigades#direction-${item.code}`} 
-                  className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 pt-4 border-t border-gray-100/50 w-full group-hover:text-black transition-colors"
-                  style={{ color: item.accent }}
-                >
-                  <span>Посмотреть команды</span>
-                  <span className="transform group-hover:translate-x-1 transition-transform duration-200">→</span>
-                </Link>
-              </div>
-            ))}
-          </div>
-        </section>
+          <p className="text-xs text-gray-400 font-medium leading-relaxed mt-2 line-clamp-2 max-w-xs">
+            {item.desc}
+          </p>
+        </div>
+        
+        <Link 
+          to={`/brigades#direction-${item.code}`} 
+          className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 pt-4 border-t border-gray-100/50 w-full group-hover:text-black transition-colors"
+          style={{ color: item.accent }}
+        >
+          <span>Посмотреть команды</span>
+          <span className="transform group-hover:translate-x-1 transition-transform duration-200">→</span>
+        </Link>
+      </div>
+    ))}
+  </div>
+</section>
 
 
         {/* ================= 5. НОВОСТИ ШТАБА ================= */}

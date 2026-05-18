@@ -169,7 +169,6 @@ export default function Header() {
       </nav>
 
       {/* Буферный отступ снизу для мобилок */}
-      <div className="md:hidden h-16 w-full"></div>
     </>
   );
 }

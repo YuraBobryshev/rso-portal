@@ -1,10 +1,10 @@
 const express = require('express');
 const cors = require('cors');
-const bcrypt = require('bcryptjs'); // было bcrypt
+const bcrypt = require('bcryptjs'); 
 const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
 const authMiddleware = require('./middleware/auth');
-const { upload } = require('./s3Config'); // Теперь импортируем из S3
+const { upload } = require('./s3Config'); 
 
 const app = express();
 const prisma = new PrismaClient();
@@ -12,7 +12,6 @@ const prisma = new PrismaClient();
 app.use(cors());
 app.use(express.json());
 
-// --- ВСПОМОГАТЕЛЬНЫЙ MIDDLEWARE ДЛЯ ПРОВЕРКИ РОЛЕЙ ---
 const checkRole = (allowedRoles) => async (req, res, next) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
@@ -32,43 +31,19 @@ const checkRole = (allowedRoles) => async (req, res, next) => {
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { email, password, firstName, lastName } = req.body;
-    
-    // 1. Проверяем, нет ли такого юзера
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
       return res.status(400).json({ message: 'Этот Email уже занят' });
     }
 
-    // 2. Шифруем пароль
     const hashedPassword = await bcrypt.hash(password, 10);
-    
-    // 3. Создаем запись в базе
     const user = await prisma.user.create({
-      data: { 
-        email, 
-        password: hashedPassword, 
-        firstName, 
-        lastName,
-        vkUrl: "", 
-        tgUrl: ""
-      }
+      data: { email, password: hashedPassword, firstName, lastName, vkUrl: "", tgUrl: "" }
     });
 
-    // 4. СРАЗУ СОЗДАЕМ ТОКЕН (чтобы юзеру не нужно было логиниться)
-    const token = jwt.sign(
-      { userId: user.id, role: user.role }, 
-      process.env.JWT_SECRET, 
-      { expiresIn: '24h' }
-    );
-
-    // Отправляем токен на фронтенд
-    res.status(201).json({ 
-      token, 
-      user: { id: user.id, email, firstName, lastName, role: user.role } 
-    });
-
+    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    res.status(201).json({ token, user: { id: user.id, email, firstName, lastName, role: user.role } });
   } catch (error) {
-    console.error("Ошибка при регистрации:", error);
     res.status(500).json({ message: 'Ошибка сервера при создании аккаунта' });
   }
 });
@@ -89,106 +64,74 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
   const user = await prisma.user.findUnique({
     where: { id: req.user.userId },
-    select: { 
-      id: true, 
-      email: true, 
-      firstName: true, 
-      lastName: true, 
-      role: true, 
-      createdAt: true, 
-      brigade: true, 
-      vkUrl: true, 
-      tgUrl: true,
-      avatarUrl: true // ОБЯЗАТЕЛЬНО ДОБАВЬ ЭТУ СТРОКУ
-    }
+    select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true, brigade: true, vkUrl: true, tgUrl: true, avatarUrl: true }
   });
   res.json(user);
 });
-// Роут для обновления ссылок профиля (ВК и ТГ)
+
 app.patch('/api/auth/profile', authMiddleware, async (req, res) => {
   try {
     const { vkUrl, tgUrl } = req.body;
     await prisma.user.update({
       where: { id: req.user.userId },
-      data: { 
-        vkUrl: vkUrl || "", 
-        tgUrl: tgUrl || "" 
-      }
+      data: { vkUrl: vkUrl || "", tgUrl: tgUrl || "" }
     });
     res.json({ message: "Успешно" });
-  } catch (error) {
-    res.status(500).json({ message: "Ошибка сервера" });
-  }
+  } catch (error) { res.status(500).json({ message: "Ошибка сервера" }); }
 });
 
-// Загрузка аватарки
 app.post('/api/auth/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: "Файл не получен" });
-    }
-
-    // В multer-s3 ссылка на файл лежит в req.file.location
+    if (!req.file) return res.status(400).json({ message: "Файл не получен" });
     const imageUrl = req.file.location;
-
-    const updatedUser = await prisma.user.update({
-      where: { id: req.user.userId },
-      data: { avatarUrl: imageUrl }
-    });
-
-    res.json({ message: "Аватар обновлен в S3", avatarUrl: imageUrl });
-  } catch (error) {
-    console.error("S3 Upload Error:", error);
-    res.status(500).json({ message: "Ошибка загрузки в хранилище" });
-  }
+    await prisma.user.update({ where: { id: req.user.userId }, data: { avatarUrl: imageUrl } });
+    res.json({ message: "Avatar updated", avatarUrl: imageUrl });
+  } catch (error) { res.status(500).json({ message: "Ошибка загрузки" }); }
 });
 
 // =============================================================================
-// ⚙️ БЛОК 2: АДМИНИСТРИРОВАНИЕ (Только для REG_HQ)
+// ⚙️ БЛОК 2: АДМИНИСТРИРОВАНИЕ
 // =============================================================================
 
-// Список всех пользователей для админки
+// ИСПРАВЛЕНО: Теперь роут отдает аватарку и подгружает имя связанного отряда
 app.get('/api/admin/users', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
-  const users = await prisma.user.findMany({
-    select: { id: true, email: true, firstName: true, lastName: true, role: true, brigadeId: true }
-  });
-  res.json(users);
+  try {
+    const users = await prisma.user.findMany({
+      select: { 
+        id: true, 
+        email: true, 
+        firstName: true, 
+        lastName: true, 
+        role: true, 
+        brigadeId: true, 
+        avatarUrl: true,
+        brigade: { select: { name: true } } 
+      }
+    });
+    res.json(users);
+  } catch (e) { res.status(500).json({ message: "Ошибка" }); }
 });
 
-// Смена роли бойца
 app.patch('/api/admin/update-role', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
   const { userId, newRole } = req.body;
   await prisma.user.update({ where: { id: userId }, data: { role: newRole } });
   res.json({ message: 'Роль обновлена' });
 });
 
-// Создание нового отряда (ЛСО)
-// Создание нового отряда с расширенными полями
+// Роут создания отряда
 app.post('/api/admin/create-brigade', authMiddleware, checkRole(['REG_HQ']), upload.single('logo'), async (req, res) => {
   try {
     const { name, description, type, colorScheme } = req.body;
-    
-    // Если файл загружен, берем его путь из S3 
     const logoUrl = req.file ? req.file.location : null;
-
     const brigade = await prisma.brigade.create({
-      data: { 
-        name, 
-        description, 
-        type, 
-        colorScheme: colorScheme || "#0804FF",
-        logoUrl 
-      }
+      data: { name, description, type, colorScheme: colorScheme || "#0052FF", logoUrl }
     });
-
     res.status(201).json({ message: 'Отряд успешно создан', brigade });
   } catch (error) {
-    console.error("Ошибка создания отряда:", error);
     res.status(500).json({ message: 'Ошибка сервера при создании отряда' });
   }
 });
 
-// Прямое распределение бойца в отряд
 app.patch('/api/admin/update-user-brigade', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
   const { userId, brigadeId } = req.body;
   await prisma.user.update({
@@ -198,127 +141,63 @@ app.patch('/api/admin/update-user-brigade', authMiddleware, checkRole(['REG_HQ']
   res.json({ message: 'Боец распределен' });
 });
 
-// --- ДОПОЛНЕНИЯ В БЛОК 2: АДМИНИСТРИРОВАНИЕ ---
-
-// Удаление пользователя (полная терминация)
 app.delete('/api/admin/users/:id', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
   try {
     const { id } = req.params;
-    
-    // Защита: нельзя удалить самого себя
-    if (id === req.user.userId) {
-      return res.status(400).json({ message: "Самоликвидация запрещена" });
-    }
-
+    if (id === req.user.userId) return res.status(400).json({ message: "Самоликвидация запрещена" });
     await prisma.user.delete({ where: { id } });
-    res.json({ message: "Объект успешно удален из системы" });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Ошибка при удалении" });
-  }
+    res.json({ message: "Объект удален" });
+  } catch (error) { res.status(500).json({ message: "Ошибка при удалении" }); }
 });
 
-// Отмена участия в мероприятии
 app.delete('/api/events/:id/leave', authMiddleware, async (req, res) => {
   try {
-    const { id } = req.params; // Получаем ID мероприятия из URL
-    const userId = req.user.userId; // Получаем ID пользователя из токена
-
-    // Удаляем талон участника из базы
-    await prisma.eventParticipant.deleteMany({
-      where: {
-        userId: userId,
-        eventId: id
-      }
-    });
-
-    res.json({ message: "Участие успешно отменено" });
-  } catch (error) {
-    console.error("Ошибка при выходе из мероприятия:", error);
-    res.status(500).json({ message: "Ошибка сервера при удалении записи" });
-  }
+    await prisma.eventParticipant.deleteMany({ where: { userId: req.user.userId, eventId: req.params.id } });
+    res.json({ message: "Участие отменено" });
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
 });
 
-// Обновление отряда (уже был, но проверим/обновим логику)
-app.patch('/api/admin/update-user-brigade', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
-  try {
-    const { userId, brigadeId } = req.body;
-    await prisma.user.update({
-      where: { id: userId },
-      data: { brigadeId: brigadeId === 'none' ? null : brigadeId }
-    });
-    res.json({ message: "Дислокация изменена" });
-  } catch (error) {
-    res.status(500).json({ message: "Ошибка распределения" });
-  }
-});
-
-// Получение всех мероприятий для админки со списком участников (Бронебойный вариант)
 app.get('/api/admin/events', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
   try {
-    // 1. Берем все мероприятия
-    const events = await prisma.event.findMany({
-      orderBy: { date: 'desc' }
-    });
-
-    // 2. Берем все записи об участии (талоны)
+    const events = await prisma.event.findMany({ orderBy: { date: 'desc' } });
     const allParticipants = await prisma.eventParticipant.findMany();
-
-    // 3. Берем всех пользователей (чтобы знать их имена)
-    const users = await prisma.user.findMany({
-      select: { id: true, firstName: true, lastName: true, brigadeId: true }
-    });
-
-    // 4. Берем все отряды (чтобы знать их названия)
+    const users = await prisma.user.findMany({ select: { id: true, firstName: true, lastName: true, brigadeId: true } });
     const brigades = await prisma.brigade.findMany();
 
-    // 5. Вручную склеиваем данные, как конструктор
     const formattedEvents = events.map(event => {
-      // Ищем, кто записался именно на это мероприятие
       const eventParts = allParticipants.filter(p => p.eventId === event.id);
-
-      // Обогащаем записи именами и названиями отрядов
       const enrichedParticipants = eventParts.map(ep => {
         const user = users.find(u => u.id === ep.userId) || {};
         const brigade = brigades.find(b => b.id === user.brigadeId) || null;
-
-        return {
-          id: ep.id,
-          user: {
-            id: user.id || 'unknown',
-            firstName: user.firstName || 'Удаленный',
-            lastName: user.lastName || 'Пользователь',
-            brigade: brigade
-          }
-        };
+        return { id: ep.id, user: { id: user.id || 'unknown', firstName: user.firstName || 'Удаленный', lastName: user.lastName || 'Пользователь', brigade: brigade } };
       });
-
-      return {
-        ...event,
-        participants: enrichedParticipants
-      };
+      return { ...event, participants: enrichedParticipants };
     });
-
     res.json(formattedEvents);
-  } catch (error) {
-    console.error("ОШИБКА ЗАГРУЗКИ АДМИНКИ МЕРОПРИЯТИЙ:", error);
-    res.status(500).json({ message: "Ошибка сервера при загрузке мероприятий" });
-  }
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
 });
 
 // =============================================================================
 // 🤝 БЛОК 3: ОТРЯДЫ И ЗАЯВКИ
 // =============================================================================
 
+// ИСПРАВЛЕНО: Теперь при выгрузке отрядов бэкенд считает количество привязанных бойцов
 app.get('/api/brigades', async (req, res) => {
-  const brigades = await prisma.brigade.findMany();
-  res.json(brigades);
+  try {
+    const brigades = await prisma.brigade.findMany({
+      include: {
+        _count: {
+          select: { users: true }
+        }
+      }
+    });
+    res.json(brigades);
+  } catch (e) { res.status(500).json([]); }
 });
 
 app.post('/api/applications/apply', authMiddleware, async (req, res) => {
   const { brigadeId } = req.body;
   const userId = req.user.userId;
-  
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (user.brigadeId) return res.status(400).json({ message: 'Вы уже в отряде' });
 
@@ -326,16 +205,11 @@ app.post('/api/applications/apply', authMiddleware, async (req, res) => {
   res.json({ message: 'Заявка отправлена' });
 });
 
-// Обработка заявок Командиром
 app.post('/api/commander/process-application', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
-  const { appId, status, comment } = req.body;
-  const application = await prisma.application.update({ where: { id: appId }, data: { status, comment } });
-  
+  const { appId, status } = req.body;
+  const application = await prisma.application.update({ where: { id: appId }, data: { status } });
   if (status === 'APPROVED') {
-    await prisma.user.update({
-      where: { id: application.userId },
-      data: { role: 'CANDIDATE', brigadeId: application.brigadeId }
-    });
+    await prisma.user.update({ where: { id: application.userId }, data: { role: 'CANDIDATE', brigadeId: application.brigadeId } });
   }
   res.json({ message: 'Заявка обработана' });
 });
@@ -344,79 +218,36 @@ app.post('/api/commander/process-application', authMiddleware, checkRole(['COMMA
 // 📅 БЛОК 4: МЕРОПРИЯТИЯ И ПОСЕЩАЕМОСТЬ
 // =============================================================================
 
-// Создание мероприятия
-// Создание мероприятия
 app.post('/api/events', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'REG_HQ']), async (req, res) => {
-  console.log("=== ПОПЫТКА СОЗДАНИЯ МЕРОПРИЯТИЯ ===");
-  console.log("Полученные данные:", req.body);
-  
   try {
     const { title, description, date, type } = req.body;
-    
-    // Получаем юзера, чтобы знать его отряд (если мероприятие отрядное)
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
-
     const event = await prisma.event.create({
-      data: { 
-        title: title, 
-        description: description || "Описание не указано", 
-        date: new Date(date), 
-        type: type || "REGIONAL", 
-        brigadeId: type === 'REGIONAL' ? null : user.brigadeId 
-      }
+      data: { title, description: description || "Описание не указано", date: new Date(date), type: type || "REGIONAL", brigadeId: type === 'REGIONAL' ? null : user.brigadeId }
     });
-    
-    console.log("Успешно сохранено:", event.title);
     res.status(201).json(event);
-  } catch (error) {
-    console.error("КРИТИЧЕСКАЯ ОШИБКА PRISMA:", error);
-    res.status(500).json({ message: "Ошибка сохранения в базу данных" });
-  }
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
 });
 
-// 1. УМНЫЙ СПИСОК (Бронебойный вариант без include)
 app.get('/api/events', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
     const user = await prisma.user.findUnique({ where: { id: userId } });
-    
-    // Получаем сами мероприятия
     const events = await prisma.event.findMany({
-      where: {
-        OR: [{ brigadeId: user.brigadeId || undefined }, { type: 'REGIONAL' }]
-      },
+      where: { OR: [{ brigadeId: user.brigadeId || undefined }, { type: 'REGIONAL' }] },
       orderBy: { date: 'asc' }
     });
-
-    // Отдельно получаем список ID мероприятий, на которые записан юзер
-    const userParticipations = await prisma.eventParticipant.findMany({
-      where: { userId: userId }
-    });
-    
-    // Создаем массив ID для быстрой проверки
+    const userParticipations = await prisma.eventParticipant.findMany({ where: { userId } });
     const joinedEventIds = userParticipations.map(p => p.eventId);
-
-    // Склеиваем данные для фронтенда
-    const formattedEvents = events.map(event => ({
-      ...event,
-      isJoined: joinedEventIds.includes(event.id)
-    }));
-
+    const formattedEvents = events.map(event => ({ ...event, isJoined: joinedEventIds.includes(event.id) }));
     res.json(formattedEvents);
-  } catch (error) { 
-    console.error("ОШИБКА ЗАГРУЗКИ МЕРОПРИЯТИЙ:", error);
-    res.status(500).json({ message: "Ошибка загрузки мероприятий" }); 
-  }
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
 });
 
-// 2. НАПОМИНАНИЕ ДЛЯ ПРОФИЛЯ (Ближайшее мероприятие)
 app.get('/api/events/my-nearest', authMiddleware, async (req, res) => {
   try {
     const nearest = await prisma.eventParticipant.findFirst({
-      where: { 
-        userId: req.user.userId,
-        event: { date: { gte: new Date() } } // Только будущие
-      },
+      where: { userId: req.user.userId, event: { date: { gte: new Date() } } },
       include: { event: true },
       orderBy: { event: { date: 'asc' } }
     });
@@ -424,172 +255,86 @@ app.get('/api/events/my-nearest', authMiddleware, async (req, res) => {
   } catch (e) { res.status(500).json(null); }
 });
 
-// Запись на мероприятие
 app.post('/api/events/:id/join', authMiddleware, async (req, res) => {
   try {
     await prisma.eventParticipant.create({ data: { userId: req.user.userId, eventId: req.params.id } });
     res.json({ message: "Вы записаны" });
-  } catch (error) {
-    res.status(500).json({ message: "Ошибка записи" });
-  }
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
 });
 
-// Отметка посещаемости командиром
 app.patch('/api/events/attendance', authMiddleware, checkRole(['MASTER', 'COMMANDER']), async (req, res) => {
-  await prisma.eventParticipant.update({
-    where: { id: req.body.participantId },
-    data: { attended: req.body.attended }
-  });
+  await prisma.eventParticipant.update({ where: { id: req.body.participantId }, data: { attended: req.body.attended } });
   res.json({ message: "Статус обновлен" });
 });
 
 // =============================================================================
-// 🛡️ БЛОК 5: ПАНЕЛЬ КОМАНДИРА (Управление отрядом)
+// 🛡️ БЛОК 5: ПАНЕЛЬ КОМАНДИРА И ЛЕНТА ПОСТОВ
 // =============================================================================
 
-// Получение дашборда командира (состав + заявки)
 app.get('/api/commander/dashboard', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
-    if (!user.brigadeId) return res.status(400).json({ message: "Вы не привязаны к отряду" });
-
     const brigade = await prisma.brigade.findUnique({ where: { id: user.brigadeId } });
-    
-    // Получаем всех бойцов этого отряда
-    const members = await prisma.user.findMany({
-      where: { brigadeId: user.brigadeId },
-      select: { id: true, firstName: true, lastName: true, role: true, email: true },
-      orderBy: { role: 'desc' }
-    });
-
-    // Получаем заявки, которые ждут ответа (PENDING)
-    const applications = await prisma.application.findMany({
-      where: { brigadeId: user.brigadeId, status: 'PENDING' },
-      include: { 
-        user: { select: { id: true, firstName: true, lastName: true, email: true } } 
-      }
-    });
-
+    const members = await prisma.user.findMany({ where: { brigadeId: user.brigadeId }, select: { id: true, firstName: true, lastName: true, role: true, email: true }, orderBy: { role: 'desc' } });
+    const applications = await prisma.application.findMany({ where: { brigadeId: user.brigadeId, status: 'PENDING' }, include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } } });
     res.json({ brigade, members, applications });
-  } catch (error) {
-    console.error("Ошибка загрузки панели командира:", error);
-    res.status(500).json({ message: "Ошибка сервера" });
-  }
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
 });
 
 app.get('/api/posts', async (req, res) => {
   try {
     const posts = await prisma.post.findMany({
       include: {
-        author: { 
-          select: { id: true, firstName: true, lastName: true, avatarUrl: true } 
-        },
-        comments: {
-          include: { 
-            author: { select: { firstName: true, avatarUrl: true } } 
-          },
-          orderBy: { createdAt: 'asc' }
-        }
+        author: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+        comments: { include: { author: { select: { firstName: true, avatarUrl: true } } }, orderBy: { createdAt: 'asc' } }
       },
       orderBy: { createdAt: 'desc' }
     });
     res.json(posts);
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Ошибка загрузки ленты" });
-  }
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
 });
 
-// 2. Создать новость (только для Командиров и РСО)
-// 2. Создать новость (только для Командиров и РСО)
 app.post('/api/posts', authMiddleware, checkRole(['COMMANDER', 'REG_HQ']), upload.single('image'), async (req, res) => {
   try {
     const { title, content } = req.body;
-    
-    // Ссылка на картинку из S3 (если файл прикреплен)
     const imageUrl = req.file ? req.file.location : null;
-
     const post = await prisma.post.create({
-      data: {
-        title,
-        content,
-        imageUrl,
-        authorId: req.user.userId // ID из токена
-      },
-      include: {
-        author: { 
-          select: { id: true, firstName: true, lastName: true, avatarUrl: true } 
-        }
-      }
+      data: { title, content, imageUrl, authorId: req.user.userId },
+      include: { author: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } } }
     });
-
     res.status(201).json(post);
-  } catch (error) {
-    console.error("КРИТИЧЕСКАЯ ОШИБКА СОЗДАНИЯ ПОСТА:", error);
-    res.status(500).json({ 
-      message: "Ошибка при публикации", 
-      dev_info: error.message 
-    });
-  }
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
 });
 
-// 1. Оставить комментарий
 app.post('/api/posts/:id/comment', authMiddleware, async (req, res) => {
   try {
-    const { content } = req.body;
     const comment = await prisma.comment.create({
-      data: {
-        content,
-        authorId: req.user.userId,
-        postId: req.params.id
-      },
+      data: { content: req.body.content, authorId: req.user.userId, postId: req.params.id },
       include: { author: { select: { firstName: true, lastName: true, avatarUrl: true } } }
     });
     res.json(comment);
-  } catch (e) { res.status(500).json({ message: "Ошибка комментария" }); }
+  } catch (e) { res.status(500).json({ message: "Ошибка" }); }
 });
 
-// 2. Удалить пост (Только автор или Админ)
 app.delete('/api/posts/:id', authMiddleware, async (req, res) => {
   try {
     const post = await prisma.post.findUnique({ where: { id: req.params.id } });
-    if (post.authorId !== req.user.userId && req.user.role !== 'REG_HQ') {
-      return res.status(403).json({ message: "Нет прав на удаление" });
-    }
+    if (post.authorId !== req.user.userId && req.user.role !== 'REG_HQ') return res.status(403).json({ message: "Нет прав" });
     await prisma.post.delete({ where: { id: req.params.id } });
     res.json({ message: "Новость удалена" });
-  } catch (e) { res.status(500).json({ message: "Ошибка удаления" }); }
+  } catch (e) { res.status(500).json({ message: "Ошибка" }); }
 });
 
-// Получение детальной информации об отряде
 app.get('/api/brigades/:id', async (req, res) => {
   try {
-    const { id } = req.params;
     const brigade = await prisma.brigade.findUnique({
-      where: { id },
-      include: {
-        users: {
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            role: true,
-            avatarUrl: true
-          },
-          orderBy: { role: 'desc' } // Сначала командиры, потом остальные
-        }
-      }
+      where: { id: req.params.id },
+      include: { users: { select: { id: true, firstName: true, lastName: true, role: true, avatarUrl: true }, orderBy: { role: 'desc' } } }
     });
-
     if (!brigade) return res.status(404).json({ message: "Отряд не найден" });
     res.json(brigade);
-  } catch (error) {
-    res.status(500).json({ message: "Ошибка сервера" });
-  }
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
 });
 
-// =============================================================================
-// 🚀 ЗАПУСК
-// =============================================================================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

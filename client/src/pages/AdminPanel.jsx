@@ -17,7 +17,6 @@ export default function Admin() {
   const [brigades, setBrigades] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Состояние для формы создания отряда
   const [newBrigade, setNewBrigade] = useState({ name: '', description: '', type: 'СПО', colorScheme: '#0052FF' });
   const [logoFile, setLogoFile] = useState(null);
   const [formError, setFormError] = useState('');
@@ -31,16 +30,13 @@ export default function Admin() {
     const headers = { Authorization: `Bearer ${token}` };
     setLoading(true);
     try {
-      // Загрузка пользователей для админки
       const usersRes = await axios.get('http://176.98.177.3:5000/api/admin/users', { headers });
       setUsers(usersRes.data);
 
-      // Загрузка отрядов
       const brigadesRes = await axios.get('http://176.98.177.3:5000/api/brigades', { headers });
       setBrigades(brigadesRes.data);
     } catch (err) {
       console.error("Ошибка доступа к админ-панели", err);
-      // Если обычный боец пытается зайти — бэкенд вернет 403, кидаем в профиль
       if (err.response?.status === 403 || err.response?.status === 401) {
         navigate('/profile');
       }
@@ -66,7 +62,8 @@ export default function Admin() {
     if (logoFile) formData.append('logo', logoFile);
 
     try {
-      await axios.post('http://176.98.177.3:5000/api/brigades', formData, {
+      // ИСПРАВЛЕНО: Теперь бьем в точный эндпоинт бэкенда для создания отрядов
+      await axios.post('http://176.98.177.3:5000/api/admin/create-brigade', formData, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -75,7 +72,7 @@ export default function Admin() {
       setFormSuccess('Линейный отряд успешно сформирован и внесен в реестр!');
       setNewBrigade({ name: '', description: '', type: 'СПО', colorScheme: '#0052FF' });
       setLogoFile(null);
-      fetchData(); // обновляем списки
+      fetchData(); 
     } catch (err) {
       setFormError(err.response?.data?.message || 'Ошибка при создании отряда');
     }
@@ -98,10 +95,8 @@ export default function Admin() {
     <div className="min-h-screen bg-white text-black font-sans antialiased selection:bg-rso-blue selection:text-white">
       <Header />
       
-      {/* pt-24 гарантирует отсутствие наездов фиксированного хедера на контент */}
       <main className="max-w-[1500px] mx-auto px-6 pt-24 pb-24">
         
-        {/* ЗАГОЛОВОК АДМИНКИ */}
         <div className="mb-10">
           <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-black">
             Панель управления
@@ -111,7 +106,6 @@ export default function Admin() {
           </p>
         </div>
 
-        {/* МЯГКИЙ ТАБ-НАВИГАТОР BENTO */}
         <div className="flex border border-gray-100 rounded-xl overflow-x-auto scrollbar-none whitespace-nowrap bg-gray-50/60 p-1 gap-1 mb-8">
           {tabs.map((tab) => (
             <button
@@ -129,10 +123,8 @@ export default function Admin() {
           ))}
         </div>
 
-        {/* БОЛЬШАЯ БЕНТО-КАРТОЧКА ВЫВОДА ДАННЫХ */}
         <div className="border border-gray-100 rounded-2xl p-6 md:p-8 bg-white min-h-[450px] shadow-sm">
           
-          {/* ================= ВКЛАДКА 1: РЕЕСТР БОЙЦОВ (С АВАТАРКАМИ) ================= */}
           {activeTab === 'users' && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <div className="flex justify-between items-center mb-2">
@@ -153,7 +145,6 @@ export default function Admin() {
                   <tbody className="divide-y divide-gray-50 text-xs font-bold uppercase">
                     {users.map(u => (
                       <tr key={u.id} className="hover:bg-gray-50/50 bg-white transition-colors">
-                        {/* Аватарка бойца */}
                         <td className="p-4">
                           <div className="w-9 h-9 rounded-full border border-gray-100 overflow-hidden bg-white shadow-sm flex items-center justify-center shrink-0">
                             {u.avatarUrl ? (
@@ -181,7 +172,6 @@ export default function Admin() {
             </div>
           )}
 
-          {/* ================= ВКЛАДКА 2: СПИСОК ОТРЯДОВ (С ЛОГОТИПАМИ) ================= */}
           {activeTab === 'brigades' && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <span className="text-xs font-bold text-rso-blue uppercase tracking-wider block mb-2">Активных команд в штабе: {brigades.length}</span>
@@ -190,7 +180,6 @@ export default function Admin() {
                 {brigades.map(b => (
                   <div key={b.id} className="border border-gray-100 rounded-xl p-5 bg-gray-50/30 flex items-center justify-between gap-4 shadow-sm hover:border-rso-blue/20 transition-all">
                     <div className="flex items-center gap-4 min-w-0">
-                      {/* Мягкая круглая эмблема отряда */}
                       <div className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-sm overflow-hidden flex items-center justify-center shrink-0 p-0.5">
                         {b.logoUrl ? (
                           <img src={b.logoUrl} alt="" className="w-full h-full object-cover rounded-full" />
@@ -201,7 +190,7 @@ export default function Admin() {
                       
                       <div className="truncate">
                         <h3 className="font-black text-sm text-black uppercase truncate leading-tight">{b.name}</h3>
-                        <span className="inline-block mt-1 text-[9px] font-bold text-white px-2 py-0.2 rounded-md uppercase" style={{ backgroundColor: b.colorScheme || '#0052FF' }}>
+                        <span className="inline-block mt-1 text-[9px] font-bold text-white bg-rso-blue px-2 py-0.2 rounded-md uppercase" style={{ backgroundColor: b.colorScheme || '#0052FF' }}>
                           {b.type}
                         </span>
                       </div>
@@ -217,7 +206,6 @@ export default function Admin() {
             </div>
           )}
 
-          {/* ================= ВКЛАДКА 3: ФОРМА СОЗДАНИЯ (ТОЛЬКО 5 НАПРАВЛЕНИЙ) ================= */}
           {activeTab === 'create' && (
             <div className="max-w-2xl mx-auto animate-in fade-in duration-200">
               <div className="text-center mb-6">
@@ -242,7 +230,6 @@ export default function Admin() {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {/* Выпадающий список строго на 5 направлений */}
                   <div>
                     <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Вектор / Направление труда</label>
                     <select
@@ -302,7 +289,6 @@ export default function Admin() {
             </div>
           )}
 
-          {/* ================= ВКЛАДКА 4: МЕРОПРИЯТИЯ (ПОКА НИЧЕГО НЕ ТРОГАЕМ) ================= */}
           {activeTab === 'events' && (
             <div className="text-center py-16 border border-dashed border-gray-200 rounded-xl p-6 animate-in fade-in duration-200">
               <span className="text-rso-blue text-2xl block mb-2">⚙️</span>

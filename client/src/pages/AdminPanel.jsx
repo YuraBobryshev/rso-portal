@@ -32,11 +32,11 @@ export default function Admin() {
     setLoading(true);
     try {
       // Загрузка пользователей для админки
-      const usersRes = await axios.get('http://localhost:5000/api/admin/users', { headers });
+      const usersRes = await axios.get('http://176.98.177.3:5000/api/admin/users', { headers });
       setUsers(usersRes.data);
 
       // Загрузка отрядов
-      const brigadesRes = await axios.get('http://localhost:5000/api/brigades', { headers });
+      const brigadesRes = await axios.get('http://176.98.177.3:5000/api/brigades', { headers });
       setBrigades(brigadesRes.data);
     } catch (err) {
       console.error("Ошибка доступа к админ-панели", err);
@@ -66,7 +66,7 @@ export default function Admin() {
     if (logoFile) formData.append('logo', logoFile);
 
     try {
-      await axios.post('http://localhost:5000/api/brigades', formData, {
+      await axios.post('http://176.98.177.3:5000/api/brigades', formData, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'

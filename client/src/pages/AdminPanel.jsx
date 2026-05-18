@@ -12,6 +12,9 @@ const directionTypes = [
   { code: 'ССервО', label: 'ССервО // Сервисные отряды' }
 ];
 
+// Все доступные системные роли для выпадающего списка управления
+const systemRoles = ['USER', 'CANDIDATE', 'BOETS', 'COMMANDER', 'COMMISSAR', 'MASTER', 'MEDIA', 'REG_HQ'];
+
 export default function Admin() {
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
@@ -30,16 +33,17 @@ export default function Admin() {
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
+  const API_URL = 'http://176.98.177.3:5000'; // Твой боевой IP
 
   const fetchData = async () => {
     if (!token) { navigate('/login'); return; }
     const headers = { Authorization: `Bearer ${token}` };
     setLoading(true);
     try {
-      const usersRes = await axios.get('http://176.98.177.3:5000/api/admin/users', { headers });
+      const usersRes = await axios.get(`${API_URL}/api/admin/users`, { headers });
       setUsers(usersRes.data);
 
-      const brigadesRes = await axios.get('http://176.98.177.3:5000/api/brigades', { headers });
+      const brigadesRes = await axios.get(`${API_URL}/api/brigades`, { headers });
       setBrigades(brigadesRes.data);
     } catch (err) {
       console.error("Ошибка доступа к админ-панели", err);
@@ -57,7 +61,7 @@ export default function Admin() {
     const headers = { Authorization: `Bearer ${token}` };
     setEventsLoading(true);
     try {
-      const res = await axios.get('http://176.98.177.3:5000/api/admin/events', { headers });
+      const res = await axios.get(`${API_URL}/api/admin/events`, { headers });
       setEvents(res.data);
     } catch (err) {
       console.error("Ошибка загрузки мероприятий штаба", err);
@@ -77,6 +81,21 @@ export default function Admin() {
     }
   }, [activeTab]);
 
+  // 🔥 ХЕНДЛЕР: Изменение роли бойца на бэкенде
+  const handleRoleChange = async (userId, newRole) => {
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    try {
+      await axios.patch(`${API_URL}/api/admin/update-role`, { userId, newRole }, { headers });
+      
+      // Мгновенно обновляем стейт локально, чтобы плашка перекрасилась сама
+      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    } catch (err) {
+      console.error("Ошибка изменения роли", err);
+      alert(err.response?.data?.message || "Не удалось обновить роль пользователя");
+    }
+  };
+
   const handleCreateBrigade = async (e) => {
     e.preventDefault();
     setFormError('');
@@ -90,7 +109,7 @@ export default function Admin() {
     if (logoFile) formData.append('logo', logoFile);
 
     try {
-      await axios.post('http://176.98.177.3:5000/api/admin/create-brigade', formData, {
+      await axios.post(`${API_URL}/api/admin/create-brigade`, formData, {
         headers: { 
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
@@ -166,7 +185,7 @@ export default function Admin() {
                       <th className="p-4 w-16">Фото</th>
                       <th className="p-4">ФИО бойца</th>
                       <th className="p-4">Электронная почта</th>
-                      <th className="p-4">Системная роль</th>
+                      <th className="p-4">Системная роль (Управление)</th>
                       <th className="p-4">Линейный отряд</th>
                     </tr>
                   </thead>
@@ -186,11 +205,27 @@ export default function Admin() {
                         </td>
                         <td className="p-4 text-black font-extrabold">{u.lastName} {u.firstName}</td>
                         <td className="p-4 text-gray-500 lowercase font-medium">{u.email}</td>
+                        
+                        {/* ИСПРАВЛЕНО: Статичный span заменен на интерактивный выпадающий список */}
                         <td className="p-4">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] text-white ${u.role === 'REG_HQ' ? 'bg-red-500' : u.role === 'COMMANDER' ? 'bg-rso-blue' : 'bg-gray-400'}`}>
-                            {u.role}
-                          </span>
+                          <select
+                            value={u.role}
+                            onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                            className={`px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider text-white border-none outline-none cursor-pointer shadow-sm transition-all ${
+                              u.role === 'REG_HQ' ? 'bg-red-500 hover:bg-red-600' : 
+                              u.role === 'COMMANDER' ? 'bg-rso-blue hover:bg-blue-600' : 
+                              u.role === 'BOETS' ? 'bg-green-600 hover:bg-green-700' :
+                              u.role === 'CANDIDATE' ? 'bg-sky-500 hover:bg-sky-600' : 'bg-gray-400 hover:bg-gray-500'
+                            }`}
+                          >
+                            {systemRoles.map(role => (
+                              <option key={role} value={role} className="bg-white text-black font-bold uppercase text-xs">
+                                {role}
+                              </option>
+                            ))}
+                          </select>
                         </td>
+
                         <td className="p-4 text-gray-600 font-black">{u.brigade?.name || '—'}</td>
                       </tr>
                     ))}
@@ -319,11 +354,9 @@ export default function Admin() {
             </div>
           )}
 
-          {/* ТАБ 4: УПРАВЛЕНИЕ МЕРОПРИЯТИЯМИ (РЕКОНСТРУКЦИЯ ЗАВЕРШЕНА) */}
+          {/* ТАБ 4: УПРАВЛЕНИЕ МЕРОПРИЯТИЯМИ */}
           {activeTab === 'events' && (
             <div className="space-y-6 animate-in fade-in duration-200">
-              
-              {/* Шапка таба мероприятий с кнопкой создания */}
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-50">
                 <div>
                   <span className="text-xs font-bold text-rso-blue uppercase tracking-wider">Глобальный планировщик</span>
@@ -350,16 +383,12 @@ export default function Admin() {
 
                     return (
                       <div key={event.id} className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm space-y-4">
-                        
-                        {/* Краткая карточка */}
                         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
                           <div className="space-y-1 max-w-2xl">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
                                 isRegional ? 'bg-rso-blue text-white' : 'bg-gray-100 text-gray-500'
-                              }`}>
-                                {isRegional ? 'Региональное' : 'Локальное'}
-                              </span>
+                              }`}>{isRegional ? 'Региональное' : 'Локальное'}</span>
                               <span className="text-[10px] text-gray-400 font-bold">
                                 🗓 {eventDate.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                               </span>
@@ -371,7 +400,6 @@ export default function Admin() {
                             <p className="text-xs text-gray-400 font-medium line-clamp-1">{event.description}</p>
                           </div>
 
-                          {/* Статистика */}
                           <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-end border-t lg:border-t-0 pt-2 lg:pt-0 border-gray-50">
                             <div className="text-left lg:text-right">
                               <span className="text-[8px] font-bold uppercase text-gray-400 block">Участников</span>
@@ -391,7 +419,6 @@ export default function Admin() {
                           </div>
                         </div>
 
-                        {/* Раскрывающийся реестр участников */}
                         {isExpanded && event.participants && (
                           <div className="pt-3 border-t border-gray-50 animate-in fade-in duration-150">
                             <div className="bg-gray-50/50 rounded-xl border border-gray-100 p-3 overflow-x-auto">
@@ -424,7 +451,6 @@ export default function Admin() {
                             </div>
                           </div>
                         )}
-
                       </div>
                     );
                   })}
@@ -440,12 +466,11 @@ export default function Admin() {
         </div>
       </main>
 
-      {/* Подключаем наш гибкий Bento-модал для создания мероприятий */}
       <CreateEventModal 
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         onSuccess={fetchAdminEvents}
-        userRole="REG_HQ" // Передаем роль админа, чтобы разблокировать селект LOCAL/REGIONAL
+        userRole="REG_HQ" 
       />
     </div>
   );

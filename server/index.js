@@ -62,11 +62,32 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
-  const user = await prisma.user.findUnique({
-    where: { id: req.user.userId },
-    select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true, brigade: true, vkUrl: true, tgUrl: true, avatarUrl: true }
-  });
-  res.json(user);
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { 
+        id: true, 
+        email: true, 
+        firstName: true, 
+        lastName: true, 
+        role: true, 
+        createdAt: true, 
+        brigade: true, 
+        vkUrl: true, 
+        tgUrl: true, 
+        avatarUrl: true,
+        // СВЕЖИЙ ПАТЧ: Подтягиваем последнюю поданную заявку юзера
+        applications: {
+          include: { brigade: { select: { name: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 1
+        }
+      }
+    });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Ошибка сервера при получении профиля" });
+  }
 });
 
 app.patch('/api/auth/profile', authMiddleware, async (req, res) => {

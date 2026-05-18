@@ -16,7 +16,7 @@ export default function Profile() {
   const [saveSuccess, setSaveSuccess] = useState(false);
 
   // Календарь и отображение
-  const [profileTab, setProfileTab] = useState('events'); // 'events' или 'management' (для командира)
+  const [profileTab, setProfileTab] = useState('events'); // 'events' или 'management'
   const [viewMode, setViewMode] = useState('list'); // 'list' или 'calendar'
   const [calendarDate, setCalendarDate] = useState(new Date(2026, 4, 1)); // Май 2026
   const [selectedDateEvents, setSelectedDateEvents] = useState([]);
@@ -25,7 +25,7 @@ export default function Profile() {
   // Стейты Командира
   const [commanderData, setCommanderData] = useState({ brigade: null, members: [], applications: [] });
   const [commanderLoading, setCommanderLoading] = useState(false);
-  const [rejectionComments, setRejectionComments] = useState({}); // Хранение комментариев отказов по appId
+  const [rejectionComments, setRejectionComments] = useState({}); 
 
   // Стейты модалок
   const [isModalOpen, setIsModalOpen] = useState(false); 
@@ -49,7 +49,6 @@ export default function Profile() {
       const eventsRes = await axios.get(`${API_URL}/api/events`, { headers });
       setEvents(eventsRes.data);
 
-      // Если зашел Командир — параллельно подтягиваем его кадровый дашборд
       if (userRes.data.role === 'COMMANDER') {
         fetchCommanderDashboard();
       }
@@ -88,7 +87,6 @@ export default function Profile() {
     } catch (err) { console.error(err); }
   };
 
-  // Обработка входящей заявки (Одобрение / Отказ)
   const handleProcessApplication = async (appId, status) => {
     const headers = { Authorization: `Bearer ${token}` };
     const comment = rejectionComments[appId] || '';
@@ -98,8 +96,6 @@ export default function Profile() {
         status,
         comment: status === 'REJECTED' ? comment : null
       }, { headers });
-      
-      // Мгновенно обновляем кадровые списки и профиль
       fetchCommanderDashboard();
       refreshEventsList();
     } catch (err) {
@@ -162,6 +158,9 @@ export default function Profile() {
   const isCommandStaff = user && ['COMMANDER', 'COMMISSAR', 'MASTER', 'REG_HQ'].includes(user.role);
   const isCommander = user && user.role === 'COMMANDER';
 
+  // Извлекаем последнюю заявку для трекинга статуса
+  const latestApplication = user.applications && user.applications[0];
+
   // Календарь математика
   const year = calendarDate.getFullYear();
   const month = calendarDate.getMonth();
@@ -199,7 +198,7 @@ export default function Profile() {
 
       <main className="max-w-[1500px] mx-auto px-4 sm:px-6 pt-24 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
         
-        {/* ================= ЛЕВАЯ КОЛОНКА ================= */}
+        {/* ЛЕВАЯ КОЛОНКА */}
         <div className="lg:col-span-4 space-y-6">
           <div className="border border-gray-100 rounded-3xl p-5 sm:p-6 bg-white shadow-sm flex flex-col items-center text-center relative overflow-hidden">
             <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border border-gray-100 bg-gray-50 overflow-hidden relative group shadow-inner mb-3 sm:mb-4">
@@ -225,7 +224,7 @@ export default function Profile() {
 
           <div className="border border-gray-100 rounded-3xl p-5 sm:p-6 bg-white shadow-sm space-y-4">
             <h3 className="text-xs font-black uppercase tracking-wider text-black">Цифровые контакты</h3>
-            {saveSuccess && <div className="p-2 bg-green-50 text-green-600 border border-green-100 text-[10px] font-bold uppercase rounded-lg text-center">✓ Контакты обновлены</div>}
+            {saveSuccess && <div className="p-2 bg-green-50 text-green-600 border border-green-100 text-[10px] font-bold uppercase rounded-lg text-center">✓ Contacts updated</div>}
             <form onSubmit={handleSaveSocials} className="space-y-3">
               <div className="space-y-1"><label className="text-[9px] font-bold uppercase text-gray-400">Профиль ВКонтакте</label><input type="text" value={vkUrl} onChange={e => setVkUrl(e.target.value)} placeholder="vk.com/username" className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs text-black font-medium focus:outline-none focus:border-rso-blue focus:bg-white" /></div>
               <div className="space-y-1"><label className="text-[9px] font-bold uppercase text-gray-400">Никнейм Telegram</label><input type="text" value={tgUrl} onChange={e => setTgUrl(e.target.value)} placeholder="@username" className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs text-black font-medium focus:outline-none focus:border-rso-blue focus:bg-white" /></div>
@@ -234,26 +233,52 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* ================= ПРАВАЯ КОЛОНКА ================= */}
+        {/* ПРАВАЯ КОЛОНКА */}
         <div className="lg:col-span-8 space-y-6">
           
-          {/* ГЛОБАЛЬНЫЙ ТУМБЛЕР КЛАССОВ: СОБЫТИЯ / ШТАБ ОТРЯДА (Виден только Командиру) */}
+          {/* ================= 🔥 НОВЫЙ BENTO-ВИДЖЕТ: ТРЕКИНГ СТАТУСА ЗАЯВКИ ================= */}
+          {latestApplication && (latestApplication.status === 'PENDING' || user.role === 'USER') && (
+            <div className={`p-5 sm:p-6 rounded-2xl sm:rounded-[2rem] border shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in duration-200 ${
+              latestApplication.status === 'PENDING' ? 'bg-amber-50/50 border-amber-100 text-amber-900' : 'bg-red-50/50 border-red-100 text-red-900'
+            }`}>
+              <div className="space-y-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className={`w-2 h-2 rounded-full ${latestApplication.status === 'PENDING' ? 'bg-amber-500 animate-ping' : 'bg-red-500'}`} />
+                  <span className="text-[9px] font-black uppercase tracking-wider text-gray-400">Статус рассмотрения документов</span>
+                </div>
+                
+                <h3 className="text-sm sm:text-base font-black uppercase tracking-tight text-black">
+                  {latestApplication.status === 'PENDING' 
+                    ? `Анкета в ${latestApplication.brigade?.name}`
+                    : `Заявка в ${latestApplication.brigade?.name} отклонена`
+                  }
+                </h3>
+                
+                <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                  {latestApplication.status === 'PENDING'
+                    ? 'Ваше заявление успешно передано комсоставу линейного отряда. Ожидайте верификации и приглашения на собеседование.'
+                    : latestApplication.comment 
+                      ? `Причина отказа: "${latestApplication.comment}"`
+                      : 'Ваша анкета была отклонена комсоставом. Вы можете подать заявление в любое другое незакрытое ЛСО Севастополя.'
+                  }
+                </p>
+              </div>
+
+              <span className={`px-3 py-1 text-[10px] font-black uppercase tracking-wider rounded-xl shrink-0 border ${
+                latestApplication.status === 'PENDING' ? 'bg-amber-100/70 border-amber-200 text-amber-700' : 'bg-red-100/70 border-red-200 text-red-700'
+              }`}>
+                {latestApplication.status}
+              </span>
+            </div>
+          )}
+
+          {/* ТУМБЛЕР КЛАССОВ ДЛЯ КОМАНДИРА */}
           {isCommander && (
             <div className="flex bg-gray-100/80 p-1 rounded-2xl border border-gray-200/50 text-xs font-black uppercase tracking-wider">
-              <button 
-                onClick={() => setProfileTab('events')}
-                className={`flex-1 py-3 text-center rounded-xl transition-all ${profileTab === 'events' ? 'bg-white text-rso-blue shadow-sm font-black' : 'text-gray-400 hover:text-black'}`}
-              >
-                📅 Календарь событий
-              </button>
-              <button 
-                onClick={() => setProfileTab('management')}
-                className={`flex-1 py-3 text-center rounded-xl transition-all relative ${profileTab === 'management' ? 'bg-white text-rso-blue shadow-sm font-black' : 'text-gray-400 hover:text-black'}`}
-              >
+              <button onClick={() => setProfileTab('events')} className={`flex-1 py-3 text-center rounded-xl transition-all ${profileTab === 'events' ? 'bg-white text-rso-blue shadow-sm font-black' : 'text-gray-400 hover:text-black'}`}>📅 Календарь событий</button>
+              <button onClick={() => setProfileTab('management')} className={`flex-1 py-3 text-center rounded-xl transition-all relative ${profileTab === 'management' ? 'bg-white text-rso-blue shadow-sm font-black' : 'text-gray-400 hover:text-black'}`}>
                 💼 Штаб отряда ЛСО
-                {commanderData.applications?.length > 0 && (
-                  <span className="absolute top-2.5 right-4 w-2 h-2 bg-red-500 rounded-full animate-ping" />
-                )}
+                {commanderData.applications?.length > 0 && <span className="absolute top-2.5 right-4 w-2 h-2 bg-red-500 rounded-full animate-ping" />}
               </button>
             </div>
           )}
@@ -263,7 +288,7 @@ export default function Profile() {
             <div className="border border-gray-100 rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 md:p-8 bg-white shadow-sm space-y-5 animate-in fade-in duration-150">
               <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-gray-50">
                 <div className="space-y-0.5">
-                  <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-black">Календарь событий</h2>
+                  <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-black">Твой календарь событий</h2>
                   <p className="text-xs text-gray-400 font-medium">Отслеживание посещаемости и планирование выездов</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
@@ -286,7 +311,7 @@ export default function Profile() {
                       return (
                         <div key={event.id} onClick={() => setSelectedEventForView(event)} className="p-4 bg-gray-50/50 border border-gray-100 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:bg-white hover:border-gray-200 hover:shadow-xs cursor-pointer transition-all duration-200">
                           <div className="space-y-1 min-w-0 w-full sm:w-auto">
-                            <div className="flex items-center flex-wrap gap-1">
+                            <div className="flex items-center flex-wrap gap-1.5">
                               <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-wide px-1.5 py-0.2 border rounded ${status.styles}`}>• {status.label}</span>
                               <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-wide px-1.5 py-0.2 rounded text-white ${isRegional ? 'bg-rso-blue' : 'bg-gray-800'}`}>{isRegional ? 'ШТАБ' : 'ОТРЯД'}</span>
                               <span className="text-[9px] sm:text-[10px] font-bold text-gray-400">{new Date(event.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
@@ -347,33 +372,23 @@ export default function Profile() {
             </div>
           )}
 
-          {/* ВКЛАДКА 2: ЗАКРЫТАЯ КАНЦЕЛЯРИЯ КОМАНДИРА (Входящие заявки и состав) */}
+          {/* ВКЛАДКА 2: ШТАБ ОТРЯДА ЛСО */}
           {profileTab === 'management' && isCommander && (
             <div className="border border-gray-100 rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 md:p-8 bg-white shadow-sm space-y-6 animate-in fade-in duration-150">
-              
-              {/* Заголовок */}
               <div className="pb-4 border-b border-gray-50">
                 <span className="text-xs font-bold text-rso-blue uppercase tracking-wider">Входящие анкеты новобранцев</span>
-                <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-black mt-0.5">
-                  Рассмотрение заявок в {commanderData.brigade?.name || 'отряд'}
-                </h2>
+                <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-black mt-0.5">Рассмотрение заявок в {commanderData.brigade?.name || 'отряд'}</h2>
               </div>
 
               {commanderLoading ? (
-                <div className="py-12 text-center text-xs font-medium text-gray-400 uppercase tracking-widest animate-pulse">
-                  Загрузка кадрового архива...
-                </div>
+                <div className="py-12 text-center text-xs font-medium text-gray-400 uppercase tracking-widest animate-pulse">Загрузка кадрового архива...</div>
               ) : (
                 <div className="space-y-6">
-                  
-                  {/* БЛОК А: Входящие заявки */}
                   <div className="space-y-3">
                     <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Анкеты на рассмотрении ({commanderData.applications?.length || 0})</h3>
-                    
                     {commanderData.applications && commanderData.applications.length > 0 ? (
                       commanderData.applications.map((app) => (
                         <div key={app.id} className="p-4 bg-gray-50/50 border border-gray-100 rounded-2xl space-y-4">
-                          {/* Инфо о кандидате */}
                           <div className="flex justify-between items-start gap-4">
                             <div>
                               <h4 className="text-sm font-black uppercase text-black">{app.user?.lastName} {app.user?.firstName}</h4>
@@ -382,43 +397,18 @@ export default function Profile() {
                             </div>
                             <span className="px-2 py-0.5 bg-yellow-50 text-yellow-600 border border-yellow-100 rounded text-[9px] font-black uppercase tracking-wider">PENDING</span>
                           </div>
-
-                          {/* Поле для ввода комментария при отказе */}
                           <div className="space-y-1">
-                            <input 
-                              type="text"
-                              placeholder="Укажите причину в случае отказа..."
-                              value={rejectionComments[app.id] || ''}
-                              onChange={(e) => setRejectionComments({ ...rejectionComments, [app.id]: e.target.value })}
-                              className="w-full px-3 py-2 bg-white border border-gray-100 rounded-xl text-xs text-black font-medium focus:outline-none focus:border-red-400"
-                            />
+                            <input type="text" placeholder="Укажите причину в случае отказа..." value={rejectionComments[app.id] || ''} onChange={(e) => setRejectionComments({ ...rejectionComments, [app.id]: e.target.value })} className="w-full px-3 py-2 bg-white border border-gray-100 rounded-xl text-xs text-black font-medium focus:outline-none focus:border-red-400" />
                           </div>
-
-                          {/* Кнопки действий */}
                           <div className="flex gap-2 pt-2">
-                            <button
-                              onClick={() => handleProcessApplication(app.id, 'REJECTED')}
-                              className="flex-1 py-2 bg-red-50 text-red-600 border border-red-100 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-red-600 hover:text-white transition-all"
-                            >
-                              Отклонить анкету
-                            </button>
-                            <button
-                              onClick={() => handleProcessApplication(app.id, 'APPROVED')}
-                              className="flex-1 py-2 bg-rso-blue text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-black transition-all shadow-sm"
-                            >
-                              Принять в отряд ✓
-                            </button>
+                            <button onClick={() => handleProcessApplication(app.id, 'REJECTED')} className="flex-1 py-2 bg-red-50 text-red-600 border border-red-100 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-red-600 hover:text-white transition-all">Отклонить анкету</button>
+                            <button onClick={() => handleProcessApplication(app.id, 'APPROVED')} className="flex-1 py-2 bg-rso-blue text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-black transition-all shadow-sm">Принять в отряд ✓</button>
                           </div>
                         </div>
                       ))
-                    ) : (
-                      <div className="py-8 text-center text-xs font-bold uppercase opacity-30 border border-dashed border-gray-100 rounded-2xl">
-                        Новых заявок на вступление нет
-                      </div>
-                    )}
+                    ) : <div className="py-8 text-center text-xs font-bold uppercase opacity-30 border border-dashed border-gray-100 rounded-2xl">Новых заявок на вступление нет</div>}
                   </div>
 
-                  {/* БЛОК Б: Список действующих соотрядников */}
                   <div className="space-y-3 pt-4 border-t border-gray-50">
                     <h3 className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Действующий состав отряда ({commanderData.members?.length || 0} чел.)</h3>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -428,24 +418,20 @@ export default function Profile() {
                             <span className="font-bold text-black uppercase block truncate">{member.lastName} {member.firstName}</span>
                             <span className="text-[10px] text-gray-400 lower-case truncate block">{member.email}</span>
                           </div>
-                          <span className={`px-2 py-0.5 rounded text-[8px] font-black text-white uppercase ${member.role === 'COMMANDER' ? 'bg-rso-blue' : 'bg-gray-400'}`}>
-                            {member.role}
-                          </span>
+                          <span className={`px-2 py-0.5 rounded text-[8px] font-black text-white uppercase ${member.role === 'COMMANDER' ? 'bg-rso-blue' : 'bg-gray-400'}`}>{member.role}</span>
                         </div>
                       ))}
                     </div>
                   </div>
-
                 </div>
               )}
-
             </div>
           )}
 
         </div>
       </main>
 
-      {/* КАРТОЧКА ПОДРОБНОГО ПРОСМОТРА ИВЕНТА */}
+      {/* КАРТОЧКА ПРОСМОТРА ИВЕНТА */}
       {selectedEventForView && (() => {
         const status = getEventStatus(selectedEventForView.date);
         const isRegional = selectedEventForView.type === 'REGIONAL';
@@ -460,7 +446,7 @@ export default function Profile() {
                 <h2 className="text-lg sm:text-2xl font-black uppercase tracking-tight text-black leading-tight">{selectedEventForView.title}</h2>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 bg-gray-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-100/70 text-[11px] sm:text-xs">
                   <div><span className="text-[8px] font-bold uppercase text-gray-400 block">Когда состоится</span><span className="font-black text-black">🗓 {new Date(selectedEventForView.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</span></div>
-                  <div><span className="text-[8px] font-bold uppercase text-gray-400 block">Место сбора</span><span className="font-black text-black truncate block">📍 {selectedEventForView.location || 'Не указано'}</span></div>
+                  <div><span className="text-[8px] font-bold uppercase text-gray-400 block">Place сбора</span><span className="font-black text-black truncate block">📍 {selectedEventForView.location || 'Не указано'}</span></div>
                 </div>
               </div>
               <div className="space-y-1">

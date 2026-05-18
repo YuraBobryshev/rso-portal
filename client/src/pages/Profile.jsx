@@ -1,416 +1,404 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
+import CreateEventModal from '../components/CreateEventModal';
 
 export default function Profile() {
-  const [userData, setUserData] = useState(null);
+  const [user, setUser] = useState(null);
   const [events, setEvents] = useState([]);
-  const [nearestEvent, setNearestEvent] = useState(null);
-  const [commanderData, setCommanderData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('profile');
+  const [eventsLoading, setEventsLoading] = useState(false);
   
-  const [isEditing, setIsEditing] = useState(false);
-  const [links, setLinks] = useState({ vkUrl: '', tgUrl: '' });
+  // Социальные сети
+  const [vkUrl, setVkUrl] = useState('');
+  const [tgUrl, setTgUrl] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
-  const fileInputRef = useRef(null);
+  // Календарь и отображение
+  const [viewMode, setViewMode] = useState('list'); // 'list' или 'calendar'
+  const [calendarDate, setCalendarDate] = useState(new Date(2026, 4, 1)); // Инициализируем маем 2026 года
+  const [selectedDateEvents, setSelectedDateEvents] = useState([]);
+  const [selectedDayLabel, setSelectedDayLabel] = useState(null);
+
+  // Контроль модального окна создания
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
+  const API_URL = 'http://176.98.177.3:5000'; // Твой боевой IP сервера
 
-  const fetchData = async () => {
+  const fetchProfileData = async () => {
     if (!token) { navigate('/login'); return; }
     const headers = { Authorization: `Bearer ${token}` };
     try {
-      const userRes = await axios.get('http://localhost:5000/api/auth/me', { headers });
-      const user = userRes.data;
-      setUserData(user);
-      setLinks({ vkUrl: user.vkUrl || '', tgUrl: user.tgUrl || '' });
+      setLoading(true);
+      // 1. Берем профиль
+      const userRes = await axios.get(`${API_URL}/api/auth/me`, { headers });
+      setUser(userRes.data);
+      setVkUrl(userRes.data.vkUrl || '');
+      setTgUrl(userRes.data.tgUrl || '');
 
-      const eventsRes = await axios.get('http://localhost:5000/api/events', { headers });
+      // 2. Берем доступные мероприятия
+      setEventsLoading(true);
+      const eventsRes = await axios.get(`${API_URL}/api/events`, { headers });
       setEvents(eventsRes.data);
-
-      const nearestRes = await axios.get('http://localhost:5000/api/events/my-nearest', { headers });
-      setNearestEvent(nearestRes.data);
-
-      if (user.role === 'COMMANDER') {
-        try {
-          const cmdRes = await axios.get('http://localhost:5000/api/commander/dashboard', { headers });
-          setCommanderData(cmdRes.data);
-        } catch (e) { setCommanderData(null); }
-      }
     } catch (err) {
+      console.error("Ошибка загрузки профиля", err);
       if (err.response?.status === 401) navigate('/login');
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+      setEventsLoading(false);
+    }
   };
 
-  useEffect(() => { fetchData(); }, [navigate]);
+  useEffect(() => {
+    fetchProfileData();
+  }, [navigate]);
 
-  const handleAvatarClick = () => fileInputRef.current.click();
+  // Обновление соцсетей
+  const handleSaveSocials = async (e) => {
+    e.preventDefault();
+    try {
+      const headers = { Authorization: `Bearer ${token}` };
+      await axios.patch(`${API_URL}/api/auth/profile`, { vkUrl, tgUrl }, { headers });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-  const handleFileChange = async (e) => {
+  // Загрузка аватарки
+  const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     const formData = new FormData();
     formData.append('avatar', file);
 
     try {
-      setLoading(true);
-      await axios.post('http://localhost:5000/api/auth/upload-avatar', formData, {
-        headers: { 
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-      fetchData();
+      const headers = { 
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data'
+      };
+      const res = await axios.post(`${API_URL}/api/auth/upload-avatar`, formData, { headers });
+      setUser({ ...user, avatarUrl: res.avatarUrl });
+      fetchProfileData();
     } catch (err) {
-      alert("Ошибка при загрузке изображения.");
-    } finally {
-      setLoading(false);
+      console.error("Ошибка загрузки фото", err);
     }
   };
 
-  const handleSaveLinks = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      await axios.patch('http://localhost:5000/api/auth/profile', links, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setIsEditing(false);
-      fetchData();
-    } catch (err) {
-      alert("Ошибка сохранения.");
-    } finally {
-      setLoading(false);
+  // 💡 АВТОМАТИЧЕСКИЙ РАСЧЕТ СТАТУСА МЕРОПРИЯТИЯ (Прошедшее / Идет сейчас / Будущее)
+  const getEventStatus = (dateStr) => {
+    const now = new Date();
+    const eventStart = new Date(dateStr);
+    // Допустим, средняя продолжительность любого события в РСО — 3 часа
+    const eventEnd = new Date(eventStart.getTime() + 3 * 60 * 60 * 1000);
+
+    if (now < eventStart) {
+      return { label: 'Будущее', styles: 'bg-blue-50 text-blue-600 border-blue-100' };
     }
+    if (now >= eventStart && now <= eventEnd) {
+      return { label: 'Идет сейчас', styles: 'bg-green-50 text-green-600 border-green-100 animate-pulse font-black' };
+    }
+    return { label: 'Прошедшее', styles: 'bg-gray-100 text-gray-400 border-gray-200' };
   };
 
-  const handleJoinEvent = async (eventId) => {
-    try {
-      await axios.post(`http://localhost:5000/api/events/${eventId}/join`, {}, { headers: { Authorization: `Bearer ${token}` } });
-      fetchData();
-    } catch (err) { alert("Не удалось записаться"); }
+  // Проверка: является ли пользователь членом комсостава ЛСО
+  const isCommandStaff = user && ['COMMANDER', 'COMMISSAR', 'MASTER'].includes(user.role);
+
+  // =========================================================================
+  // 📆 МАТЕМАТИКА КАЛЕНДАРНОЙ СЕТКИ (БЕЗ БИБЛИОТЕК)
+  // =========================================================================
+  const year = calendarDate.getFullYear();
+  const month = calendarDate.getMonth();
+  
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  // Переводим американский формат дней (вс=0) на наш русский (пн=0)
+  const blanksCount = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const daysArray = [];
+  for (let i = 0; i < blanksCount; i++) daysArray.push(null);
+  for (let d = 1; d <= daysInMonth; d++) daysArray.push(d);
+
+  const changeMonth = (offset) => {
+    setCalendarDate(new Date(year, month + offset, 1));
+    setSelectedDateEvents([]);
+    setSelectedDayLabel(null);
   };
 
-  const handleLeaveEvent = async (eventId) => {
-    if (!window.confirm("Отменить участие?")) return;
-    try {
-      await axios.delete(`http://localhost:5000/api/events/${eventId}/leave`, { headers: { Authorization: `Bearer ${token}` } });
-      fetchData();
-    } catch (err) { alert("Ошибка при отмене"); }
+  const handleDayClick = (day) => {
+    if (!day) return;
+    const clickedDateStr = new Date(year, month, day).toDateString();
+    const matches = events.filter(e => new Date(e.date).toDateString() === clickedDateStr);
+    setSelectedDateEvents(matches);
+    setSelectedDayLabel(`${day} ${calendarDate.toLocaleString('ru-RU', { month: 'long' })} 2026`);
   };
 
-  const handleProcessApp = async (appId, status) => {
-    if (!window.confirm("Подтвердите действие")) return;
-    try {
-      await axios.post('http://localhost:5000/api/commander/process-application', { appId, status }, { headers: { Authorization: `Bearer ${token}` } });
-      fetchData();
-    } catch (err) { alert("Ошибка обработки"); }
-  };
-
-  if (loading) return (
+  if (loading || !user) return (
     <div className="min-h-screen bg-white flex items-center justify-center text-sm font-medium text-gray-400 animate-pulse">
-      Загрузка личного кабинета...
+      Синхронизация учетной записи бойца...
     </div>
   );
-
-  const tabs = [
-    { id: 'profile', label: 'Анкета бойца' },
-    { id: 'events', label: 'Мероприятия' },
-    { id: 'achievements', label: 'Достижения' },
-  ];
-  if (userData?.role === 'COMMANDER') tabs.push({ id: 'commander', label: 'Управление отрядом', badge: commanderData?.applications?.length });
-
-  const joinedEventsCount = events.filter(e => e.isJoined).length;
 
   return (
     <div className="min-h-screen bg-white text-black font-sans antialiased selection:bg-rso-blue selection:text-white">
       <Header />
-      
-      {/* pt-24 железно решает проблему наезда фиксированного хедера на контент на ПК */}
-      <main className="max-w-[1500px] mx-auto px-6 pt-24 pb-24">
+
+      <main className="max-w-[1500px] mx-auto px-6 pt-24 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-8">
         
-        {/* ПРИВЕТСТВИЕ В СТИЛЕ РЕФЕРЕНСА */}
-        <div className="mb-10">
-          <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-black">
-            Привет, {userData?.firstName || 'боец'}!
-          </h1>
-          <p className="text-sm text-gray-400 font-medium mt-1">Добро пожаловать в твой цифровой дашборд СевРО РСО</p>
+        {/* ================= ЛЕВАЯ КОЛОНКА: ПРОФИЛЬ И НАСТРОЙКИ ================= */}
+        <div className="lg:col-span-4 space-y-6">
+          
+          {/* Bento-Карточка Пользователя */}
+          <div className="border border-gray-100 rounded-3xl p-6 bg-white shadow-sm flex flex-col items-center text-center relative overflow-hidden">
+            <div className="w-24 h-24 rounded-full border border-gray-100 bg-gray-50 overflow-hidden relative group shadow-inner mb-4">
+              {user.avatarUrl ? (
+                <img src={user.avatarUrl} className="w-full h-full object-cover" alt="" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-3xl font-black text-rso-blue bg-blue-50/50">
+                  {user.firstName?.charAt(0)}
+                </div>
+              )}
+              <label className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity duration-200">
+                <span className="text-[10px] font-black uppercase text-white tracking-wider">Обновить</span>
+                <input type="file" className="hidden" onChange={handleAvatarUpload} accept="image/*" />
+              </label>
+            </div>
+
+            <h2 className="text-xl font-black uppercase tracking-tight text-gray-900 leading-tight">
+              {user.lastName} <br /> {user.firstName}
+            </h2>
+            
+            {/* Текстовые статусы ролей */}
+            <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+              <span className={`px-3 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider text-white ${
+                user.role === 'REG_HQ' ? 'bg-red-500' : user.role === 'COMMANDER' ? 'bg-rso-blue' : 'bg-gray-400'
+              }`}>
+                {user.role}
+              </span>
+              {user.brigade?.name && (
+                <span className="px-3 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-gray-900 text-white">
+                  {user.brigade.name}
+                </span>
+              )}
+            </div>
+
+            <p className="text-[10px] text-gray-400 font-mono mt-4 uppercase">Регистрационный номер: {user.id.substring(0, 8)}</p>
+          </div>
+
+          {/* Социальный блок управления */}
+          <div className="border border-gray-100 rounded-3xl p-6 bg-white shadow-sm space-y-4">
+            <h3 className="text-xs font-black uppercase tracking-wider text-black">Цифровые контакты</h3>
+            
+            {saveSuccess && (
+              <div className="p-2 bg-green-50 text-green-600 border border-green-100 text-[10px] font-bold uppercase rounded-lg text-center">
+                ✓ Контакты обновлены
+              </div>
+            )}
+
+            <form onSubmit={handleSaveSocials} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold uppercase text-gray-400">Профиль ВКонтакте</label>
+                <input 
+                  type="text" 
+                  value={vkUrl} 
+                  onChange={e => setVkUrl(e.target.value)} 
+                  placeholder="vk.com/username"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs text-black font-medium focus:outline-none focus:border-rso-blue focus:bg-white"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-bold uppercase text-gray-400">Никнейм Telegram</label>
+                <input 
+                  type="text" 
+                  value={tgUrl} 
+                  onChange={e => setTgUrl(e.target.value)} 
+                  placeholder="@username"
+                  className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs text-black font-medium focus:outline-none focus:border-rso-blue focus:bg-white"
+                />
+              </div>
+              <button type="submit" className="w-full py-2.5 bg-gray-900 hover:bg-black text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors">
+                Сохранить изменения
+              </button>
+            </form>
+          </div>
+
         </div>
 
-        {/* ГЛАВНАЯ СТРУКТУРА BENTO-СЕТКИ */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        {/* ================= ПРАВАЯ КОЛОНКА: СИСТЕМА МЕРОПРИЯТИЙ BENTO ================= */}
+        <div className="lg:col-span-8 space-y-6">
           
-          {/* ================= ЛЕВАЯ КАРТОЧКА: ПРОФИЛЬ (4 КОЛОНКИ) ================= */}
-          <aside className="lg:col-span-4 bg-gray-50/70 border border-gray-100 rounded-2xl p-6 space-y-6 shadow-sm">
+          <div className="border border-gray-100 rounded-[2rem] p-6 md:p-8 bg-white shadow-sm space-y-6">
             
-            {/* Круглая мягкая аватарка */}
-            <div className="flex flex-col items-center">
-              <div 
-                onClick={handleAvatarClick}
-                className="w-40 h-40 rounded-full bg-white border border-gray-200 relative overflow-hidden cursor-pointer shadow-md group shrink-0"
-              >
-                {userData?.avatarUrl ? (
-                  <img src={userData.avatarUrl} alt="Аватар" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-rso-blue text-5xl font-black bg-blue-50/40 uppercase">
-                    {userData?.firstName?.charAt(0)}
-                  </div>
-                )}
-                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center rounded-full">
-                  <span className="text-white text-[11px] font-medium">Обновить фото</span>
-                </div>
-                <input type="file" ref={fileInputRef} onChange={handleFileChange} className="hidden" accept="image/*" />
-              </div>
-            </div>
-
-            {/* Текстовый блок информации */}
-            <div className="space-y-4 text-center lg:text-left border-t border-gray-200/60 pt-6">
-              <div>
-                <h2 className="text-2xl font-black text-black uppercase tracking-tight">
-                  {userData?.lastName} {userData?.firstName}
-                </h2>
+            {/* Меню управления табом мероприятий */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-50">
+              <div className="space-y-0.5">
+                <h2 className="text-xl font-black uppercase tracking-tight text-black">Твой календарь событий</h2>
+                <p className="text-xs text-gray-400 font-medium">Отслеживание посещаемости и планирование выездов</p>
               </div>
 
-              <div className="space-y-3 pt-2">
-                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-1">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Должность:</span>
-                  <span className="inline-block text-[11px] font-bold text-white bg-rso-blue px-3 py-0.5 rounded-full uppercase tracking-wide w-fit mx-auto lg:mx-0">
-                    {userData?.role}
-                  </span>
-                </div>
-                <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-1 border-t border-gray-100 pt-2">
-                  <span className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Мой отряд:</span>
-                  <span className="text-sm font-bold text-black uppercase">
-                    {userData?.brigade?.name || 'Направление не указано'}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </aside>
-
-          {/* ================= ПРАВАЯ ЧАСТЬ: МЕТРИКИ + СЕТКА ТАБОВ (8 КОЛОНОК) ================= */}
-          <div className="lg:col-span-8 space-y-6">
-            
-            {/* МЯГКИЕ BENTO-ВИДЖЕТЫ АНАЛИТИКИ (КАК НА СКРИНШОТЕ) */}
-            <div className="grid grid-cols-3 gap-4">
-              <div className="border border-gray-100 rounded-2xl p-5 bg-gray-50/70 hover:border-rso-blue/30 transition-colors duration-300">
-                <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Выезды</span>
-                <div className="text-3xl md:text-4xl font-black text-rso-blue mt-1">{joinedEventsCount}</div>
-                <span className="text-xs font-medium text-gray-400 block mt-1">запланировано</span>
-              </div>
-              <div className="border border-gray-100 rounded-2xl p-5 bg-gray-50/70 hover:border-rso-blue/30 transition-colors duration-300">
-                <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Труд</span>
-                <div className="text-3xl md:text-4xl font-black text-black mt-1">160</div>
-                <span className="text-xs font-medium text-gray-400 block mt-1">часов отработано</span>
-              </div>
-              <div className="border border-gray-100 rounded-2xl p-5 bg-gray-50/70 hover:border-rso-blue/30 transition-colors duration-300">
-                <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">Грамоты</span>
-                <div className="text-3xl md:text-4xl font-black text-black mt-1">0</div>
-                <span className="text-xs font-medium text-gray-400 block mt-1">знаков отличия</span>
-              </div>
-            </div>
-
-            {/* МЯГКИЙ ТАБ-ПЕРЕКЛЮЧАТЕЛЬ */}
-            <div className="flex border border-gray-100 rounded-xl overflow-x-auto scrollbar-none whitespace-nowrap bg-gray-50/60 p-1 gap-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all rounded-lg flex-1 md:flex-initial ${
-                    activeTab === tab.id 
-                      ? 'bg-white text-rso-blue shadow-sm font-extrabold border border-gray-100' 
-                      : 'text-gray-400 hover:text-black'
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <span>{tab.label}</span>
-                    {tab.badge > 0 && <span className="bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded-full font-sans">{tab.badge}</span>}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* БОЛЬШАЯ КОНТЕНТНАЯ КАРТОЧКА BENTO */}
-            <div className="border border-gray-100 rounded-2xl p-6 md:p-8 bg-white min-h-[350px] shadow-sm relative">
-              
-              {/* ================= ВКЛАДКА: АНКЕТА ПРОФИЛЯ ================= */}
-              {activeTab === 'profile' && (
-                <div className="space-y-6 animate-in fade-in duration-200">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {[
-                      { label: 'Электронная почта', value: userData?.email },
-                      { label: 'Ролевой доступ', value: userData?.role },
-                      { label: 'Закрепленный отряд', value: userData?.brigade?.name || 'Реестр пуст (Без отряда)' },
-                      { label: 'Трудовой семестр', value: 'Активен (Крым, Севастополь)' },
-                    ].map((item, i) => (
-                      <div key={i} className="border-b border-gray-50 pb-4 space-y-1">
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider">{item.label}</label>
-                        <div className="text-sm md:text-base font-bold text-black uppercase">{item.value}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {nearestEvent && (
-                    <div className="border border-rso-blue/10 bg-gray-50/50 rounded-xl p-5 flex justify-between items-center group hover:border-rso-blue/30 transition-colors duration-300">
-                      <div>
-                        <span className="text-[10px] font-bold text-rso-blue uppercase tracking-wider block mb-0.5">Ближайший выезд</span>
-                        <h4 className="text-base md:text-lg font-black uppercase text-black">{nearestEvent.title}</h4>
-                      </div>
-                      <div className="text-xs font-bold text-rso-blue bg-white border border-gray-100 px-3 py-1.5 rounded-lg shadow-sm">
-                        {new Date(nearestEvent.date).toLocaleDateString('ru-RU')}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ================= ВКЛАДКА: МЕРОПРИЯТИЯ ================= */}
-              {activeTab === 'events' && (
-                <div className="space-y-3 animate-in fade-in duration-200">
-                  {events.map(event => (
-                    <div key={event.id} className="border border-gray-100 rounded-xl flex flex-col sm:flex-row bg-white overflow-hidden hover:border-rso-blue/30 transition-colors duration-300 shadow-sm">
-                      <div className="bg-gray-50 border-b sm:border-b-0 sm:border-r border-gray-100 p-4 w-full sm:w-20 flex sm:flex-col items-center justify-between sm:justify-center shrink-0">
-                        <span className="text-2xl font-black text-rso-blue leading-none">{new Date(event.date).getDate()}</span>
-                        <span className="text-[9px] font-bold text-gray-400 uppercase">{new Date(event.date).toLocaleString('ru', { month: 'short' }).toUpperCase()}</span>
-                      </div>
-                      
-                      <div className="p-4 flex-1 min-w-0">
-                        <h4 className="font-black uppercase text-black text-sm md:text-base leading-tight truncate">{event.title}</h4>
-                        <span className="inline-block text-[9px] font-bold text-rso-blue bg-blue-50 px-2 py-0.5 rounded-full uppercase mt-1">
-                          {event.type === 'REGIONAL' ? 'Региональное' : 'Локальное'}
-                        </span>
-                      </div>
-                      
-                      <div className="p-4 flex items-center justify-end bg-gray-50/10 border-t sm:border-t-0 sm:border-l border-gray-100 shrink-0">
-                        {event.isJoined ? (
-                          <button onClick={() => handleLeaveEvent(event.id)} className="w-full sm:w-auto text-[10px] font-bold border border-red-500 text-red-500 px-4 py-2 rounded-lg hover:bg-red-500 hover:text-white transition-all uppercase tracking-wider">Отмена</button>
-                        ) : (
-                          <button onClick={() => handleJoinEvent(event.id)} className="w-full sm:w-auto text-[10px] font-bold bg-rso-blue text-white px-4 py-2 rounded-lg hover:bg-black transition-all uppercase tracking-wider">Запись</button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  {events.length === 0 && (
-                    <div className="text-center py-12 text-xs font-bold uppercase tracking-wider opacity-30">Список выездов пуст</div>
-                  )}
-                </div>
-              )}
-
-              {/* ================= ВКЛАДКА: НАГРАДЫ ================= */}
-              {activeTab === 'achievements' && (
-                <div className="space-y-6 animate-in fade-in duration-200">
-                  <div className="text-center py-12 border border-dashed border-gray-200 rounded-xl p-6">
-                    <span className="text-rso-blue text-2xl block mb-2">✦</span>
-                    <h4 className="text-xs font-bold uppercase tracking-wider text-black mb-1">Реестр наград пуст</h4>
-                    <p className="text-xs text-gray-400 font-medium max-w-xs mx-auto leading-relaxed">
-                      Виртуальные грамоты за трудовые достижения начисляются сюда Региональным штабом СевРО.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* ================= ВКЛАДКА: УПРАВЛЕНИЕ ОТРЯДОМ ================= */}
-              {activeTab === 'commander' && (
-                <div className="space-y-6 animate-in fade-in duration-200">
-                  {commanderData ? (
-                    <>
-                      <div className="space-y-3">
-                        <span className="text-xs font-bold text-rso-blue uppercase tracking-wider block">Заявки в отряд</span>
-                        <div className="space-y-2">
-                          {commanderData.applications.map(app => (
-                            <div key={app.id} className="border border-gray-100 rounded-xl p-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-gray-50/30">
-                              <span className="font-black uppercase text-xs text-black">{app.user.firstName} {app.user.lastName}</span>
-                              <div className="flex gap-2 w-full sm:w-auto">
-                                <button onClick={() => handleProcessApp(app.id, 'APPROVED')} className="flex-1 sm:flex-initial bg-rso-blue text-white px-3 py-1.5 text-[10px] font-bold uppercase rounded-lg hover:bg-black transition-colors">Принять</button>
-                                <button onClick={() => handleProcessApp(app.id, 'REJECTED')} className="flex-1 sm:flex-initial border border-red-500 text-red-500 px-3 py-1.5 text-[10px] font-bold uppercase rounded-lg hover:bg-red-500 hover:text-white transition-colors">Отказ</button>
-                              </div>
-                            </div>
-                          ))}
-                          {commanderData.applications.length === 0 && (
-                            <div className="text-xs font-medium text-gray-400 uppercase py-2">Новых прошений о вступлении нет</div>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="space-y-3">
-                        <span className="text-xs font-bold text-rso-blue uppercase tracking-wider block">Личный состав ЛСО</span>
-                        <div className="border border-gray-100 rounded-xl divide-y divide-gray-100 max-h-[250px] overflow-y-auto shadow-inner bg-white">
-                          {commanderData.members.map((m, i) => (
-                            <div key={m.id} className="p-3 flex justify-between items-center text-xs font-bold uppercase hover:bg-gray-50/50">
-                              <span className="text-black">{i+1}. {m.firstName} {m.lastName}</span>
-                              <span className="text-[9px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 border border-gray-100 rounded-md">{m.role}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="text-center py-12 text-xs font-bold uppercase opacity-30">Информационный поток штаба недоступен</div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* ================= СВЯЗИ И СОЦСЕТИ (БЕНТО-НИЗ) ================= */}
-            <div className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm">
-              {isEditing ? (
-                <form onSubmit={handleSaveLinks} className="space-y-4 animate-in fade-in duration-150">
-                  <span className="text-xs font-bold text-rso-blue uppercase tracking-wider block">Редактирование контактов</span>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Профиль ВКонтакте</label>
-                      <input 
-                        type="text" 
-                        value={links.vkUrl} 
-                        onChange={e => setLinks({...links, vkUrl: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-200 py-1.5 outline-none font-bold text-xs focus:border-rso-blue transition-colors uppercase" 
-                        placeholder="vk.com/id"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Аккаунт Telegram</label>
-                      <input 
-                        type="text" 
-                        value={links.tgUrl} 
-                        onChange={e => setLinks({...links, tgUrl: e.target.value})}
-                        className="w-full bg-transparent border-b border-gray-200 py-1.5 outline-none font-bold text-xs focus:border-rso-blue transition-colors uppercase" 
-                        placeholder="@username"
-                      />
-                    </div>
-                  </div>
-                  <div className="flex gap-2 justify-end pt-2">
-                    <button type="button" onClick={() => setIsEditing(false)} className="px-4 py-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400">Отмена</button>
-                    <button type="submit" className="px-5 py-1.5 text-[10px] font-bold uppercase tracking-wider bg-rso-blue text-white rounded-lg hover:bg-black transition-colors">Сохранить</button>
-                  </div>
-                </form>
-              ) : (
-                <div className="flex flex-col md:flex-row gap-4 items-center justify-between w-full">
-                  <div className="flex gap-12 w-full md:w-auto">
-                    <div>
-                      <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider">ВКонтакте</label>
-                      <div className="font-bold uppercase text-xs text-rso-blue mt-0.5 truncate max-w-[140px]">{links.vkUrl || 'Не привязан'}</div>
-                    </div>
-                    <div>
-                      <label className="block text-[9px] font-bold text-gray-400 uppercase tracking-wider">Telegram</label>
-                      <div className="font-bold uppercase text-xs text-rso-blue mt-0.5 truncate max-w-[140px]">{links.tgUrl || 'Не привязан'}</div>
-                    </div>
-                  </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                {/* Тумблер Список / Календарь */}
+                <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100 text-[10px] font-black uppercase tracking-wider">
                   <button 
-                    onClick={() => setIsEditing(true)} 
-                    className="w-full md:w-auto text-[10px] font-bold border border-gray-200 px-5 py-2.5 rounded-lg hover:border-rso-blue hover:text-rso-blue transition-all uppercase tracking-wider"
+                    onClick={() => setViewMode('list')} 
+                    className={`px-3 py-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white text-rso-blue shadow-xs font-black' : 'text-gray-400'}`}
                   >
-                    Редактировать
+                    Список
+                  </button>
+                  <button 
+                    onClick={() => setViewMode('calendar')} 
+                    className={`px-3 py-1.5 rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-white text-rso-blue shadow-xs font-black' : 'text-gray-400'}`}
+                  >
+                    Календарь
                   </button>
                 </div>
-              )}
+
+                {/* Кнопка создания — видна ТОЛЬКО комсоставу */}
+                {isCommandStaff && (
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="px-4 py-2 bg-rso-blue text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-black transition-colors shadow-xs"
+                  >
+                    + Событие ЛСО
+                  </button>
+                )}
+              </div>
             </div>
+
+            {/* ДИНАМИЧЕСКИЙ РЕНДЕРИНГ РЕЖИМОВ */}
+            {eventsLoading ? (
+              <div className="py-20 text-center text-xs font-medium text-gray-400 uppercase tracking-widest animate-pulse">
+                Синхронизация ленты ивентов...
+              </div>
+            ) : viewMode === 'list' ? (
+              
+              /* ================= РЕЖИМ А: СПИСОК МЕРОПРИЯТИЙ ================= */
+              <div className="space-y-4">
+                {events.length > 0 ? (
+                  events.map(event => {
+                    const status = getEventStatus(event.date);
+                    const isRegional = event.type === 'REGIONAL';
+
+                    return (
+                      <div key={event.id} className="p-5 bg-gray-50/50 border border-gray-100 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:bg-white hover:border-gray-200 hover:shadow-xs transition-all">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[8px] font-black uppercase tracking-wide px-2 py-0.2 border rounded ${status.styles}`}>
+                              • {status.label}
+                            </span>
+                            <span className="text-[9px] font-black uppercase tracking-wide px-2 py-0.2 bg-gray-900 text-white rounded">
+                              {isRegional ? 'ШТАБ' : 'ОТРЯД'}
+                            </span>
+                            <span className="text-[10px] font-bold text-gray-400">
+                              {new Date(event.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                          <h4 className="text-sm font-black uppercase tracking-tight text-black">{event.title}</h4>
+                          <p className="text-xs text-gray-400 font-medium line-clamp-1">📍 {event.location || 'Место не указано'} — {event.description}</p>
+                        </div>
+
+                        {event.isJoined && (
+                          <span className="px-3 py-1 bg-blue-500/10 text-rso-blue rounded-xl text-[10px] font-black uppercase tracking-wider shrink-0 border border-blue-500/10 self-end sm:self-center">
+                            ✓ Ты записан
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className="py-12 text-center text-xs font-bold uppercase opacity-30 tracking-wider">Календарь пуст</div>
+                )}
+              </div>
+
+            ) : (
+              
+              /* ================= РЕЖИМ Б: СТИЛЬНЫЙ BENTO КАЛЕНДАРЬ ================= */
+              <div className="space-y-6 animate-fadeIn">
+                {/* Контроллер месяцев */}
+                <div className="flex justify-between items-center bg-gray-50 px-4 py-2 rounded-xl border border-gray-100">
+                  <button onClick={() => changeMonth(-1)} className="text-xs font-black text-gray-400 hover:text-black">◀</button>
+                  <span className="text-xs font-black uppercase tracking-wider text-black">
+                    {calendarDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' })}
+                  </span>
+                  <button onClick={() => changeMonth(1)} className="text-xs font-black text-gray-400 hover:text-black">▶</button>
+                </div>
+
+                {/* Сетка дней недели */}
+                <div className="grid grid-cols-7 gap-2 text-center text-[9px] font-black text-gray-400 uppercase tracking-wider">
+                  <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
+                </div>
+
+                {/* Сетка дней месяца */}
+                <div className="grid grid-cols-7 gap-2">
+                  {daysArray.map((day, idx) => {
+                    if (!day) return <div key={idx} className="aspect-square bg-transparent" />;
+                    
+                    // Проверяем, есть ли мероприятия на этот день
+                    const currentLoopDateStr = new Date(year, month, day).toDateString();
+                    const hasEvents = events.some(e => new Date(e.date).toDateString() === currentLoopDateStr);
+
+                    return (
+                      <button
+                        key={idx}
+                        onClick={() => handleDayClick(day)}
+                        className={`aspect-square rounded-xl border text-xs font-bold flex flex-col items-center justify-center relative transition-all ${
+                          hasEvents 
+                            ? 'border-blue-200 bg-blue-50/40 text-rso-blue font-black hover:bg-rso-blue hover:text-white hover:border-rso-blue shadow-xs' 
+                            : 'border-gray-50 bg-gray-50/30 text-gray-600 hover:bg-gray-100 hover:border-gray-200'
+                        }`}
+                      >
+                        <span>{day}</span>
+                        {hasEvents && (
+                          <span className="w-1 h-1 bg-rso-blue rounded-full absolute bottom-1.5 group-hover:bg-white" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Вывод ивентов выбранного дня под сеткой календаря */}
+                {selectedDayLabel && (
+                  <div className="pt-4 border-t border-gray-50 space-y-3 animate-fadeIn">
+                    <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider block">
+                      События на {selectedDayLabel}:
+                    </span>
+                    {selectedDateEvents.length > 0 ? (
+                      selectedDateEvents.map(e => (
+                        <div key={e.id} className="p-4 bg-gray-50 border border-gray-100 rounded-xl flex justify-between items-center">
+                          <div>
+                            <h5 className="text-xs font-black uppercase text-black">{e.title}</h5>
+                            <span className="text-[10px] text-gray-400 font-medium">📍 {e.location || 'Штаб'}</span>
+                          </div>
+                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-white text-gray-500 border border-gray-100">
+                            {new Date(e.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-gray-400 italic">На этот день выездов или собраний не запланировано</p>
+                    )}
+                  </div>
+                )}
+              </div>
+
+            )}
 
           </div>
         </div>
+
       </main>
+
+      {/* Интегрируем наш гибкий Bento-модал для создания мероприятий */}
+      <CreateEventModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={fetchProfileData} // При успехе обновим профиль и календарь
+        userRole={user?.role} // Передаем роль текущего юзера
+      />
     </div>
   );
 }

@@ -3,48 +3,45 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 
-const ИконкаЗвезды = () => <span className="text-rso-blue text-xl select-none">✦</span>;
+const directionTypes = [
+  { code: 'СПО', label: 'СПО // Педагогические отряды' },
+  { code: 'ССО', label: 'ССО // Строительные отряды' },
+  { code: 'СОП', label: 'СОП // Отряды проводников' },
+  { code: 'СМО', label: 'СМО // Медицинские отряды' },
+  { code: 'ССервО', label: 'ССервО // Сервисные отряды' }
+];
 
-const brigadeTypes = ['ССО', 'СПО', 'ССервО', 'СОП', 'ССхО', 'СМО'];
-
-export default function AdminPanel() {
+export default function Admin() {
+  const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [brigades, setBrigades] = useState([]);
-  const [adminEvents, setAdminEvents] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('users'); 
   
-  // Состояния для нового отряда
-  const [newBrigadeName, setNewBrigadeName] = useState('');
-  const [newBrigadeType, setNewBrigadeType] = useState('ССО');
-  const [newBrigadeDescription, setNewBrigadeDescription] = useState('');
-  const [newBrigadeColor, setNewBrigadeColor] = useState('#0804FF');
-  const [newBrigadeLogo, setNewBrigadeLogo] = useState(null);
-  
-  // Состояния для мероприятий
-  const [newEventTitle, setNewEventTitle] = useState('');
-  const [newEventDate, setNewEventDate] = useState('');
-  const [newEventType, setNewEventType] = useState('REGIONAL');
-  
-  const [selectedEventInfo, setSelectedEventInfo] = useState(null);
+  // Состояние для формы создания отряда
+  const [newBrigade, setNewBrigade] = useState({ name: '', description: '', type: 'СПО', colorScheme: '#0052FF' });
+  const [logoFile, setLogoFile] = useState(null);
+  const [formError, setFormError] = useState('');
+  const [formSuccess, setFormSuccess] = useState('');
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
 
   const fetchData = async () => {
+    if (!token) { navigate('/login'); return; }
+    const headers = { Authorization: `Bearer ${token}` };
+    setLoading(true);
     try {
-      const headers = { Authorization: `Bearer ${token}` };
-      const [usersRes, brigadesRes, eventsRes] = await Promise.all([
-        axios.get('http://localhost:5000/api/admin/users', { headers }),
-        axios.get('http://localhost:5000/api/brigades', { headers }),
-        axios.get('http://localhost:5000/api/admin/events', { headers })
-      ]);
+      // Загрузка пользователей для админки
+      const usersRes = await axios.get('http://localhost:5000/api/admin/users', { headers });
       setUsers(usersRes.data);
+
+      // Загрузка отрядов
+      const brigadesRes = await axios.get('http://localhost:5000/api/brigades', { headers });
       setBrigades(brigadesRes.data);
-      setAdminEvents(eventsRes.data);
     } catch (err) {
-      if (err.response?.status === 403) {
-        alert("Доступ запрещен. Требуется уровень доступа регионального штаба.");
+      console.error("Ошибка доступа к админ-панели", err);
+      // Если обычный боец пытается зайти — бэкенд вернет 403, кидаем в профиль
+      if (err.response?.status === 403 || err.response?.status === 401) {
         navigate('/profile');
       }
     } finally {
@@ -53,280 +50,270 @@ export default function AdminPanel() {
   };
 
   useEffect(() => {
-    if (!token) navigate('/login');
-    else fetchData();
+    fetchData();
   }, [navigate]);
 
-  const handleUpdateRole = async (userId, newRole) => {
-    try {
-      await axios.patch('http://localhost:5000/api/admin/update-role', { userId, newRole }, { headers: { Authorization: `Bearer ${token}` } });
-      fetchData();
-    } catch (err) { alert("Ошибка при изменении роли"); }
-  };
-
-  const handleUpdateBrigade = async (userId, brigadeId) => {
-    try {
-      await axios.patch('http://localhost:5000/api/admin/update-user-brigade', { userId, brigadeId }, { headers: { Authorization: `Bearer ${token}` } });
-      fetchData();
-    } catch (err) { alert("Ошибка при смене отряда"); }
-  };
-
-  const handleDeleteUser = async (userId) => {
-    if (!window.confirm("Вы уверены, что хотите удалить этот аккаунт? Действие необратимо.")) return;
-    try {
-      await axios.delete(`http://localhost:5000/api/admin/users/${userId}`, { headers: { Authorization: `Bearer ${token}` } });
-      fetchData(); 
-    } catch (err) { alert(err.response?.data?.message || "Ошибка при удалении аккаунта"); }
-  };
-
-  // ОБНОВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ ОТРЯДА
   const handleCreateBrigade = async (e) => {
     e.preventDefault();
+    setFormError('');
+    setFormSuccess('');
+
     const formData = new FormData();
-    formData.append('name', newBrigadeName);
-    formData.append('type', newBrigadeType);
-    formData.append('description', newBrigadeDescription);
-    formData.append('colorScheme', newBrigadeColor);
-    if (newBrigadeLogo) formData.append('logo', newBrigadeLogo);
+    formData.append('name', newBrigade.name);
+    formData.append('description', newBrigade.description);
+    formData.append('type', newBrigade.type);
+    formData.append('colorScheme', newBrigade.colorScheme);
+    if (logoFile) formData.append('logo', logoFile);
 
     try {
-      await axios.post('http://localhost:5000/api/admin/create-brigade', formData, { 
+      await axios.post('http://localhost:5000/api/brigades', formData, {
         headers: { 
-          Authorization: `Bearer ${token}`,
+          'Authorization': `Bearer ${token}`,
           'Content-Type': 'multipart/form-data'
-        } 
+        }
       });
-      // Сброс полей
-      setNewBrigadeName('');
-      setNewBrigadeDescription('');
-      setNewBrigadeType('ССО');
-      setNewBrigadeColor('#0804FF');
-      setNewBrigadeLogo(null);
-      alert("Новый отряд успешно внесен в реестр!");
-      fetchData();
-    } catch (err) { alert("Ошибка при создании отряда"); }
-  };
-
-  const handleCreateEvent = async (e) => {
-    e.preventDefault();
-    try {
-      await axios.post('http://localhost:5000/api/events', { title: newEventTitle, description: "Описание", date: newEventDate, type: newEventType }, { headers: { Authorization: `Bearer ${token}` } });
-      alert("Мероприятие опубликовано!");
-      setNewEventTitle('');
-      setNewEventDate('');
-      fetchData();
-    } catch (err) { alert("Ошибка при создании мероприятия"); }
+      setFormSuccess('Линейный отряд успешно сформирован и внесен в реестр!');
+      setNewBrigade({ name: '', description: '', type: 'СПО', colorScheme: '#0052FF' });
+      setLogoFile(null);
+      fetchData(); // обновляем списки
+    } catch (err) {
+      setFormError(err.response?.data?.message || 'Ошибка при создании отряда');
+    }
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-white flex items-center justify-center font-mono text-rso-blue uppercase tracking-widest text-sm">
-      <div className="animate-pulse">Загрузка данных...</div>
+    <div className="min-h-screen bg-white flex items-center justify-center text-sm font-medium text-gray-400 animate-pulse">
+      Авторизация административного доступа...
     </div>
   );
 
+  const tabs = [
+    { id: 'users', label: 'Реестр бойцов' },
+    { id: 'brigades', label: 'Список отрядов' },
+    { id: 'create', label: 'Сформировать отряд' },
+    { id: 'events', label: 'Мероприятия' },
+  ];
+
   return (
-    <div className="min-h-screen bg-white text-rso-blue font-sans pb-20 selection:bg-rso-blue selection:text-white">
+    <div className="min-h-screen bg-white text-black font-sans antialiased selection:bg-rso-blue selection:text-white">
       <Header />
       
-      {/* МОДАЛЬНОЕ ОКНО СО СПИСКОМ УЧАСТНИКОВ */}
-      {selectedEventInfo && (
-        <div className="fixed inset-0 bg-white/90 backdrop-blur-sm z-[100] flex items-center justify-center p-6">
-          <div className="bg-white border-[1px] border-rso-blue shadow-2xl w-full max-w-2xl max-h-[80vh] flex flex-col">
-            <div className="p-6 border-b-[1px] border-rso-blue flex justify-between items-center bg-blue-50/50">
-              <div>
-                <h3 className="text-xl font-black uppercase">{selectedEventInfo.title}</h3>
-                <p className="text-xs font-bold opacity-60 uppercase mt-1">Список участников ({selectedEventInfo.participants.length} чел.)</p>
+      {/* pt-24 гарантирует отсутствие наездов фиксированного хедера на контент */}
+      <main className="max-w-[1500px] mx-auto px-6 pt-24 pb-24">
+        
+        {/* ЗАГОЛОВОК АДМИНКИ */}
+        <div className="mb-10">
+          <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-black">
+            Панель управления
+          </h1>
+          <p className="text-sm text-gray-400 font-medium mt-1">
+            Главный административный узел Севастопольского регионального отделения РСО
+          </p>
+        </div>
+
+        {/* МЯГКИЙ ТАБ-НАВИГАТОР BENTO */}
+        <div className="flex border border-gray-100 rounded-xl overflow-x-auto scrollbar-none whitespace-nowrap bg-gray-50/60 p-1 gap-1 mb-8">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-5 py-2.5 text-xs font-bold uppercase tracking-wider transition-all rounded-lg flex-1 text-center ${
+                activeTab === tab.id 
+                  ? 'bg-white text-rso-blue shadow-sm font-extrabold border border-gray-100' 
+                  : 'text-gray-400 hover:text-black'
+              }`}
+            >
+              {tab.label}
+              {tab.id === 'create' && ' +'}
+            </button>
+          ))}
+        </div>
+
+        {/* БОЛЬШАЯ БЕНТО-КАРТОЧКА ВЫВОДА ДАННЫХ */}
+        <div className="border border-gray-100 rounded-2xl p-6 md:p-8 bg-white min-h-[450px] shadow-sm">
+          
+          {/* ================= ВКЛАДКА 1: РЕЕСТР БОЙЦОВ (С АВАТАРКАМИ) ================= */}
+          {activeTab === 'users' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-xs font-bold text-rso-blue uppercase tracking-wider">Всего зарегистрировано: {users.length} чел.</span>
               </div>
-              <button onClick={() => setSelectedEventInfo(null)} className="text-2xl hover:text-red-500 transition-colors">×</button>
+              
+              <div className="border border-gray-100 rounded-xl overflow-hidden overflow-x-auto shadow-inner bg-gray-50/10">
+                <table className="w-full text-left border-collapse min-w-[700px]">
+                  <thead>
+                    <tr className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
+                      <th className="p-4 w-16">Фото</th>
+                      <th className="p-4">ФИО бойца</th>
+                      <th className="p-4">Электронная почта</th>
+                      <th className="p-4">Системная роль</th>
+                      <th className="p-4">Линейный отряд</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50 text-xs font-bold uppercase">
+                    {users.map(u => (
+                      <tr key={u.id} className="hover:bg-gray-50/50 bg-white transition-colors">
+                        {/* Аватарка бойца */}
+                        <td className="p-4">
+                          <div className="w-9 h-9 rounded-full border border-gray-100 overflow-hidden bg-white shadow-sm flex items-center justify-center shrink-0">
+                            {u.avatarUrl ? (
+                              <img src={u.avatarUrl} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-rso-blue bg-blue-50/50 text-[11px] font-black">
+                                {u.firstName?.charAt(0)}
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-4 text-black font-extrabold">{u.lastName} {u.firstName}</td>
+                        <td className="p-4 text-gray-500 lowercase font-medium">{u.email}</td>
+                        <td className="p-4">
+                          <span className={`px-2.5 py-0.5 rounded-full text-[9px] text-white ${u.role === 'REG_HQ' ? 'bg-red-500' : u.role === 'COMMANDER' ? 'bg-rso-blue' : 'bg-gray-400'}`}>
+                            {u.role}
+                          </span>
+                        </td>
+                        <td className="p-4 text-gray-600 font-black">{u.brigade?.name || '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            
-            <div className="p-6 overflow-y-auto flex-1">
-              {selectedEventInfo.participants.length > 0 ? (
-                <div className="divide-y-[1px] divide-rso-blue border-[1px] border-rso-blue">
-                  {selectedEventInfo.participants.map((p, i) => (
-                    <div key={p.id} className="p-3 flex justify-between items-center hover:bg-gray-50">
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs font-mono opacity-40">{(i+1).toString().padStart(2,'0')}</span>
-                        <span className="font-bold uppercase text-sm">{p.user.firstName} {p.user.lastName}</span>
+          )}
+
+          {/* ================= ВКЛАДКА 2: СПИСОК ОТРЯДОВ (С ЛОГОТИПАМИ) ================= */}
+          {activeTab === 'brigades' && (
+            <div className="space-y-4 animate-in fade-in duration-200">
+              <span className="text-xs font-bold text-rso-blue uppercase tracking-wider block mb-2">Активных команд в штабе: {brigades.length}</span>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {brigades.map(b => (
+                  <div key={b.id} className="border border-gray-100 rounded-xl p-5 bg-gray-50/30 flex items-center justify-between gap-4 shadow-sm hover:border-rso-blue/20 transition-all">
+                    <div className="flex items-center gap-4 min-w-0">
+                      {/* Мягкая круглая эмблема отряда */}
+                      <div className="w-12 h-12 rounded-full border border-gray-200 bg-white shadow-sm overflow-hidden flex items-center justify-center shrink-0 p-0.5">
+                        {b.logoUrl ? (
+                          <img src={b.logoUrl} alt="" className="w-full h-full object-cover rounded-full" />
+                        ) : (
+                          <span className="text-[10px] font-black text-rso-blue opacity-30">{b.type}</span>
+                        )}
                       </div>
-                      <span className="text-[10px] uppercase font-bold border-[1px] border-rso-blue px-2 py-1">
-                        {p.user.brigade ? p.user.brigade.name : 'Без отряда'}
-                      </span>
+                      
+                      <div className="truncate">
+                        <h3 className="font-black text-sm text-black uppercase truncate leading-tight">{b.name}</h3>
+                        <span className="inline-block mt-1 text-[9px] font-bold text-white px-2 py-0.2 rounded-md uppercase" style={{ backgroundColor: b.colorScheme || '#0052FF' }}>
+                          {b.type}
+                        </span>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-10 opacity-50 uppercase font-bold text-sm">Никто еще не записался</div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
-      <main className="max-w-[1200px] mx-auto p-6 mt-6">
-        <div className="border-[1px] border-rso-blue p-6 flex flex-col md:flex-row justify-between items-start md:items-center mb-10 relative bg-blue-50/30">
-          <div className="absolute top-2 right-2 text-[10px] font-bold opacity-30 uppercase">Панель администратора</div>
-          <div>
-            <h1 className="text-3xl font-black uppercase tracking-tighter mb-1">Центр управления</h1>
-            <p className="text-xs font-bold opacity-70">Региональный штаб (Севастополь)</p>
-          </div>
-          <div className="mt-4 md:mt-0 flex gap-2"><ИконкаЗвезды /> <ИконкаЗвезды /></div>
-        </div>
-
-        <div className="flex border-b-[1px] border-rso-blue mb-8 overflow-x-auto">
-          <button onClick={() => setActiveTab('users')} className={`px-8 py-4 text-sm font-bold uppercase transition-colors whitespace-nowrap ${activeTab === 'users' ? 'bg-rso-blue text-white' : 'hover:bg-blue-50'}`}>Управление кадрами</button>
-          <button onClick={() => setActiveTab('brigades')} className={`px-8 py-4 text-sm font-bold uppercase transition-colors whitespace-nowrap ${activeTab === 'brigades' ? 'bg-rso-blue text-white' : 'hover:bg-blue-50'}`}>Управление отрядами</button>
-          <button onClick={() => setActiveTab('events')} className={`px-8 py-4 text-sm font-bold uppercase transition-colors whitespace-nowrap ${activeTab === 'events' ? 'bg-rso-blue text-white' : 'hover:bg-blue-50'}`}>Мероприятия</button>
-        </div>
-
-        {activeTab === 'users' && (
-          <div className="border-[1px] border-rso-blue overflow-x-auto">
-            <div className="min-w-[1000px]">
-              <div className="bg-rso-blue text-white p-4 text-xs font-bold uppercase grid grid-cols-12 gap-4 items-center tracking-wider">
-                <div className="col-span-3">Боец</div><div className="col-span-3">Отряд</div><div className="col-span-3">Уровень доступа</div><div className="col-span-3 text-right">Действия</div>
-              </div>
-              <div className="divide-y-[1px] divide-rso-blue">
-                {users.map(user => (
-                  <div key={user.id} className="p-4 grid grid-cols-12 gap-4 items-center hover:bg-gray-50 transition-colors text-sm font-bold">
-                    <div className="col-span-3 truncate"><div className="uppercase text-rso-blue">{user.firstName} {user.lastName}</div><div className="text-[10px] opacity-50 font-normal truncate mt-1">ID: {user.id}</div></div>
-                    <div className="col-span-3"><select value={user.brigadeId || 'none'} onChange={(e) => handleUpdateBrigade(user.id, e.target.value)} className="w-full bg-transparent border-[1px] border-rso-blue/30 px-3 py-2 outline-none text-xs uppercase font-bold focus:border-rso-blue transition-colors cursor-pointer"><option value="none">Без отряда</option>{brigades.map(b => (<option key={b.id} value={b.id}>{b.name}</option>))}</select></div>
-                    <div className="col-span-3"><select value={user.role} onChange={(e) => handleUpdateRole(user.id, e.target.value)} className="w-full bg-transparent border-[1px] border-rso-blue/30 px-3 py-2 outline-none text-xs uppercase font-bold focus:border-rso-blue transition-colors cursor-pointer"><option value="USER">Новичок</option><option value="CANDIDATE">Кандидат</option><option value="BOETS">Боец</option><option value="MASTER">Мастер</option><option value="COMMISSAR">Комиссар</option><option value="COMMANDER">Командир</option><option value="REG_HQ">Штаб</option></select></div>
-                    <div className="col-span-3 text-right"><button onClick={() => handleDeleteUser(user.id)} className="text-xs border-[1px] border-red-500 text-red-500 px-4 py-2 uppercase hover:bg-red-500 hover:text-white transition-all font-bold">Удалить</button></div>
+                    <div className="text-right shrink-0 border-l border-gray-200 pl-4">
+                      <div className="text-xl font-black text-black leading-none">{b._count?.users || 0}</div>
+                      <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter block mt-0.5">бойцов</span>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ОБНОВЛЕННАЯ ВКЛАДКА ОТРЯДОВ */}
-        {activeTab === 'brigades' && (
-          <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_2fr] gap-10">
-            {/* Форма создания с новыми полями */}
-            <div className="border-[1px] border-rso-blue p-8 relative h-fit bg-gray-50/30">
-              <div className="absolute -top-3 left-6 bg-white px-3 text-rso-blue font-bold uppercase text-xs">Регистрация ЛСО</div>
-              <form onSubmit={handleCreateBrigade} className="space-y-6 mt-4">
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* ================= ВКЛАДКА 3: ФОРМА СОЗДАНИЯ (ТОЛЬКО 5 НАПРАВЛЕНИЙ) ================= */}
+          {activeTab === 'create' && (
+            <div className="max-w-2xl mx-auto animate-in fade-in duration-200">
+              <div className="text-center mb-6">
+                <h2 className="text-xl font-black uppercase tracking-tight text-black">Сформировать новый ЛСО</h2>
+                <p className="text-xs text-gray-400 font-medium mt-0.5">Регистрация отряда в общегородском реестре Севастополя</p>
+              </div>
+
+              {formError && <div className="mb-4 bg-red-50 text-red-600 border border-red-100 rounded-xl p-3 text-xs font-semibold text-center">{formError}</div>}
+              {formSuccess && <div className="mb-4 bg-green-50 text-green-600 border border-green-100 rounded-xl p-3 text-xs font-semibold text-center">{formSuccess}</div>}
+
+              <form onSubmit={handleCreateBrigade} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Название линейного отряда</label>
+                  <input 
+                    type="text"
+                    placeholder="Например: ССО «Гандвик»"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-rso-blue focus:bg-white transition-all font-bold text-black uppercase"
+                    value={newBrigade.name}
+                    onChange={e => setNewBrigade({...newBrigade, name: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Выпадающий список строго на 5 направлений */}
                   <div>
-                    <label className="block text-[10px] uppercase font-black opacity-50 mb-1">Название отряда</label>
-                    <input type="text" value={newBrigadeName} onChange={e => setNewBrigadeName(e.target.value)} placeholder="Напр. Гандвик" className="w-full bg-transparent border-b-[1px] border-rso-blue py-2 outline-none font-bold text-sm focus:border-b-2 transition-all uppercase" required />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase font-black opacity-50 mb-1">Направление</label>
-                    <select value={newBrigadeType} onChange={e => setNewBrigadeType(e.target.value)} className="w-full bg-transparent border-b-[1px] border-rso-blue py-2 outline-none font-bold text-sm focus:border-b-2 transition-all cursor-pointer uppercase">
-                      {brigadeTypes.map(t => <option key={t} value={t}>{t}</option>)}
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Вектор / Направление труда</label>
+                    <select
+                      className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-rso-blue focus:bg-white transition-all font-bold text-black uppercase appearance-none"
+                      value={newBrigade.type}
+                      onChange={e => setNewBrigade({...newBrigade, type: e.target.value})}
+                    >
+                      {directionTypes.map(d => (
+                        <option key={d.code} value={d.code}>{d.label}</option>
+                      ))}
                     </select>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-[10px] uppercase font-black opacity-50 mb-1">Описание деятельности</label>
-                  <textarea value={newBrigadeDescription} onChange={e => setNewBrigadeDescription(e.target.value)} placeholder="История, традиции и объекты..." className="w-full bg-transparent border-b-[1px] border-rso-blue py-2 outline-none font-medium text-sm focus:border-b-2 transition-all min-h-[80px] resize-none" required />
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-end">
                   <div>
-                    <label className="block text-[10px] uppercase font-black opacity-50 mb-2">Эмблема (Логотип)</label>
-                    <input type="file" onChange={e => setNewBrigadeLogo(e.target.files[0])} className="text-[10px] font-mono" />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] uppercase font-black opacity-50 mb-2">Фирменный цвет</label>
-                    <div className="flex items-center gap-3">
-                      <input type="color" value={newBrigadeColor} onChange={e => setNewBrigadeColor(e.target.value)} className="w-10 h-10 border-none bg-transparent cursor-pointer" />
-                      <span className="font-mono text-xs font-bold uppercase">{newBrigadeColor}</span>
+                    <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Фирменный цвет отряда</label>
+                    <div className="flex gap-2 items-center bg-gray-50 border border-gray-200 rounded-xl px-3 py-2">
+                      <input 
+                        type="color"
+                        className="w-10 h-8 border-0 bg-transparent cursor-pointer rounded"
+                        value={newBrigade.colorScheme}
+                        onChange={e => setNewBrigade({...newBrigade, colorScheme: e.target.value})}
+                      />
+                      <span className="text-xs font-mono font-bold uppercase text-gray-500">{newBrigade.colorScheme}</span>
                     </div>
                   </div>
                 </div>
 
-                <button type="submit" className="w-full bg-rso-blue text-white py-4 text-sm font-bold uppercase hover:bg-black transition-colors shadow-lg shadow-blue-500/10">Сформировать отряд</button>
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Историческая летопись / Краткое описание</label>
+                  <textarea 
+                    placeholder="Укажите год основания, традиции, ключевые объекты работы команды..."
+                    rows="4"
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-rso-blue focus:bg-white transition-all resize-none font-medium text-gray-700 leading-relaxed"
+                    value={newBrigade.description}
+                    onChange={e => setNewBrigade({...newBrigade, description: e.target.value})}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Официальная эмблема (Логотип SVG / PNG)</label>
+                  <label className="cursor-pointer text-xs font-bold border border-gray-200 bg-gray-50/50 rounded-xl px-5 py-3 text-center text-gray-500 hover:border-rso-blue/30 hover:text-rso-blue transition-all shadow-sm block truncate">
+                    <span>{logoFile ? logoFile.name : '📎 Загрузить эмблему отряда'}</span>
+                    <input type="file" className="hidden" onChange={e => setLogoFile(e.target.files[0])} accept="image/*" />
+                  </label>
+                </div>
+
+                <div className="pt-2">
+                  <button 
+                    type="submit"
+                    className="w-full bg-rso-blue text-white font-bold uppercase text-xs tracking-wider py-4 rounded-xl hover:bg-black transition-colors shadow-md shadow-blue-500/10"
+                  >
+                    Внести команду в реестр СевРО
+                  </button>
+                </div>
               </form>
             </div>
+          )}
 
-            {/* Список отрядов (без изменений) */}
-            <div className="border-[1px] border-rso-blue flex flex-col h-[600px]">
-                <div className="bg-rso-blue text-white p-4 text-xs font-bold uppercase text-center flex-shrink-0 tracking-wider">Реестр ЛСО (Всего: {brigades.length})</div>
-                <div className="divide-y-[1px] divide-rso-blue overflow-y-auto flex-1">
-                  {brigades.map((brigade, idx) => (
-                    <div key={brigade.id} className="p-5 hover:bg-blue-50 transition-colors flex justify-between items-center group">
-                      <div className="flex items-center gap-4">
-                        <div className="w-8 h-8 bg-blue-50 border border-rso-blue flex items-center justify-center overflow-hidden">
-                           {brigade.logoUrl ? <img src={brigade.logoUrl} className="w-full h-full object-cover" alt="" /> : <span className="text-[8px] font-black opacity-30">{brigade.type}</span>}
-                        </div>
-                        <div>
-                          <div className="font-black uppercase text-base leading-none">{brigade.name}</div>
-                          <div className="text-[9px] font-bold opacity-40 uppercase mt-1 tracking-widest" style={{ color: brigade.colorScheme || '#0804FF' }}>{brigade.type}</div>
-                        </div>
-                      </div>
-                      <span className="text-[10px] border-[1px] border-rso-blue px-3 py-1 uppercase opacity-50 font-mono">ID: {brigade.id.slice(0,6)}</span>
-                    </div>
-                  ))}
-                </div>
+          {/* ================= ВКЛАДКА 4: МЕРОПРИЯТИЯ (ПОКА НИЧЕГО НЕ ТРОГАЕМ) ================= */}
+          {activeTab === 'events' && (
+            <div className="text-center py-16 border border-dashed border-gray-200 rounded-xl p-6 animate-in fade-in duration-200">
+              <span className="text-rso-blue text-2xl block mb-2">⚙️</span>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-black mb-1">Модуль на реконструкции</h4>
+              <p className="text-xs text-gray-400 font-medium max-w-xs mx-auto leading-relaxed">
+                Система проработки и детального планирования региональных выездов будет глубоко спроектирована на следующем этапе разработки.
+              </p>
             </div>
-          </div>
-        )}
+          )}
 
-        {activeTab === 'events' && (
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-10">
-            {/* Форма создания */}
-            <div className="border-[1px] border-rso-blue p-8 relative h-fit">
-              <div className="absolute -top-3 left-6 bg-white px-3 text-rso-blue font-bold uppercase text-xs">Публикация</div>
-              <form onSubmit={handleCreateEvent} className="space-y-6 mt-4">
-                <div>
-                  <label className="block text-xs uppercase font-bold opacity-70 mb-2">Название мероприятия</label>
-                  <input type="text" value={newEventTitle} onChange={e => setNewEventTitle(e.target.value)} className="w-full bg-transparent border-b-[1px] border-rso-blue py-2 outline-none font-bold text-lg focus:border-b-2 transition-all" required />
-                </div>
-                <div>
-                  <label className="block text-xs uppercase font-bold opacity-70 mb-2">Дата проведения</label>
-                  <input type="date" value={newEventDate} onChange={e => setNewEventDate(e.target.value)} className="w-full bg-transparent border-b-[1px] border-rso-blue py-2 outline-none font-bold text-sm focus:border-b-2 transition-all cursor-pointer" required />
-                </div>
-                <div>
-                  <label className="block text-xs uppercase font-bold opacity-70 mb-2">Уровень доступа</label>
-                  <select value={newEventType} onChange={e => setNewEventType(e.target.value)} className="w-full bg-transparent border-b-[1px] border-rso-blue py-2 outline-none font-bold text-sm focus:border-b-2 transition-all cursor-pointer">
-                    <option value="REGIONAL">Региональное (Видят все)</option>
-                    <option value="BRIGADE">Отрядное (Только мой отряд)</option>
-                  </select>
-                </div>
-                <button type="submit" className="w-full bg-rso-blue text-white py-4 mt-4 text-sm font-bold uppercase hover:bg-black transition-colors">Опубликовать</button>
-              </form>
-            </div>
-
-            {/* Список всех мероприятий */}
-            <div className="border-[1px] border-rso-blue flex flex-col h-[600px]">
-              <div className="bg-rso-blue text-white p-4 text-xs font-bold uppercase tracking-wider grid grid-cols-12 gap-4">
-                <div className="col-span-5">Событие</div>
-                <div className="col-span-3 text-center">Дата</div>
-                <div className="col-span-4 text-right">Участники</div>
-              </div>
-              <div className="divide-y-[1px] divide-rso-blue overflow-y-auto flex-1">
-                {adminEvents.map(event => (
-                  <div key={event.id} className="p-4 grid grid-cols-12 gap-4 items-center hover:bg-gray-50 transition-colors">
-                    <div className="col-span-5">
-                      <div className="font-bold uppercase text-sm">{event.title}</div>
-                      <div className="text-[9px] uppercase font-bold opacity-50 mt-1">{event.type === 'REGIONAL' ? 'Региональное' : 'Отрядное'}</div>
-                    </div>
-                    <div className="col-span-3 text-center text-xs font-bold font-mono">
-                      {new Date(event.date).toLocaleDateString()}
-                    </div>
-                    <div className="col-span-4 text-right">
-                      <button 
-                        onClick={() => setSelectedEventInfo(event)}
-                        className="text-[10px] border-[1px] border-rso-blue px-4 py-2 uppercase font-bold hover:bg-rso-blue hover:text-white transition-all"
-                      >
-                        Смотреть ({event.participants.length})
-                      </button>
-                    </div>
-                  </div>
-                ))}
-                {adminEvents.length === 0 && (
-                  <div className="text-center py-10 opacity-40 uppercase font-bold text-sm">База мероприятий пуста</div>
-                )}
-              </div>
-            </div>
-
-          </div>
-        )}
-
+        </div>
       </main>
     </div>
   );

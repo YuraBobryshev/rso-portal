@@ -28,7 +28,6 @@ const values = [
   }
 ];
 
-// Массив со всеми 6 направлениями деятельности СевРО
 const directions = [
   {
     code: "СПО",
@@ -68,7 +67,6 @@ const directions = [
   }
 ];
 
-// Массив ключевых трудовых объектов
 const laborObjects = [
   { name: "Mriya Resort & SPA 5*", location: "Ялта, Крым", task: "Сервисное обслуживание и организация премиум-отдыха" },
   { name: "Всероссийская студенческая стройка «БАМ 2.0»", location: "Сибирь / Дальний Восток", task: "Реконструкция легендарной железнодорожной магистрали" },
@@ -82,76 +80,78 @@ export default function About() {
       {/* Наш единый мобильно-адаптированный хедер */}
       <Header />
       
-      <main className="mt-10">
+      {/* Жесткий отступ pt-24 для предотвращения наезда хедера */}
+      <main className="pt-24">
         
-        {/* ================= 1. HERO СЕКЦИЯ (Единый масштаб заголовка) ================= */}
-        <section className="max-w-[1600px] mx-auto px-6 py-12 lg:py-20 border-b border-gray-100">
-          <div className="max-w-5xl space-y-6">
-            <div className="inline-flex items-center gap-2 text-xs font-mono font-bold tracking-widest text-rso-blue uppercase">
-              <span>[ О СЕВРО РСО ]</span>
-              <span className="w-8 h-[1px] bg-rso-blue"></span>
-              <span>ГЛАВНЫЙ НАРАТИВ</span>
-            </div>
+        {/* ================= 1. HERO СЕКЦИЯ (Мягкий Bento разворот) ================= */}
+        <section className="max-w-[1600px] mx-auto px-6 pb-12 lg:pb-16 border-b border-gray-100">
+          <div className="max-w-5xl space-y-4">
+            <span className="text-xs font-bold text-rso-blue uppercase tracking-wider block">
+              О нашем движении
+            </span>
             
-            {/* Масштаб h1 строго равен главной странице (text-4xl -> text-8xl) */}
-            <h1 className="text-4xl sm:text-6xl md:text-8xl font-black uppercase tracking-tighter leading-[0.85]">
+            <h1 className="text-4xl sm:text-6xl md:text-8xl font-black uppercase tracking-tighter leading-[0.85] animate-in fade-in slide-in-from-bottom-4 duration-500">
               Мы пишем <br />
               <span className="text-rso-blue">историю</span> <br />
               труда.
             </h1>
             
-            <p className="text-lg md:text-xl text-gray-600 font-medium max-w-2xl leading-relaxed pt-4">
+            <p className="text-base md:text-lg text-gray-500 font-medium max-w-2xl leading-relaxed pt-2">
               Севастопольское региональное отделение МООО «Российские Студенческие Отряды» — это крупнейшее молодежное движение Города-Героя, объединяющее тысячи горящих сердец.
             </p>
           </div>
         </section>
 
 
-        {/* ================= 2. СТРОГАЯ СЕТКА СТАТИСТИКИ ================= */}
-        <section className="border-b border-gray-100 bg-gray-50/50">
-          <div className="max-w-[1600px] mx-auto grid grid-cols-2 lg:grid-cols-4 divide-x divide-y lg:divide-y-0 divide-gray-200/60">
-            {stats.map((stat, idx) => (
-              <div key={idx} className="p-8 lg:p-12 flex flex-col justify-center group hover:bg-white transition-colors duration-300">
-                <div className="text-4xl md:text-6xl font-black text-rso-blue mb-2 transition-transform group-hover:translate-x-1 duration-300">
-                  {stat.value}
-                </div>
-                <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-gray-400">
-                  {stat.label}
-                </div>
+        {/* ================= 2. СЕТКА СТАТИСТИКИ (Мягкие Bento-ячейки) ================= */}
+        <section className="max-w-[1600px] mx-auto px-6 py-6 grid grid-cols-2 lg:grid-cols-4 gap-4">
+          {stats.map((stat, idx) => (
+            <div 
+              key={idx} 
+              className="p-6 bg-gray-50/70 border border-gray-100 rounded-2xl flex flex-col justify-center group hover:border-rso-blue/20 hover:bg-white hover:shadow-sm transition-all duration-300"
+            >
+              <div className="text-3xl md:text-5xl font-black text-rso-blue mb-1 transition-transform group-hover:translate-x-1 duration-300">
+                {stat.value}
               </div>
-            ))}
-          </div>
+              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                {stat.label}
+              </div>
+            </div>
+          ))}
         </section>
 
 
-        {/* ================= 3. ИСТОРИЯ СОЗДАНИЯ (Интерактивный таймлайн) ================= */}
-        <section className="max-w-[1600px] mx-auto px-6 py-20 lg:py-28 border-b border-gray-100">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12">
+        {/* ================= 3. ЛЕТОПИСЬ СЕВРО (Живой мягкий таймлайн) ================= */}
+        <section className="max-w-[1600px] mx-auto px-6 py-16 lg:py-24">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
             
-            <div className="lg:col-span-4">
-              <span className="text-xs font-mono font-bold text-rso-blue uppercase tracking-widest">// НАШ ПУТЬ</span>
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter text-rso-blue mt-2 leading-none">
-                Летопись <br/>СевРО
+            <div className="lg:col-span-4 flex flex-col justify-start">
+              <span className="text-xs font-bold text-rso-blue uppercase tracking-wider">Наш путь</span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tight text-black mt-1 leading-tight">
+                Летопись штаба
               </h2>
+              <p className="text-sm text-gray-400 font-medium mt-2 max-w-xs leading-relaxed">
+                Основные вехи развития и достижений севастопольского регионального отделения.
+              </p>
             </div>
             
-            <div className="lg:col-span-8 space-y-12">
+            <div className="lg:col-span-8 space-y-6">
               {[
                 { year: "2014 год", title: "Фундамент и возрождение", desc: "После исторического воссоединения Севастополя с Россией, началось активное возрождение традиций студенческих отрядов. Были сформированы первые линейные отряды вожатых и строителей, готовые доказать, что севастопольская молодежь — это мощная трудовая сила." },
                 { year: "2019 год", title: "Масштабирование и новые фронты", desc: "Движение выросло в 3 раза. К классическим строителям и вожатым добавились отряды проводников поездов дальнего следования и сервисные отряды. Севастопольские бойцы закрепились на ключевых трудовых проектах Южного федерального округа." },
                 { year: "2026 год", title: "Цифровая эпоха и лидерство", desc: "Сегодня СевРО — это технологичное, современное движение. Мы внедрили ИТ-направления (Цифровые отряды), автоматизировали учет реестра и выгрузку отчетов комсостава. Наши бойцы работают на ключевых всероссийских стройках от Крыма до Дальнего Востока." }
               ].map((item, idx) => (
-                <div key={idx} className="group border-l-2 border-gray-200 hover:border-rso-blue pl-6 space-y-2 transition-colors duration-500 relative">
-                  {/* Декоративная живая точка на таймлайне */}
-                  <div className="w-3 h-3 bg-white border-2 border-gray-300 rounded-full absolute left-[-7px] top-1.5 group-hover:bg-rso-blue group-hover:border-rso-blue transition-colors duration-300"></div>
-                  
-                  <span className="text-xs font-mono font-black text-rso-blue opacity-60 uppercase tracking-widest block">
+                <div 
+                  key={idx} 
+                  className="group p-6 bg-gray-50/50 border border-gray-100 rounded-2xl space-y-2 transition-all duration-300 relative hover:bg-white hover:border-rso-blue/20 hover:shadow-sm"
+                >
+                  <span className="inline-block text-[10px] font-bold text-rso-blue bg-blue-50 px-2.5 py-0.5 rounded-full uppercase tracking-wide">
                     {item.year}
                   </span>
-                  <h3 className="text-xl md:text-2xl font-black uppercase text-black group-hover:text-rso-blue transition-colors duration-300">
+                  <h3 className="text-lg md:text-xl font-black uppercase text-black group-hover:text-rso-blue transition-colors duration-300">
                     {item.title}
                   </h3>
-                  <p className="text-sm md:text-base text-gray-600 font-medium leading-relaxed max-w-3xl">
+                  <p className="text-xs md:text-sm text-gray-500 font-medium leading-relaxed max-w-3xl">
                     {item.desc}
                   </p>
                 </div>
@@ -162,31 +162,28 @@ export default function About() {
         </section>
 
 
-        {/* ================= 4. НАПРАВЛЕНИЯ ДЕЯТЕЛЬНОСТИ (Все 6 штук) ================= */}
-        <section className="max-w-[1600px] mx-auto px-6 py-20 border-b border-gray-100">
-          <div className="mb-12">
-            <span className="text-xs font-mono font-bold text-rso-blue uppercase tracking-widest">// СТРУКТУРА ДВИЖЕНИЯ</span>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter text-rso-blue mt-1 leading-none">
-              6 Направлений Труда
-            </h2>
+        {/* ================= 4. НАПРАВЛЕНИЯ ДЕЯТЕЛЬНОСТИ (Bento Карточки) ================= */}
+        <section className="max-w-[1600px] mx-auto px-6 pb-20 lg:pb-28">
+          <div className="mb-8">
+            <span className="text-xs font-bold text-rso-blue uppercase tracking-wider">Структура движения</span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tight text-black mt-1">6 Направлений Труда</h2>
           </div>
 
-          {/* Компактная журнальная сетка, идентичная главной странице */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {directions.map((dir, index) => (
-              <div key={index} className="group relative aspect-[16/10] bg-gray-950 overflow-hidden shadow-md border border-gray-100">
+              <div key={index} className="group relative aspect-[16/10] bg-gray-900 rounded-2xl overflow-hidden shadow-sm border border-gray-100">
                 <img 
                   src={dir.img} 
-                  className="w-full h-full object-cover opacity-30 transition-transform duration-700 scale-101 group-hover:scale-105 group-hover:opacity-20" 
+                  className="w-full h-full object-cover opacity-35 transition-transform duration-700 scale-101 group-hover:scale-103 group-hover:opacity-25" 
                   alt={dir.title} 
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent z-10"></div>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent z-10"></div>
                 
                 <div className="absolute inset-0 p-6 flex flex-col justify-end text-white z-20">
-                  <span className="text-[10px] font-mono font-bold text-rso-blue uppercase tracking-widest mb-1 block">
-                    {dir.code} // DIRECTION
+                  <span className="text-[9px] font-bold text-rso-blue uppercase tracking-wider mb-1 block">
+                    Направление {dir.code}
                   </span>
-                  <h3 className="text-lg md:text-xl font-black uppercase tracking-tight mb-1 text-white group-hover:text-rso-blue transition-colors">
+                  <h3 className="text-base md:text-lg font-black uppercase tracking-tight mb-1 text-white group-hover:text-rso-blue transition-colors">
                     {dir.title}
                   </h3>
                   <p className="text-[11px] opacity-75 font-medium leading-relaxed line-clamp-2 max-w-sm">
@@ -199,33 +196,34 @@ export default function About() {
         </section>
 
 
-        {/* ================= 5. ТРУДОВЫЕ ОБЪЕКТЫ (Интерактивная таблица) ================= */}
-        <section className="max-w-[1600px] mx-auto px-6 py-20 border-b border-gray-100">
-          <div className="mb-12">
-            <span className="text-xs font-mono font-bold text-rso-blue uppercase tracking-widest">// ГЕОГРАФИЯ РАБОТЫ</span>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter text-rso-blue mt-1 leading-none">
-              Наши трудовые объекты
-            </h2>
+        {/* ================= 5. ТРУДОВЫЕ ОБЪЕКТЫ (Мягкие Bento-списки) ================= */}
+        <section className="max-w-[1600px] mx-auto px-6 pb-20 lg:pb-28">
+          <div className="mb-8">
+            <span className="text-xs font-bold text-rso-blue uppercase tracking-wider">География работы</span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tight text-black mt-1">Наши трудовые объекты</h2>
           </div>
 
-          <div className="border border-gray-200 divide-y divide-gray-200">
+          <div className="grid grid-cols-1 gap-4">
             {laborObjects.map((obj, i) => (
-              <div key={i} className="p-6 md:p-8 grid grid-cols-1 md:grid-cols-12 gap-4 items-center hover:bg-blue-50/30 transition-colors duration-300 group">
+              <div 
+                key={i} 
+                className="p-5 md:p-6 bg-gray-50/70 border border-gray-100 rounded-2xl grid grid-cols-1 md:grid-cols-12 gap-4 items-center hover:bg-white hover:border-rso-blue/20 hover:shadow-sm transition-all duration-300 group"
+              >
                 <div className="md:col-span-4">
-                  <span className="text-xs font-mono text-gray-400 block mb-1">0{i+1} // НАЗВАНИЕ</span>
-                  <div className="text-base md:text-lg font-black uppercase text-black group-hover:text-rso-blue transition-colors">
+                  <span className="text-[9px] font-bold text-gray-400 block uppercase tracking-wider">Проект</span>
+                  <div className="text-base font-black uppercase text-black group-hover:text-rso-blue transition-colors mt-0.5">
                     {obj.name}
                   </div>
                 </div>
                 <div className="md:col-span-3">
-                  <span className="text-xs font-mono text-gray-400 block mb-1">ЛОКАЦИЯ</span>
-                  <div className="text-sm font-bold text-gray-700 uppercase tracking-wide">
+                  <span className="text-[9px] font-bold text-gray-400 block uppercase tracking-wider">Локация</span>
+                  <div className="text-xs font-bold text-gray-500 uppercase tracking-wide mt-0.5">
                     {obj.location}
                   </div>
                 </div>
                 <div className="md:col-span-5">
-                  <span className="text-xs font-mono text-gray-400 block mb-1">ПРОИЗВОДСТВЕННАЯ ЗАДАЧА</span>
-                  <div className="text-xs md:text-sm text-gray-500 font-medium">
+                  <span className="text-[9px] font-bold text-gray-400 block uppercase tracking-wider">Производственная задача</span>
+                  <div className="text-xs text-gray-400 font-medium mt-0.5 leading-relaxed">
                     {obj.task}
                   </div>
                 </div>
@@ -235,21 +233,24 @@ export default function About() {
         </section>
 
 
-        {/* ================= 6. НАШИ ЦЕННОСТИ ================= */}
-        <section className="max-w-[1600px] mx-auto px-6 py-20 lg:py-28">
-          <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter text-rso-blue mb-16 text-center leading-none">
+        {/* ================= 6. НАШИ ЦЕННОСТИ (Мягкие карточки) ================= */}
+        <section className="max-w-[1600px] mx-auto px-6 pb-20 lg:pb-28">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-black uppercase tracking-tight text-center text-black mb-12">
             Наши Кодексы и Ценности
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {values.map((val, idx) => (
-              <div key={idx} className="group p-8 md:p-10 border border-gray-100 hover:border-rso-blue transition-all duration-500 bg-white hover:shadow-2xl hover:shadow-blue-500/5">
-                <span className="text-xs font-mono font-bold text-rso-blue opacity-30 group-hover:opacity-100 transition-opacity">
-                  0{idx + 1} // CODE_VALUE
+              <div 
+                key={idx} 
+                className="group p-6 md:p-8 bg-gray-50/60 border border-gray-100 rounded-2xl hover:border-rso-blue/20 transition-all duration-300 hover:bg-white hover:shadow-sm"
+              >
+                <span className="text-[10px] font-bold text-rso-blue uppercase tracking-wider">
+                  Ценность 0{idx + 1}
                 </span>
-                <h3 className="text-2xl font-black uppercase mt-4 mb-4 text-black group-hover:text-rso-blue transition-colors">
+                <h3 className="text-xl font-black uppercase mt-2 mb-3 text-black group-hover:text-rso-blue transition-colors">
                   {val.title}
                 </h3>
-                <p className="text-gray-500 text-sm font-medium leading-relaxed">
+                <p className="text-gray-400 text-xs md:text-sm font-medium leading-relaxed">
                   {val.desc}
                 </p>
               </div>
@@ -258,17 +259,18 @@ export default function About() {
         </section>
 
 
-        {/* ================= 7. CTA СЕКЦИЯ ================= */}
-        <section className="w-full bg-rso-blue text-white py-20 lg:py-28 text-center px-6">
-          <h2 className="text-3xl sm:text-5xl md:text-6xl font-black uppercase tracking-tighter leading-none mb-6">
+        {/* ================= 7. CTA СЕКЦИЯ (Призыв к действию) ================= */}
+        <section className="w-full bg-rso-blue text-white py-16 lg:py-24 text-center px-6">
+          <h2 className="text-3xl sm:text-5xl font-black uppercase tracking-tighter leading-none mb-4">
             Твоя история начинается здесь
           </h2>
-          <p className="text-sm md:text-base opacity-80 max-w-xl mx-auto mb-10 font-medium leading-relaxed">
+          <p className="text-sm opacity-80 max-w-xl mx-auto mb-8 font-medium leading-relaxed">
             Присоединяйся к самому масштабному молодежному братству Севастополя. Подай заявку прямо сейчас и проведи незабываемый рабочий сезон.
           </p>
           <Link 
+            // Изменил href на react-router-dom Link компонент для плавного перехода
             to="/register" 
-            className="inline-block bg-white text-rso-blue font-black uppercase text-xs tracking-[0.2em] px-12 py-5 hover:bg-black hover:text-white transition-colors shadow-2xl"
+            className="inline-block bg-white text-rso-blue font-bold uppercase text-xs tracking-wider px-10 py-4.5 rounded-xl hover:bg-black hover:text-white transition-colors shadow-lg shadow-black/5"
           >
             Вступить в отряд →
           </Link>
@@ -276,10 +278,10 @@ export default function About() {
 
       </main>
 
-      {/* Единый футер */}
+      {/* Мягкий футер */}
       <footer className="border-t border-gray-100 py-10 bg-white text-center">
-        <p className="text-[10px] font-mono font-bold uppercase opacity-30 tracking-[0.3em]">
-          СЕВАСТОПОЛЬСКОЕ РЕГИОНАЛЬНОЕ ОТДЕЛЕНИЕ // МООО РСО 2026 // ТРУД КРУТ
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+          Севастопольское региональное отделение // МООО РСО 2026 // Труд Крут
         </p>
       </footer>
     </div>

@@ -304,6 +304,7 @@ app.post('/api/events', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'MA
 });
 
 // ИСПРАВЛЕНО: Умная фильтрация ленты. Обычные бойцы видят только СВОЙ отряд + РЕГИОНАЛЬНЫЕ
+// ИСПРАВЛЕННЫЙ РОУТ ЛЕНТЫ СОБЫТИЙ С ПОДГРУЗКОЙ УЧАСТНИКОВ
 app.get('/api/events', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -321,7 +322,15 @@ app.get('/api/events', authMiddleware, async (req, res) => {
 
     const events = await prisma.event.findMany({
       where: queryConditions,
-      orderBy: { date: 'asc' }
+      orderBy: { date: 'asc' },
+      // НАШ ПАТЧ: Принудительно забираем участников и их ФИО для ведомости Мастера
+      include: {
+        participations: {
+          include: {
+            user: { select: { id: true, firstName: true, lastName: true, email: true } }
+          }
+        }
+      }
     });
 
     const userParticipations = await prisma.eventParticipant.findMany({ where: { userId } });

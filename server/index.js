@@ -318,8 +318,7 @@ app.get('/api/events/my-nearest', authMiddleware, async (req, res) => {
 });
 
 // ИСПРАВЛЕНО: Защита от записи на закрытые мероприятия чужих отрядов
-app.post('/api/events/:id/join', authMiddleware, checkRole(['USER', 'CANDIDATE', 'BOETS', 'COMMANDER', 'COMMISSAR', 'MASTER', 'MEDIA']), async (req, res) => {
-  try {
+app.post('/api/events/:id/join', authMiddleware, checkRole(['USER', 'CANDIDATE', 'BOETS', 'COMMANDER', 'COMMISSAR', 'MASTER', 'MEDIA', 'REG_HQ']), async (req, res) => {  try {
     const userId = req.user.userId;
     const eventId = req.params.id;
 

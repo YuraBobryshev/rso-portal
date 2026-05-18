@@ -3,7 +3,7 @@ name: Continuous Deployment (Callisto VPS)
 on:
   push:
     branches:
-      - main # Скрипт срабатывает каждый раз, когда ты пушишь изменения в ветку main
+      - main
 
 jobs:
   deploy:
@@ -13,9 +13,9 @@ jobs:
       - name: Deploying code via SSH to Callisto VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: ${{ secrets.HOST }}
-          username: ${{ secrets.USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          host: 176.98.177.3          # Прописали IP напрямую
+          username: root              # Прописали пользователя напрямую
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # Ключ по-прежнему берем из секретов
           port: 22
           script: |
             echo "--- Подключаемся к директории проекта ---"
@@ -27,7 +27,7 @@ jobs:
             echo "--- Запускаем пересборку Docker контейнеров в фоне ---"
             docker compose up -d --build
             
-            echo "--- Очищаем неиспользуемые старые образы Docker (экономим место) ---"
+            echo "--- Очищаем неиспользуемые старые образы Docker ---"
             docker image prune -f
             
             echo "🚀 Автодеплой успешно завершен! Портал обновлен."

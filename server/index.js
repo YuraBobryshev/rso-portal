@@ -1,425 +1,420 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
-import Header from '../components/Header';
-import CreateEventModal from '../components/CreateEventModal';
+const express = require('express');
+const cors = require('cors');
+const bcrypt = require('bcryptjs'); 
+const { PrismaClient } = require('@prisma/client');
+const jwt = require('jsonwebtoken');
+const authMiddleware = require('./middleware/auth');
+const { upload } = require('./s3Config'); 
 
-export default function Profile() {
-  const [user, setUser] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [eventsLoading, setEventsLoading] = useState(false);
-  
-  // Социальные сети
-  const [vkUrl, setVkUrl] = useState('');
-  const [tgUrl, setTgUrl] = useState('');
-  const [saveSuccess, setSaveSuccess] = useState(false);
+const app = express();
+const prisma = new PrismaClient();
 
-  // Календарь и отображение
-  const [viewMode, setViewMode] = useState('list'); // 'list' или 'calendar'
-  const [calendarDate, setCalendarDate] = useState(new Date(2026, 4, 1)); // Май 2026
-  const [selectedDateEvents, setSelectedDateEvents] = useState([]);
-  const [selectedDayLabel, setSelectedDayLabel] = useState(null);
+app.use(cors());
+app.use(express.json());
 
-  // Стейты модальных окон
-  const [isModalOpen, setIsModalOpen] = useState(false); 
-  const [selectedEventForView, setSelectedEventForView] = useState(null); 
-
-  const navigate = useNavigate();
-  const token = localStorage.getItem('token');
-  const API_URL = 'http://176.98.177.3:5000'; // Твой боевой IP
-
-  const fetchProfileData = async () => {
-    if (!token) { navigate('/login'); return; }
-    const headers = { Authorization: `Bearer ${token}` };
-    try {
-      setLoading(true);
-      const userRes = await axios.get(`${API_URL}/api/auth/me`, { headers });
-      setUser(userRes.data);
-      setVkUrl(userRes.data.vkUrl || '');
-      setTgUrl(userRes.data.tgUrl || '');
-
-      setEventsLoading(true);
-      const eventsRes = await axios.get(`${API_URL}/api/events`, { headers });
-      setEvents(eventsRes.data);
-    } catch (err) {
-      console.error("Ошибка загрузки профиля", err);
-      if (err.response?.status === 401) navigate('/login');
-    } finally {
-      setLoading(false);
-      setEventsLoading(false);
+const checkRole = (allowedRoles) => async (req, res, next) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    if (!user || !allowedRoles.includes(user.role)) {
+      return res.status(403).json({ message: 'Доступ запрещен: недостаточно прав' });
     }
-  };
+    next();
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка проверки прав доступа' });
+  }
+};
 
-  useEffect(() => {
-    fetchProfileData();
-  }, [navigate]);
+// =============================================================================
+// 🔐 БЛОК 1: АВТОРИЗАЦИЯ И ПРОФИЛЬ
+// =============================================================================
 
-  const refreshEventsList = async () => {
-    const headers = { Authorization: `Bearer ${token}` };
-    try {
-      const eventsRes = await axios.get(`${API_URL}/api/events`, { headers });
-      setEvents(eventsRes.data);
-      return eventsRes.data;
-    } catch (err) { console.error(err); }
-  };
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const { email, password, firstName, lastName } = req.body;
+    const existingUser = await prisma.user.findUnique({ where: { email } });
+    if (existingUser) {
+      return res.status(400).json({ message: 'Этот Email уже занят' });
+    }
 
-  const handleJoinEvent = async (id) => {
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      await axios.post(`${API_URL}/api/events/${id}/join`, {}, { headers });
-      const updatedEvents = await refreshEventsList();
-      
-      const currentEvent = updatedEvents.find(e => e.id === id);
-      if (selectedEventForView) setSelectedEventForView(currentEvent);
-      
-      if (selectedDayLabel && currentEvent) {
-        const clickedDateStr = new Date(currentEvent.date).toDateString();
-        const matches = updatedEvents.filter(e => new Date(e.date).toDateString() === clickedDateStr);
-        setSelectedDateEvents(matches);
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({
+      data: { email, password: hashedPassword, firstName, lastName, vkUrl: "", tgUrl: "" }
+    });
+
+    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    res.status(201).json({ token, user: { id: user.id, email, firstName, lastName, role: user.role } });
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка сервера при создании аккаунта' });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ message: 'Неверные данные' });
+    }
+
+    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token, user: { id: user.id, email, firstName: user.firstName, lastName: user.lastName, role: user.role } });
+  } catch (error) { res.status(500).json({ message: 'Ошибка сервера' }); }
+});
+
+app.get('/api/auth/me', authMiddleware, async (req, res) => {
+  const user = await prisma.user.findUnique({
+    where: { id: req.user.userId },
+    select: { id: true, email: true, firstName: true, lastName: true, role: true, createdAt: true, brigade: true, vkUrl: true, tgUrl: true, avatarUrl: true }
+  });
+  res.json(user);
+});
+
+app.patch('/api/auth/profile', authMiddleware, async (req, res) => {
+  try {
+    const { vkUrl, tgUrl } = req.body;
+    await prisma.user.update({
+      where: { id: req.user.userId },
+      data: { vkUrl: vkUrl || "", tgUrl: tgUrl || "" }
+    });
+    res.json({ message: "Успешно" });
+  } catch (error) { res.status(500).json({ message: "Ошибка сервера" }); }
+});
+
+app.post('/api/auth/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) return res.status(400).json({ message: "Файл не получен" });
+    const imageUrl = req.file.location;
+    await prisma.user.update({ where: { id: req.user.userId }, data: { avatarUrl: imageUrl } });
+    res.json({ message: "Avatar updated", avatarUrl: imageUrl });
+  } catch (error) { res.status(500).json({ message: "Ошибка загрузки" }); }
+});
+
+// =============================================================================
+// ⚙️ БЛОК 2: АДМИНИСТРИРОВАНИЕ
+// =============================================================================
+
+app.get('/api/admin/users', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      select: { 
+        id: true, 
+        email: true, 
+        firstName: true, 
+        lastName: true, 
+        role: true, 
+        brigadeId: true, 
+        avatarUrl: true,
+        brigade: { select: { name: true } } 
       }
-    } catch (err) {
-      alert(err.response?.data?.message || 'Не удалось записаться');
+    });
+    res.json(users);
+  } catch (e) { res.status(500).json({ message: "Ошибка" }); }
+});
+
+app.patch('/api/admin/update-role', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  const { userId, newRole } = req.body;
+  await prisma.user.update({ where: { id: userId }, data: { role: newRole } });
+  res.json({ message: 'Роль обновлена' });
+});
+
+// НОВЫЙ РОУТ: Верификация Кандидата до официального Бойца Региональным штабом
+app.patch('/api/admin/verify-boets', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  try {
+    const { userId } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return res.status(404).json({ message: 'Пользователь не найден' });
+    if (user.role !== 'CANDIDATE') {
+      return res.status(400).json({ message: 'Пользователь должен иметь статус Кандидата' });
     }
-  };
+    await prisma.user.update({ where: { id: userId }, data: { role: 'BOETS' } });
+    res.json({ message: 'Пользователь успешно верифицирован как официальный Боец!' });
+  } catch (e) { res.status(500).json({ message: "Ошибка сервера" }); }
+});
 
-  const handleLeaveEvent = async (id) => {
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      await axios.delete(`${API_URL}/api/events/${id}/leave`, { headers });
-      const updatedEvents = await refreshEventsList();
+app.post('/api/admin/create-brigade', authMiddleware, checkRole(['REG_HQ']), upload.single('logo'), async (req, res) => {
+  try {
+    const { name, description, type, colorScheme } = req.body;
+    const logoUrl = req.file ? req.file.location : null;
+    const brigade = await prisma.brigade.create({
+      data: { name, description, type, colorScheme: colorScheme || "#0052FF", logoUrl }
+    });
+    res.status(201).json({ message: 'Отряд успешно создан', brigade });
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка сервера при создании отряда' });
+  }
+});
 
-      const currentEvent = updatedEvents.find(e => e.id === id);
-      if (selectedEventForView) setSelectedEventForView(currentEvent);
+app.patch('/api/admin/update-user-brigade', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  const { userId, brigadeId } = req.body;
+  await prisma.user.update({
+    where: { id: userId },
+    data: { brigadeId: brigadeId === 'none' ? null : brigadeId }
+  });
+  res.json({ message: 'Боец распределен' });
+});
 
-      if (selectedDayLabel && currentEvent) {
-        const clickedDateStr = new Date(currentEvent.date).toDateString();
-        const matches = updatedEvents.filter(e => new Date(e.date).toDateString() === clickedDateStr);
-        setSelectedDateEvents(matches);
+app.delete('/api/admin/users/:id', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (id === req.user.userId) return res.status(400).json({ message: "Самоликвидация запрещена" });
+    await prisma.user.delete({ where: { id } });
+    res.json({ message: "Объект удален" });
+  } catch (error) { res.status(500).json({ message: "Ошибка при удалении" }); }
+});
+
+app.delete('/api/events/:id/leave', authMiddleware, async (req, res) => {
+  try {
+    await prisma.eventParticipant.deleteMany({ where: { userId: req.user.userId, eventId: req.params.id } });
+    res.json({ message: "Участие отменено" });
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
+});
+
+app.get('/api/admin/events', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  try {
+    const events = await prisma.event.findMany({ orderBy: { date: 'desc' } });
+    const allParticipants = await prisma.eventParticipant.findMany();
+    const users = await prisma.user.findMany({ select: { id: true, firstName: true, lastName: true, brigadeId: true } });
+    const brigades = await prisma.brigade.findMany();
+
+    const formattedEvents = events.map(event => {
+      const eventParts = allParticipants.filter(p => p.eventId === event.id);
+      const enrichedParticipants = eventParts.map(ep => {
+        const user = users.find(u => u.id === ep.userId) || {};
+        const brigade = brigades.find(b => b.id === user.brigadeId) || null;
+        return { id: ep.id, user: { id: user.id || 'unknown', firstName: user.firstName || 'Удаленный', lastName: user.lastName || 'Пользователь', brigade: brigade } };
+      });
+      return { ...event, participants: enrichedParticipants };
+    });
+    res.json(formattedEvents);
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
+});
+
+// =============================================================================
+// 🤝 БЛОК 3: ОТРЯДЫ И ЗАЯВКИ
+// =============================================================================
+
+app.get('/api/brigades', async (req, res) => {
+  try {
+    const brigades = await prisma.brigade.findMany({
+      include: { _count: { select: { users: true } } }
+    });
+    res.json(distributors);
+    res.json(brigades);
+  } catch (e) { res.status(500).json([]); }
+});
+
+// ИСПРАВЛЕНО: Добавлена антиспам защита (блокировка дублирования активных заявок)
+app.post('/api/applications/apply', authMiddleware, async (req, res) => {
+  try {
+    const { brigadeId } = req.body;
+    const userId = req.user.userId;
+    
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user.brigadeId) return res.status(400).json({ message: 'Вы уже состоите в отряде' });
+
+    const existingPending = await prisma.application.findFirst({
+      where: { userId, status: 'PENDING' }
+    });
+    if (existingPending) {
+      return res.status(400).json({ message: 'У вас уже есть активная заявка на рассмотрении' });
+    }
+
+    await prisma.application.create({ data: { userId, brigadeId } });
+    res.json({ message: 'Заявка успешно отправлена' });
+  } catch (e) { res.status(500).json({ message: 'Ошибка сервера' }); }
+});
+
+// ИСПРАВЛЕНО: Теперь сохраняет текстовый комментарий/причину отказа в базу данных
+app.post('/api/commander/process-application', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
+  try {
+    const { appId, status, comment } = req.body;
+    const application = await prisma.application.update({ 
+      where: { id: appId }, 
+      data: { status, comment: comment || null } 
+    });
+    
+    if (status === 'APPROVED') {
+      await prisma.user.update({ 
+        where: { id: application.userId }, 
+        data: { role: 'CANDIDATE', brigadeId: application.brigadeId } 
+      });
+    }
+    res.json({ message: 'Заявка обработана комсоставом' });
+  } catch (e) { res.status(500).json({ message: 'Ошибка обработки заявки' }); }
+});
+
+// =============================================================================
+// 📅 БЛОК 4: МЕРОПРИЯТИЯ И ПОСЕЩАЕМОСТЬ (Полная синхронизация и защита)
+// =============================================================================
+
+// ИСПРАВЛЕНО: Расширены права создания и добавлена четкая сегментация типов
+app.post('/api/events', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'MASTER', 'REG_HQ']), async (req, res) => {
+  try {
+    const { title, description, date, location, type } = req.body;
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    
+    let targetBrigadeId = null;
+    let eventType = "LOCAL";
+
+    if (user.role === 'REG_HQ') {
+      eventType = type || "REGIONAL";
+      targetBrigadeId = eventType === 'REGIONAL' ? null : req.body.brigadeId;
+    } else {
+      if (!user.brigadeId) return res.status(403).json({ message: "Вы не привязаны к ЛСО" });
+      targetBrigadeId = user.brigadeId;
+    }
+
+    const event = await prisma.event.create({
+      data: { 
+        title, 
+        description: description || "Описание не указано", 
+        date: new Date(date), 
+        location: location || "Не указано",
+        type: eventType, 
+        brigadeId: targetBrigadeId 
       }
-    } catch (err) { console.error(err); }
-  };
+    });
+    res.status(201).json(event);
+  } catch (error) { res.status(500).json({ message: "Ошибка создания мероприятия" }); }
+});
 
-  const handleSaveSocials = async (e) => {
-    e.preventDefault();
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
-      await axios.patch(`${API_URL}/api/auth/profile`, { vkUrl, tgUrl }, { headers });
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (err) { console.error(err); }
-  };
-
-  const handleAvatarUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const formData = new FormData();
-    formData.append('avatar', file);
-    try {
-      const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' };
-      await axios.post(`${API_URL}/api/auth/upload-avatar`, formData, { headers });
-      fetchProfileData();
-    } catch (err) { console.error(err); }
-  };
-
-  const getEventStatus = (dateStr) => {
-    const now = new Date();
-    const eventStart = new Date(dateStr);
-    const eventEnd = new Date(eventStart.getTime() + 3 * 60 * 60 * 1000);
-
-    if (now < eventStart) {
-      return { label: 'Будущее', styles: 'bg-blue-50 text-blue-600 border-blue-100' };
+// ИСПРАВЛЕНО: Умная фильтрация ленты. Обычные бойцы видят только СВОЙ отряд + РЕГИОНАЛЬНЫЕ
+app.get('/api/events', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    
+    let queryConditions = {};
+    if (user.role !== 'REG_HQ') {
+      queryConditions = {
+        OR: [
+          { type: 'REGIONAL' },
+          { brigadeId: user.brigadeId || undefined }
+        ]
+      };
     }
-    if (now >= eventStart && now <= eventEnd) {
-      return { label: 'Идет сейчас', styles: 'bg-green-50 text-green-600 border-green-100 font-black animate-pulse' };
+
+    const events = await prisma.event.findMany({
+      where: queryConditions,
+      orderBy: { date: 'asc' }
+    });
+
+    const userParticipations = await prisma.eventParticipant.findMany({ where: { userId } });
+    const joinedEventIds = userParticipations.map(p => p.eventId);
+    const formattedEvents = events.map(event => ({ ...event, isJoined: joinedEventIds.includes(event.id) }));
+    res.json(formattedEvents);
+  } catch (error) { res.status(500).json({ message: "Ошибка загрузки ленты" }); }
+});
+
+app.get('/api/events/my-nearest', authMiddleware, async (req, res) => {
+  try {
+    const nearest = await prisma.eventParticipant.findFirst({
+      where: { userId: req.user.userId, event: { date: { gte: new Date() } } },
+      include: { event: true },
+      orderBy: { event: { date: 'asc' } }
+    });
+    res.json(nearest ? nearest.event : null);
+  } catch (e) { res.status(500).json(null); }
+});
+
+// ИСПРАВЛЕНО: Защита от записи на закрытые мероприятия чужих отрядов
+app.post('/api/events/:id/join', authMiddleware, checkRole(['USER', 'CANDIDATE', 'BOETS', 'COMMANDER', 'COMMISSAR', 'MASTER', 'MEDIA', 'REG_HQ']), async (req, res) => {  try {
+    const userId = req.user.userId;
+    const eventId = req.params.id;
+
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!event) return res.status(404).json({ message: "Мероприятие не найдено" });
+
+    if (event.type === 'LOCAL' && event.brigadeId !== user.brigadeId && user.role !== 'REG_HQ') {
+      return res.status(403).json({ message: "Доступ запрещен: это закрытое событие чужого ЛСО" });
     }
-    return { label: 'Прошедшее', styles: 'bg-gray-100 text-gray-400 border-gray-200' };
-  };
 
-  const isCommandStaff = user && ['COMMANDER', 'COMMISSAR', 'MASTER', 'REG_HQ'].includes(user.role);
+    await prisma.eventParticipant.create({ data: { userId, eventId } });
+    res.json({ message: "Вы успешно записаны" });
+  } catch (error) { res.status(500).json({ message: "Ошибка записи" }); }
+});
 
-  // Математика календаря
-  const year = calendarDate.getFullYear();
-  const month = calendarDate.getMonth();
-  const firstDayOfMonth = new Date(year, month, 1).getDay();
-  const blanksCount = firstDayOfMonth === 0 ? 6 : firstDayOfMonth - 1;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+// ИСПРАВЛЕНО: Теперь роут доступен также Мастеру и учитывает ID из тела запроса
+app.patch('/api/events/attendance', authMiddleware, checkRole(['MASTER', 'COMMANDER', 'REG_HQ']), async (req, res) => {
+  try {
+    const { participantId, attended } = req.body;
+    await prisma.eventParticipant.update({ 
+      where: { id: participantId }, 
+      data: { attended } 
+    });
+    res.json({ message: "Статус посещаемости успешно обновлен" });
+  } catch (e) { res.status(500).json({ message: "Ошибка обновления статуса" }); }
+});
 
-  const daysArray = [];
-  for (let i = 0; i < blanksCount; i++) daysArray.push(null);
-  for (let d = 1; d <= daysInMonth; d++) daysArray.push(d);
+// =============================================================================
+// 🛡️ БЛОК 5: ПАНЕЛЬ КОМАНДИРА И ЛЕНТА ПОСТОВ
+// =============================================================================
 
-  const changeMonth = (offset) => {
-    setCalendarDate(new Date(year, month + offset, 1));
-    setSelectedDateEvents([]);
-    setSelectedDayLabel(null);
-  };
+app.get('/api/commander/dashboard', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    const brigade = await prisma.brigade.findUnique({ where: { id: user.brigadeId } });
+    const members = await prisma.user.findMany({ where: { brigadeId: user.brigadeId }, select: { id: true, firstName: true, lastName: true, role: true, email: true }, orderBy: { role: 'desc' } });
+    const applications = await prisma.application.findMany({ where: { brigadeId: user.brigadeId, status: 'PENDING' }, include: { user: { select: { id: true, firstName: true, lastName: true, email: true } } } });
+    res.json({ brigade, members, applications });
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
+});
 
-  const handleDayClick = (day) => {
-    if (!day) return;
-    const clickedDateStr = new Date(year, month, day).toDateString();
-    const matches = events.filter(e => new Date(e.date).toDateString() === clickedDateStr);
-    setSelectedDateEvents(matches);
-    setSelectedDayLabel(`${day} ${calendarDate.toLocaleString('ru-RU', { month: 'long' })} 2026`);
-  };
+app.get('/api/posts', async (req, res) => {
+  try {
+    const posts = await prisma.post.findMany({
+      include: {
+        author: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+        comments: { include: { author: { select: { firstName: true, avatarUrl: true } } }, orderBy: { createdAt: 'asc' } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(posts);
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
+});
 
-  if (loading || !user) return (
-    <div className="min-h-screen bg-white flex items-center justify-center text-sm font-medium text-gray-400 animate-pulse">
-      Синхронизация учетной записи бойца...
-    </div>
-  );
+app.post('/api/posts', authMiddleware, checkRole(['COMMANDER', 'REG_HQ']), upload.single('image'), async (req, res) => {
+  try {
+    const { title, content } = req.body;
+    const imageUrl = req.file ? req.file.location : null;
+    const post = await prisma.post.create({
+      data: { title, content, imageUrl, authorId: req.user.userId },
+      include: { author: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } } }
+    });
+    res.status(201).json(post);
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
+});
 
-  return (
-    <div className="min-h-screen bg-white text-black font-sans antialiased selection:bg-rso-blue selection:text-white">
-      <Header />
+app.post('/api/posts/:id/comment', authMiddleware, async (req, res) => {
+  try {
+    const comment = await prisma.comment.create({
+      data: { content: req.body.content, authorId: req.user.userId, postId: req.params.id },
+      include: { author: { select: { firstName: true, lastName: true, avatarUrl: true } } }
+    });
+    res.json(comment);
+  } catch (e) { res.status(500).json({ message: "Ошибка" }); }
+});
 
-      {/* Изменено: отступы pt-20 для мобилок и pt-28 для десктопа, уменьшен gap */}
-      <main className="max-w-[1500px] mx-auto px-4 sm:px-6 pt-24 pb-24 grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
-        
-        {/* ================= ЛЕВАЯ КОЛОНКА ================= */}
-        <div className="lg:col-span-4 space-y-6">
-          <div className="border border-gray-100 rounded-3xl p-5 sm:p-6 bg-white shadow-sm flex flex-col items-center text-center relative overflow-hidden">
-            <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full border border-gray-100 bg-gray-50 overflow-hidden relative group shadow-inner mb-3 sm:mb-4">
-              {user.avatarUrl ? (
-                <img src={user.avatarUrl} className="w-full h-full object-cover" alt="" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-2xl sm:text-3xl font-black text-rso-blue bg-blue-50/50">{user.firstName?.charAt(0)}</div>
-              )}
-              <label className="absolute inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity duration-200">
-                <span className="text-[10px] font-black uppercase text-white tracking-wider">Обновить</span>
-                <input type="file" className="hidden" onChange={handleAvatarUpload} accept="image/*" />
-              </label>
-            </div>
+app.delete('/api/posts/:id', authMiddleware, async (req, res) => {
+  try {
+    const post = await prisma.post.findUnique({ where: { id: req.params.id } });
+    if (post.authorId !== req.user.userId && req.user.role !== 'REG_HQ') return res.status(403).json({ message: "Нет прав" });
+    await prisma.post.delete({ where: { id: req.params.id } });
+    res.json({ message: "Новость удалена" });
+  } catch (e) { res.status(500).json({ message: "Ошибка" }); }
+});
 
-            <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-gray-900 leading-tight">{user.lastName} <br /> {user.firstName}</h2>
-            
-            <div className="mt-2.5 flex flex-wrap justify-center gap-1">
-              <span className={`px-2.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-wider text-white ${user.role === 'REG_HQ' ? 'bg-red-500' : user.role === 'COMMANDER' ? 'bg-rso-blue' : 'bg-gray-400'}`}>{user.role}</span>
-              {user.brigade?.name && <span className="px-2.5 py-0.5 rounded-full text-[8px] sm:text-[9px] font-black uppercase tracking-wider bg-gray-900 text-white">{user.brigade.name}</span>}
-            </div>
-            <p className="text-[9px] text-gray-400 font-mono mt-3 uppercase tracking-wider">ID: {user.id.substring(0, 8)}</p>
-          </div>
+app.get('/api/brigades/:id', async (req, res) => {
+  try {
+    const brigade = await prisma.brigade.findUnique({
+      where: { id: req.params.id },
+      include: { users: { select: { id: true, firstName: true, lastName: true, role: true, avatarUrl: true }, orderBy: { role: 'desc' } } }
+    });
+    if (!brigade) return res.status(404).json({ message: "Отряд не найден" });
+    res.json(brigade);
+  } catch (error) { res.status(500).json({ message: "Ошибка" }); }
+});
 
-          <div className="border border-gray-100 rounded-3xl p-5 sm:p-6 bg-white shadow-sm space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-wider text-black">Цифровые контакты</h3>
-            {saveSuccess && <div className="p-2 bg-green-50 text-green-600 border border-green-100 text-[10px] font-bold uppercase rounded-lg text-center">✓ Контакты обновлены</div>}
-            <form onSubmit={handleSaveSocials} className="space-y-3">
-              <div className="space-y-1"><label className="text-[9px] font-bold uppercase text-gray-400">Профиль ВКонтакте</label><input type="text" value={vkUrl} onChange={e => setVkUrl(e.target.value)} placeholder="vk.com/username" className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs text-black font-medium focus:outline-none focus:border-rso-blue focus:bg-white" /></div>
-              <div className="space-y-1"><label className="text-[9px] font-bold uppercase text-gray-400">Никнейм Telegram</label><input type="text" value={tgUrl} onChange={e => setTgUrl(e.target.value)} placeholder="@username" className="w-full px-3 py-2 bg-gray-50 border border-gray-100 rounded-xl text-xs text-black font-medium focus:outline-none focus:border-rso-blue focus:bg-white" /></div>
-              <button type="submit" className="w-full py-2.5 bg-gray-900 hover:bg-black text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-colors">Сохранить изменения</button>
-            </form>
-          </div>
-        </div>
-
-        {/* ПРАВАЯ КОЛОНКА */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Изменено: закругление и падинги теперь гибкие для мобилок */}
-          <div className="border border-gray-100 rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 md:p-8 bg-white shadow-sm space-y-5">
-            
-            {/* Оптимизировано: элементы перестраиваются в стек на мобилке */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pb-4 border-b border-gray-50">
-              <div className="space-y-0.5">
-                <h2 className="text-lg sm:text-xl font-black uppercase tracking-tight text-black">Твой календарь событий</h2>
-                <p className="text-xs text-gray-400 font-medium">Отслеживание посещаемости и планирование выездов</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 w-full md:w-auto justify-between md:justify-end">
-                <div className="flex bg-gray-50 p-1 rounded-xl border border-gray-100 text-[9px] sm:text-[10px] font-black uppercase tracking-wider">
-                  <button onClick={() => setViewMode('list')} className={`px-2.5 py-1.5 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white text-rso-blue shadow-xs' : 'text-gray-400'}`}>Список</button>
-                  <button onClick={() => setViewMode('calendar')} className={`px-2.5 py-1.5 rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-white text-rso-blue shadow-xs' : 'text-gray-400'}`}>Календарь</button>
-                </div>
-                {isCommandStaff && <button onClick={() => setIsModalOpen(true)} className="px-3.5 py-2 bg-rso-blue text-white text-[9px] sm:text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-black transition-colors shadow-xs ml-auto md:ml-0">+ Событие ЛСО</button>}
-              </div>
-            </div>
-
-            {/* РЕНДЕРИНГ РЕЖИМОВ */}
-            {eventsLoading ? (
-              <div className="py-16 text-center text-xs font-medium text-gray-400 uppercase tracking-widest animate-pulse">Синхронизация ленты ивентов...</div>
-            ) : viewMode === 'list' ? (
-              
-              /* РЕЖИМ А: СПИСОК */
-              <div className="space-y-2.5">
-                {events.length > 0 ? (
-                  events.map(event => {
-                    const status = getEventStatus(event.date);
-                    const isRegional = event.type === 'REGIONAL';
-
-                    return (
-                      <div 
-                        key={event.id} 
-                        onClick={() => setSelectedEventForView(event)} 
-                        className="p-4 bg-gray-50/50 border border-gray-100 rounded-2xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 hover:bg-white hover:border-gray-200 hover:shadow-xs cursor-pointer transition-all duration-200"
-                      >
-                        <div className="space-y-1 min-w-0 w-full sm:w-auto">
-                          <div className="flex items-center flex-wrap gap-1">
-                            <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-wide px-1.5 py-0.2 border rounded ${status.styles}`}>• {status.label}</span>
-                            <span className={`text-[7px] sm:text-[8px] font-black uppercase tracking-wide px-1.5 py-0.2 rounded text-white ${isRegional ? 'bg-rso-blue' : 'bg-gray-800'}`}>{isRegional ? 'ШТАБ' : 'ОТРЯД'}</span>
-                            <span className="text-[9px] sm:text-[10px] font-bold text-gray-400">{new Date(event.date).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                          <h4 className="text-xs sm:text-sm font-black uppercase tracking-tight text-black truncate">{event.title}</h4>
-                          <p className="text-[11px] sm:text-xs text-gray-400 font-medium truncate">📍 {event.location || 'Штаб'} — {event.description}</p>
-                        </div>
-
-                        <div className="shrink-0 self-end sm:self-center pt-1 sm:pt-0">
-                          {event.isJoined ? (
-                            <span className="px-2.5 py-1 bg-green-500/10 text-green-600 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider border border-green-500/10">Вы идёте ✓</span>
-                          ) : (
-                            <span className="px-2.5 py-1 bg-gray-100 text-gray-400 rounded-lg text-[8px] sm:text-[9px] font-black uppercase tracking-wider border border-gray-200/50">Не записан</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div className="py-12 text-center text-xs font-bold uppercase opacity-30 tracking-wider">Календарь пуст</div>
-                )}
-              </div>
-
-            ) : (
-              
-              /* РЕЖИМ Б: МОБИЛЬНЫЙ КАЛЕНДАРЬ */
-              <div className="space-y-4 animate-fadeIn">
-                <div className="flex justify-between items-center bg-gray-50 px-3 py-2 rounded-xl border border-gray-100">
-                  <button onClick={() => changeMonth(-1)} className="text-xs font-black text-gray-400 hover:text-black px-2">◀</button>
-                  <span className="text-[11px] sm:text-xs font-black uppercase tracking-wider text-black">{calendarDate.toLocaleString('ru-RU', { month: 'long', year: 'numeric' })}</span>
-                  <button onClick={() => changeMonth(1)} className="text-xs font-black text-gray-400 hover:text-black px-2">▶</button>
-                </div>
-
-                <div className="grid grid-cols-7 gap-1 sm:gap-2 text-center text-[8px] sm:text-[9px] font-black text-gray-400 uppercase tracking-wider">
-                  <div>Пн</div><div>Вт</div><div>Ср</div><div>Чт</div><div>Пт</div><div>Сб</div><div>Вс</div>
-                </div>
-
-                {/* Дни стали более адаптивными по тексту, точки сместились для мелких экранов */}
-                <div className="grid grid-cols-7 gap-1 sm:gap-2">
-                  {daysArray.map((day, idx) => {
-                    if (!day) return <div key={idx} className="aspect-square bg-transparent" />;
-                    const currentLoopDateStr = new Date(year, month, day).toDateString();
-                    const hasEvents = events.some(e => new Date(e.date).toDateString() === currentLoopDateStr);
-
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => handleDayClick(day)}
-                        className={`aspect-square rounded-lg sm:rounded-xl border text-[10px] sm:text-xs font-bold flex flex-col items-center justify-center relative transition-all ${
-                          hasEvents ? 'border-blue-200 bg-blue-50/40 text-rso-blue font-black shadow-xs' : 'border-gray-50 bg-gray-50/30 text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        <span>{day}</span>
-                        {hasEvents && <span className="w-1 h-1 bg-rso-blue rounded-full absolute bottom-1 sm:bottom-1.5" />}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* События под календарем */}
-                {selectedDayLabel && (
-                  <div className="pt-3 border-t border-gray-50 space-y-2 animate-fadeIn">
-                    <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block">События на {selectedDayLabel}:</span>
-                    {selectedDateEvents.length > 0 ? (
-                      selectedDateEvents.map(e => (
-                        <div 
-                          key={e.id} 
-                          onClick={() => setSelectedEventForView(e)} 
-                          className="p-3 bg-gray-50 border border-gray-100 rounded-xl flex justify-between items-center cursor-pointer hover:bg-white hover:border-gray-200 transition-all gap-3"
-                        >
-                          <div className="min-w-0">
-                            <h5 className="text-[11px] sm:text-xs font-black uppercase text-black truncate">{e.title}</h5>
-                            <span className="text-[9px] sm:text-[10px] text-gray-400 font-medium block truncate">📍 {e.location || 'Штаб'}</span>
-                          </div>
-                          <div className="flex items-center gap-1.5 shrink-0">
-                            {e.isJoined && <span className="text-[7px] sm:text-[8px] font-black uppercase bg-green-50 text-green-600 border border-green-100 px-1 py-0.2 rounded">Иду</span>}
-                            <span className="text-[9px] font-black uppercase px-1.5 py-0.5 rounded bg-white text-gray-500 border border-gray-100">{new Date(e.date).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <p className="text-[11px] text-gray-400 italic">На этот день мероприятий не запланировано</p>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-
-      {/* =========================================================================
-          🔥 МОБИЛЬНАЯ КАРТОЧКА МЕРОПРИЯТИЯ (ПАТЧ ПАДИНГОВ И ЗАКРУГЛЕНИЙ)
-          ========================================================================= */}
-      {selectedEventForView && (() => {
-        const status = getEventStatus(selectedEventForView.date);
-        const isRegional = selectedEventForView.type === 'REGIONAL';
-
-        return (
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 animate-fadeIn">
-            <div className="bg-white border border-gray-100 rounded-2xl sm:rounded-[2.5rem] w-full max-w-xl p-5 sm:p-6 md:p-8 shadow-2xl relative space-y-4 sm:space-y-6 max-h-[92vh] overflow-y-auto scrollbar-none">
-              
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md border ${status.styles}`}>• {status.label}</span>
-                <span className={`text-[8px] sm:text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md text-white ${isRegional ? 'bg-rso-blue' : 'bg-gray-950'}`}>{isRegional ? 'Городское' : 'Внутриотрядное'}</span>
-              </div>
-
-              <div className="space-y-2">
-                <h2 className="text-lg sm:text-2xl font-black uppercase tracking-tight text-black leading-tight">{selectedEventForView.title}</h2>
-                
-                {/* Грид тайминга перестраивается в 1 колонку на мелких экранах */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 bg-gray-50 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-100/70 text-[11px] sm:text-xs">
-                  <div>
-                    <span className="text-[8px] font-bold uppercase text-gray-400 block">Когда состоится</span>
-                    <span className="font-black text-black">🗓 {new Date(selectedEventForView.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}</span>
-                  </div>
-                  <div>
-                    <span className="text-[8px] font-bold uppercase text-gray-400 block">Место сбора</span>
-                    <span className="font-black text-black truncate block">📍 {selectedEventForView.location || 'Не указано'}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[8px] sm:text-[9px] font-black uppercase text-gray-400 tracking-wider">Программа и описание</label>
-                <p className="text-[11px] sm:text-xs text-gray-700 font-medium leading-relaxed bg-gray-50/40 p-3 sm:p-4 rounded-xl sm:rounded-2xl border border-gray-100">
-                  {selectedEventForView.description || 'Организаторы не указали подробное описание для этого события.'}
-                </p>
-              </div>
-
-              {/* Кнопки перестраиваются в вертикальный стек на смартфонах */}
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-3 border-t border-gray-100">
-                <button
-                  onClick={() => setSelectedEventForView(null)}
-                  className="w-full sm:w-1/3 py-2.5 sm:py-3 border border-gray-100 text-[10px] font-black uppercase tracking-wider text-gray-400 rounded-xl hover:bg-gray-50 transition-colors order-2 sm:order-1"
-                >
-                  Закрыть
-                </button>
-
-                <div className="w-full sm:w-2/3 order-1 sm:order-2">
-                  {selectedEventForView.isJoined ? (
-                    <button
-                      onClick={() => handleLeaveEvent(selectedEventForView.id)}
-                      className="w-full py-2.5 sm:py-3 bg-red-50 text-red-600 border border-red-100 text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm"
-                    >
-                      Отменить запись ×
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleJoinEvent(selectedEventForView.id)}
-                      className="w-full py-2.5 sm:py-3 bg-rso-blue text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-black transition-all shadow-md shadow-blue-500/10"
-                    >
-                      Я пойду →
-                    </button>
-                  )}
-                </div>
-              </div>
-
-            </div>
-          </div>
-        );
-      })()}
-
-      <CreateEventModal 
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={fetchProfileData}
-        userRole={user?.role}
-      />
-    </div>
-  );
-}
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

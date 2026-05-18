@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
+import CreateEventModal from '../components/CreateEventModal'; // Импортируем наш созданный модал
 
 const directionTypes = [
   { code: 'СПО', label: 'СПО // Педагогические отряды' },
@@ -15,12 +16,17 @@ export default function Admin() {
   const [activeTab, setActiveTab] = useState('users');
   const [users, setUsers] = useState([]);
   const [brigades, setBrigades] = useState([]);
+  const [events, setEvents] = useState([]); // Стейт для мероприятий
   const [loading, setLoading] = useState(true);
+  const [eventsLoading, setEventsLoading] = useState(false); // Загрузка ивентов
   
   const [newBrigade, setNewBrigade] = useState({ name: '', description: '', type: 'СПО', colorScheme: '#0052FF' });
   const [logoFile, setLogoFile] = useState(null);
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
+
+  const [isModalOpen, setIsModalOpen] = useState(false); // Контроль модального окна
+  const [expandedEventId, setExpandedEventId] = useState(null); // Раскрытие списков участников
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
@@ -45,9 +51,31 @@ export default function Admin() {
     }
   };
 
+  // Выделенная функция для подгрузки админских мероприятий с участниками
+  const fetchAdminEvents = async () => {
+    if (!token) return;
+    const headers = { Authorization: `Bearer ${token}` };
+    setEventsLoading(true);
+    try {
+      const res = await axios.get('http://176.98.177.3:5000/api/admin/events', { headers });
+      setEvents(res.data);
+    } catch (err) {
+      console.error("Ошибка загрузки мероприятий штаба", err);
+    } finally {
+      setEventsLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, [navigate]);
+
+  // Подгружаем мероприятия только тогда, когда админ кликает на нужную вкладку
+  useEffect(() => {
+    if (activeTab === 'events') {
+      fetchAdminEvents();
+    }
+  }, [activeTab]);
 
   const handleCreateBrigade = async (e) => {
     e.preventDefault();
@@ -62,7 +90,6 @@ export default function Admin() {
     if (logoFile) formData.append('logo', logoFile);
 
     try {
-      // ИСПРАВЛЕНО: Теперь бьем в точный эндпоинт бэкенда для создания отрядов
       await axios.post('http://176.98.177.3:5000/api/admin/create-brigade', formData, {
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -125,6 +152,7 @@ export default function Admin() {
 
         <div className="border border-gray-100 rounded-2xl p-6 md:p-8 bg-white min-h-[450px] shadow-sm">
           
+          {/* ТАБ 1: РЕЕСТР БОЙЦОВ */}
           {activeTab === 'users' && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <div className="flex justify-between items-center mb-2">
@@ -172,6 +200,7 @@ export default function Admin() {
             </div>
           )}
 
+          {/* ТАБ 2: СПИСОК ОТРЯДОВ */}
           {activeTab === 'brigades' && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <span className="text-xs font-bold text-rso-blue uppercase tracking-wider block mb-2">Активных команд в штабе: {brigades.length}</span>
@@ -206,6 +235,7 @@ export default function Admin() {
             </div>
           )}
 
+          {/* ТАБ 3: СФОРМИРОВАТЬ ОТРЯД */}
           {activeTab === 'create' && (
             <div className="max-w-2xl mx-auto animate-in fade-in duration-200">
               <div className="text-center mb-6">
@@ -289,18 +319,134 @@ export default function Admin() {
             </div>
           )}
 
+          {/* ТАБ 4: УПРАВЛЕНИЕ МЕРОПРИЯТИЯМИ (РЕКОНСТРУКЦИЯ ЗАВЕРШЕНА) */}
           {activeTab === 'events' && (
-            <div className="text-center py-16 border border-dashed border-gray-200 rounded-xl p-6 animate-in fade-in duration-200">
-              <span className="text-rso-blue text-2xl block mb-2">⚙️</span>
-              <h4 className="text-xs font-bold uppercase tracking-wider text-black mb-1">Модуль на реконструкции</h4>
-              <p className="text-xs text-gray-400 font-medium max-w-xs mx-auto leading-relaxed">
-                Система проработки и детального планирования региональных выездов будет глубоко спроектирована на следующем этапе разработки.
-              </p>
+            <div className="space-y-6 animate-in fade-in duration-200">
+              
+              {/* Шапка таба мероприятий с кнопкой создания */}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-50">
+                <div>
+                  <span className="text-xs font-bold text-rso-blue uppercase tracking-wider">Глобальный планировщик</span>
+                  <h2 className="text-xl font-black uppercase tracking-tight text-black mt-0.5">Календарь событий СевРО</h2>
+                </div>
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="px-5 py-2.5 bg-rso-blue text-white text-xs font-black uppercase tracking-wider rounded-xl hover:bg-black transition-colors shadow-sm"
+                >
+                  + Создать мероприятие
+                </button>
+              </div>
+
+              {eventsLoading ? (
+                <div className="py-16 text-center text-xs font-medium text-gray-400 uppercase tracking-widest animate-pulse">
+                  Синхронизация списков посещаемости...
+                </div>
+              ) : events.length > 0 ? (
+                <div className="space-y-4">
+                  {events.map((event) => {
+                    const eventDate = new Date(event.date);
+                    const isRegional = event.type === 'REGIONAL';
+                    const isExpanded = expandedEventId === event.id;
+
+                    return (
+                      <div key={event.id} className="border border-gray-100 rounded-2xl p-5 bg-white shadow-sm space-y-4">
+                        
+                        {/* Краткая карточка */}
+                        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
+                          <div className="space-y-1 max-w-2xl">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                                isRegional ? 'bg-rso-blue text-white' : 'bg-gray-100 text-gray-500'
+                              }`}>
+                                {isRegional ? 'Региональное' : 'Локальное'}
+                              </span>
+                              <span className="text-[10px] text-gray-400 font-bold">
+                                🗓 {eventDate.toLocaleString('ru-RU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                              <span className="text-[10px] text-gray-400 font-bold truncate max-w-[180px]">
+                                📍 {event.location || 'Не указана'}
+                              </span>
+                            </div>
+                            <h3 className="text-base font-black uppercase text-black">{event.title}</h3>
+                            <p className="text-xs text-gray-400 font-medium line-clamp-1">{event.description}</p>
+                          </div>
+
+                          {/* Статистика */}
+                          <div className="flex items-center gap-4 w-full lg:w-auto justify-between lg:justify-end border-t lg:border-t-0 pt-2 lg:pt-0 border-gray-50">
+                            <div className="text-left lg:text-right">
+                              <span className="text-[8px] font-bold uppercase text-gray-400 block">Участников</span>
+                              <span className="text-base font-black text-black">
+                                {event.participants?.length || 0} <span className="text-[10px] text-gray-400 font-medium">чел.</span>
+                              </span>
+                            </div>
+                            <button
+                              onClick={() => setExpandedEventId(isExpanded ? null : event.id)}
+                              disabled={!event.participants || event.participants.length === 0}
+                              className={`text-[9px] font-black uppercase tracking-wider px-4 py-2 rounded-xl border transition-all ${
+                                isExpanded ? 'bg-black text-white border-black' : 'bg-gray-50 text-gray-500 border-gray-100 hover:bg-gray-100 disabled:opacity-40'
+                              }`}
+                            >
+                              {isExpanded ? 'Скрыть ▲' : 'Список ▼'}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Раскрывающийся реестр участников */}
+                        {isExpanded && event.participants && (
+                          <div className="pt-3 border-t border-gray-50 animate-in fade-in duration-150">
+                            <div className="bg-gray-50/50 rounded-xl border border-gray-100 p-3 overflow-x-auto">
+                              <table className="w-full text-left border-collapse min-w-[500px]">
+                                <thead>
+                                  <tr className="border-b border-gray-200/50 text-[9px] font-black text-gray-400 uppercase tracking-wider">
+                                    <th className="pb-2">ФИО бойца</th>
+                                    <th className="pb-2">Линейный отряд</th>
+                                    <th className="pb-2">Системный ID</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100 text-[11px] font-bold uppercase text-gray-900">
+                                  {event.participants.map((part) => (
+                                    <tr key={part.id}>
+                                      <td className="py-2.5 pr-4">{part.user?.lastName} {part.user?.firstName}</td>
+                                      <td className="py-2.5 pr-4">
+                                        {part.user?.brigade ? (
+                                          <span className="px-2 py-0.5 rounded text-[9px] font-black text-white" style={{ backgroundColor: part.user.brigade.colorScheme || '#0052FF' }}>
+                                            {part.user.brigade.name}
+                                          </span>
+                                        ) : (
+                                          <span className="text-gray-400 italic text-[10px]">Вне отряда</span>
+                                        )}
+                                      </td>
+                                      <td className="py-2.5 text-gray-400 font-mono text-[9px]">{part.user?.id}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="py-12 text-center text-xs font-bold uppercase opacity-30 tracking-wider border border-dashed border-gray-200 rounded-xl">
+                  В реестре еще нет ни одного запланированного мероприятия
+                </div>
+              )}
             </div>
           )}
 
         </div>
       </main>
+
+      {/* Подключаем наш гибкий Bento-модал для создания мероприятий */}
+      <CreateEventModal 
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={fetchAdminEvents}
+        userRole="REG_HQ" // Передаем роль админа, чтобы разблокировать селект LOCAL/REGIONAL
+      />
     </div>
   );
 }

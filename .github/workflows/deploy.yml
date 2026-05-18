@@ -1,0 +1,33 @@
+name: Continuous Deployment (Callisto VPS)
+
+on:
+  push:
+    branches:
+      - main # Скрипт срабатывает каждый раз, когда ты пушишь изменения в ветку main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploying code via SSH to Callisto VPS
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            echo "--- Подключаемся к директории проекта ---"
+            cd ~/rso-portal
+            
+            echo "--- Стягиваем свежий код из Git ---"
+            git pull origin main
+            
+            echo "--- Запускаем пересборку Docker контейнеров в фоне ---"
+            docker compose up -d --build
+            
+            echo "--- Очищаем неиспользуемые старые образы Docker (экономим место) ---"
+            docker image prune -f
+            
+            echo "🚀 Автодеплой успешно завершен! Портал обновлен."

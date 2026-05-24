@@ -3,6 +3,13 @@ import { Link } from 'react-router-dom';
 import axios from 'axios';
 import Header from '../components/Header';
 
+// Импортируем 5 SVG логотипов из папки ассетов для плакатов
+import ssoLogo from '../assets/icons/sso.svg';
+import spoLogo from '../assets/icons/spo.svg';
+import sopLogo from '../assets/icons/sop.svg';
+import smoLogo from '../assets/icons/smo.svg';
+import sservoLogo from '../assets/icons/sservo.svg';
+
 export default function Home() {
   const [latestNews, setLatestNews] = useState([]);
   const [loadingNews, setLoadingNews] = useState(true);
@@ -25,13 +32,13 @@ export default function Home() {
     fetchLatestNews();
   }, []);
 
-  // Новая конфигурация направлений (Дизайн со скриншота)
+  // Новая конфигурация направлений (Дизайн фирменных плакатов ЛСО)
   const vectors = [
-    { code: "ССО", title: "Строительные\nотряды", desc: "Возводим будущее своими руками.", borderColor: "border-gray-200" },
-    { code: "СПО", title: "Педагогические\nотряды", desc: "Зажигаем сердца и дарим детство.", borderColor: "border-yellow-400" },
-    { code: "СОП", title: "Отряды\nпроводников", desc: "Романтика дорог и стук колес.", borderColor: "border-slate-400" },
-    { code: "СМО", title: "Медицинские\nотряды", desc: "Забота и здоровье в каждом сердце.", borderColor: "border-red-500" },
-    { code: "ССервО", title: "Сервисные\nотряды", desc: "Создаем комфорт и настроение.", borderColor: "border-green-500" }
+    { code: 'ССО', title: 'Строительные отряды', slogan: 'на стройке', accent: '#0052FF', logo: ssoLogo },
+    { code: 'СПО', title: 'Педагогические отряды', slogan: 'в лагере', accent: '#4DA6FF', logo: spoLogo },
+    { code: 'СОП', title: 'Отряды проводников', slogan: 'в поезде', accent: '#FF4D39', logo: sopLogo },
+    { code: 'СМО', title: 'Медицинские отряды', slogan: 'в медицине', accent: '#00E5FF', logo: smoLogo },
+    { code: 'ССервО', title: 'Сервисные отряды', slogan: 'в сервисе', accent: '#66BB8A', logo: sservoLogo }
   ];
 
   return (
@@ -91,60 +98,7 @@ export default function Home() {
         </section>
 
 
-        {/* ================= 2. БЕГУЩАЯ СТРОКА ================= */}
-        <section className="w-full bg-rso-blue text-white py-4.5 overflow-hidden select-none shadow-sm">
-          <div className="animate-marquee">
-            {[...Array(4)].map((_, idx) => (
-              <span key={idx} className="text-xl md:text-2xl font-black uppercase tracking-wide mx-8 whitespace-nowrap">
-                • ТРУД КРУТ • МЫ ШТОРМ У ЧЕРНОГО МОРЯ • РОССИЙСКИЕ СТУДЕНЧЕСКИЕ ОТРЯДЫ • СЕВАСТОПОЛЬ 
-              </span>
-            ))}
-          </div>
-        </section>
-
-
-        {/* ================= 3. МАНИФЕСТ ================= */}
-        <section className="max-w-[1500px] mx-auto px-6 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="p-8 bg-gray-50 border border-gray-100 rounded-3xl flex flex-col justify-between min-h-[300px] md:col-span-1 shadow-sm relative overflow-hidden group hover:border-rso-blue/20 transition-all duration-300 hover:bg-white">
-            <span className="text-[10px] font-bold text-rso-blue uppercase tracking-widest bg-blue-50 w-fit px-3 py-1 rounded-md relative z-10 border border-blue-100/50">
-              Манифест движения
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tight leading-tight relative z-10 mt-12 text-black transition-colors group-hover:text-rso-blue">
-              Больше чем <br />просто работа. <br />Это стиль жизни.
-            </h2>
-          </div>
-
-          <div className="p-8 bg-white border border-gray-100 rounded-3xl flex flex-col justify-between min-h-[300px] hover:border-gray-200 hover:shadow-md transition-all duration-300 group shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-rso-blue text-xl font-black group-hover:scale-105 transition-transform">
-                💼
-              </div>
-              <h3 className="text-lg font-black uppercase tracking-tight text-black">
-                Профессиональный старт
-              </h3>
-              <p className="text-xs md:text-sm text-gray-500 font-medium leading-relaxed">
-                Официальное трудоустройство на ключевых объектах и курортах России. Получай востребованную специальность бесплатно и зарабатывай свои первые серьезные деньги уже этим летом.
-              </p>
-            </div>
-          </div>
-
-          <div className="p-8 bg-white border border-gray-100 rounded-3xl flex flex-col justify-between min-h-[300px] hover:border-gray-200 hover:shadow-md transition-all duration-300 group shadow-[0_4px_20px_rgb(0,0,0,0.02)]">
-            <div className="space-y-4">
-              <div className="w-12 h-12 rounded-2xl bg-gray-50 border border-gray-100 flex items-center justify-center text-[#FF4D39] text-xl font-black group-hover:scale-105 transition-transform">
-                🔥
-              </div>
-              <h3 className="text-lg font-black uppercase tracking-tight text-black">
-                Настоящее комьюнити
-              </h3>
-              <p className="text-xs md:text-sm text-gray-500 font-medium leading-relaxed">
-                Сотни единомышленников, фестивали, творческие конкурсы, слеты от Владивостока до Калининграда и песни у костра. Здесь ты найдешь друзей на всю жизнь.
-              </p>
-            </div>
-          </div>
-        </section>
-
-
-        {/* ================= 4. НАПРАВЛЕНИЯ (ДИЗАЙН СО СКРИНШОТА) ================= */}
+        {/* ================= 4. НАПРАВЛЕНИЯ (ФИРМЕННЫЕ ПЛАКАТЫ) ================= */}
         <section className="max-w-[1300px] mx-auto px-6">
           <div className="text-center mb-12">
             <span className="text-xs font-bold text-rso-blue uppercase tracking-widest">Наша Стратегия</span>
@@ -157,21 +111,24 @@ export default function Home() {
               <Link
                 to={`/brigades#direction-${item.code}`}
                 key={index}
-                className={`bg-white rounded-[2rem] p-6 flex flex-col justify-between min-h-[260px] shadow-[0_4px_20px_rgb(0,0,0,0.03)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-1 transition-all duration-300 border border-gray-100 border-t-4 ${item.borderColor} group cursor-pointer`}
+                className="aspect-[4/5] rounded-[2rem] p-6 flex flex-col justify-between relative overflow-hidden shadow-sm group hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer"
+                style={{ backgroundColor: item.accent }}
               >
-                <div className="flex justify-end w-full">
-                  <span className="text-4xl md:text-5xl font-black text-gray-100/70 group-hover:text-gray-200 transition-colors tracking-tighter select-none">
-                    {item.code}
-                  </span>
+                <div className="text-white space-y-1 relative z-10">
+                  <div className="text-2xl font-black leading-none uppercase tracking-tight">
+                    впереди <br /> лучшее лето
+                  </div>
+                  <div className="text-sm font-medium opacity-90 pt-1">
+                    ➔ {item.slogan}
+                  </div>
                 </div>
                 
-                <div className="space-y-3">
-                  <h3 className="text-xl md:text-2xl font-black text-black leading-tight tracking-tight whitespace-pre-line">
-                    {item.title}
-                  </h3>
-                  <p className="text-[11px] md:text-xs text-gray-500 font-medium leading-relaxed">
-                    {item.desc}
-                  </p>
+                <div className="w-full flex justify-start items-end h-24 sm:h-28 opacity-95 group-hover:scale-105 transition-transform duration-500 relative z-10">
+                  <img 
+                    src={item.logo} 
+                    className="h-full w-auto object-contain max-w-full drop-shadow-md" 
+                    alt={item.title} 
+                  />
                 </div>
               </Link>
             ))}

@@ -18,17 +18,16 @@ export default function News() {
     if (token) fetchUser();
   }, []);
 
-  const fetchUser = async () => {
+const fetchUser = async () => {
     try {
-      const res = await axios.get('/auth/me', { 
+      // ИСПОЛЬЗУЙ api, а не axios! И путь должен быть БЕЗ /api, 
+      // так как baseURL в axiosConfig его уже добавит
+      const res = await api.get('/auth/me', { 
         headers: { Authorization: `Bearer ${token}` } 
       });
       setUser(res.data);
-    } catch (e) { 
-      console.error(e); 
-    }
-  };
-
+    } catch (e) { console.error(e); }
+};
   const fetchPosts = async () => {
     try {
       const res = await axios.get('/api/posts');

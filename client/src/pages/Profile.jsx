@@ -115,7 +115,7 @@ export default function Profile() {
     const headers = { Authorization: `Bearer ${token}` };
     const comment = rejectionComments[appId] || '';
     try {
-      await api.post(`${API_URL}/api/commander/process-application`, {
+      await api.post(`$/commander/process-application`, {
         appId,
         status,
         comment: status === 'REJECTED' ? comment : null
@@ -128,7 +128,7 @@ export default function Profile() {
   const handleJoinEvent = async (id) => {
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      await api.post(`${API_URL}/api/events/${id}/join`, {}, { headers });
+      await api.post(`/events/${id}/join`, {}, { headers });
       const updatedEvents = await refreshEventsList();
       const currentEvent = updatedEvents.find(e => e.id === id);
       if (selectedEventForView) setSelectedEventForView(currentEvent);
@@ -162,7 +162,7 @@ export default function Profile() {
     formData.append('avatar', file);
     try {
       const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' };
-      await api.post(`${API_URL}/api/auth/upload-avatar`, formData, { headers });
+      await api.post(`/auth/upload-avatar`, formData, { headers });
       fetchProfileData();
     } catch (err) { console.error(err); }
   };

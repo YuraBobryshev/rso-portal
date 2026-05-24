@@ -72,7 +72,7 @@ export default function Register() {
     if (!isFormValid) return;
 
     try {
-      const res = await api.post('/api/auth/register', {
+      const res = await api.post('/auth/register', {
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,

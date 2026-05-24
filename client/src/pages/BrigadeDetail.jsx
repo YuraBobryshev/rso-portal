@@ -40,7 +40,7 @@ export default function BrigadeDetail() {
     setMessage({ text: '', type: '' });
 
     try {
-      const res = await api.post(`${API_URL}/api/applications/apply`, 
+      const res = await api.post(`/applications/apply`, 
         { brigadeId: id },
         { headers: { Authorization: `Bearer ${token}` } }
       );

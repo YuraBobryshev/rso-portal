@@ -66,7 +66,7 @@ export default function Brigades() {
   useEffect(() => {
     const fetchBrigades = async () => {
       try {
-        const res = await api.get('/api/brigades');
+        const res = await api.get('/brigades');
         setBrigades(res.data);
       } catch (e) {
         console.error("Ошибка загрузки отрядов");

@@ -45,7 +45,7 @@ export default function Admin() {
       const usersRes = await api.get(`/admin/users`, { headers });
       setUsers(usersRes.data);
 
-      const brigadesRes = await api.get(`${API_URL}/api/brigades`, { headers });
+      const brigadesRes = await api.get(`/brigades`, { headers });
       setBrigades(brigadesRes.data);
     } catch (err) {
       console.error("Ошибка доступа к админ-панели", err);
@@ -133,7 +133,7 @@ export default function Admin() {
     if (logoFile) formData.append('logo', logoFile);
 
     try {
-      await api.post(`${API_URL}/api/admin/create-brigade`, formData, {
+      await api.post(`/admin/create-brigade`, formData, {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
       });
       setFormSuccess('Линейный отряд успешно сформирован и внесен в реестр!');

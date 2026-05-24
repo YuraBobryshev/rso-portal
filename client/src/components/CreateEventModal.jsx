@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig'
 
 export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole }) {
   const [title, setTitle] = useState('');

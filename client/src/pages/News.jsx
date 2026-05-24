@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig'
 import Header from '../components/Header';
 
 export default function News() {

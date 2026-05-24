@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axiosConfig'
 import Header from '../components/Header';
 
 // Импортируем 5 SVG логотипов из папки ассетов для плакатов

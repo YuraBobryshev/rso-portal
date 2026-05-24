@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axiosConfig'
 import logoUrl from '../assets/logo.svg';
 
 export default function Header() {

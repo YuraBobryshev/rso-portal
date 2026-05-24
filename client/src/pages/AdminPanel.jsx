@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig'
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import CreateEventModal from '../components/CreateEventModal';

@@ -47,7 +47,7 @@ export default function Login() {
     if (Object.keys(formErrors).length > 0) return;
 
     try {
-      const res = await axios.post('/api/auth/login', { email, password });
+      const res = await api.post('/api/auth/login', { email, password });
       localStorage.setItem('token', res.data.token);
       navigate('/profile');
     } catch (err) {

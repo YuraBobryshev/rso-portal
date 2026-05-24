@@ -42,10 +42,10 @@ export default function Admin() {
     const headers = { Authorization: `Bearer ${token}` };
     setLoading(true);
     try {
-      const usersRes = await axios.get(`${API_URL}/api/admin/users`, { headers });
+      const usersRes = await api.get(`${API_URL}/api/admin/users`, { headers });
       setUsers(usersRes.data);
 
-      const brigadesRes = await axios.get(`${API_URL}/api/brigades`, { headers });
+      const brigadesRes = await api.get(`${API_URL}/api/brigades`, { headers });
       setBrigades(brigadesRes.data);
     } catch (err) {
       console.error("Ошибка доступа к админ-панели", err);
@@ -62,7 +62,7 @@ export default function Admin() {
     const headers = { Authorization: `Bearer ${token}` };
     setEventsLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/api/admin/events`, { headers });
+      const res = await api.get(`${API_URL}/api/admin/events`, { headers });
       setEvents(res.data);
     } catch (err) {
       console.error("Ошибка загрузки мероприятий штаба", err);
@@ -76,7 +76,7 @@ export default function Admin() {
     const headers = { Authorization: `Bearer ${token}` };
     setDashboardLoading(true);
     try {
-      const res = await axios.get(`${API_URL}/api/admin/rating-stats`, { headers });
+      const res = await api.get(`${API_URL}/api/admin/rating-stats`, { headers });
       setDashboardData(res.data);
     } catch (err) {
       console.error("Ошибка загрузки рейтингов", err);
@@ -133,7 +133,7 @@ export default function Admin() {
     if (logoFile) formData.append('logo', logoFile);
 
     try {
-      await axios.post(`${API_URL}/api/admin/create-brigade`, formData, {
+      await api.post(`${API_URL}/api/admin/create-brigade`, formData, {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
       });
       setFormSuccess('Линейный отряд успешно сформирован и внесен в реестр!');

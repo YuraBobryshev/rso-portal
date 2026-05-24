@@ -30,7 +30,7 @@ const fetchUser = async () => {
 };
   const fetchPosts = async () => {
     try {
-      const res = await axios.get('/api/posts');
+      const res = await api.get('/api/posts');
       setPosts(res.data);
     } catch (e) { 
       console.error(e); 
@@ -47,7 +47,7 @@ const fetchUser = async () => {
     if (image) formData.append('image', image);
     
     try {
-      await axios.post('/api/posts', formData, {
+      await api.post('/api/posts', formData, {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
       });
       setNewPost({ title: '', content: '' }); 

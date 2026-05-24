@@ -40,13 +40,13 @@ export default function Profile() {
     const headers = { Authorization: `Bearer ${token}` };
     try {
       setLoading(true);
-      const userRes = await axios.get(`${API_URL}/api/auth/me`, { headers });
+      const userRes = await api.get(`${API_URL}/api/auth/me`, { headers });
       setUser(userRes.data);
       setVkUrl(userRes.data.vkUrl || '');
       setTgUrl(userRes.data.tgUrl || '');
 
       setEventsLoading(true);
-      const eventsRes = await axios.get(`${API_URL}/api/events`, { headers });
+      const eventsRes = await api.get(`${API_URL}/api/events`, { headers });
       setEvents(eventsRes.data);
 
       if (userRes.data.role === 'COMMANDER') {
@@ -65,7 +65,7 @@ export default function Profile() {
     const headers = { Authorization: `Bearer ${token}` };
     try {
       setCommanderLoading(true);
-      const res = await axios.get(`${API_URL}/api/commander/dashboard`, { headers });
+      const res = await api.get(`${API_URL}/api/commander/dashboard`, { headers });
       setCommanderData(res.data);
     } catch (err) { console.error(err); } finally { setCommanderLoading(false); }
   };
@@ -77,7 +77,7 @@ export default function Profile() {
   const refreshEventsList = async () => {
     const headers = { Authorization: `Bearer ${token}` };
     try {
-      const eventsRes = await axios.get(`${API_URL}/api/events`, { headers });
+      const eventsRes = await api.get(`${API_URL}/api/events`, { headers });
       setEvents(eventsRes.data);
       return eventsRes.data;
     } catch (err) { console.error(err); }
@@ -115,7 +115,7 @@ export default function Profile() {
     const headers = { Authorization: `Bearer ${token}` };
     const comment = rejectionComments[appId] || '';
     try {
-      await axios.post(`${API_URL}/api/commander/process-application`, {
+      await api.post(`${API_URL}/api/commander/process-application`, {
         appId,
         status,
         comment: status === 'REJECTED' ? comment : null
@@ -128,7 +128,7 @@ export default function Profile() {
   const handleJoinEvent = async (id) => {
     try {
       const headers = { Authorization: `Bearer ${token}` };
-      await axios.post(`${API_URL}/api/events/${id}/join`, {}, { headers });
+      await api.post(`${API_URL}/api/events/${id}/join`, {}, { headers });
       const updatedEvents = await refreshEventsList();
       const currentEvent = updatedEvents.find(e => e.id === id);
       if (selectedEventForView) setSelectedEventForView(currentEvent);
@@ -162,7 +162,7 @@ export default function Profile() {
     formData.append('avatar', file);
     try {
       const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' };
-      await axios.post(`${API_URL}/api/auth/upload-avatar`, formData, { headers });
+      await api.post(`${API_URL}/api/auth/upload-avatar`, formData, { headers });
       fetchProfileData();
     } catch (err) { console.error(err); }
   };

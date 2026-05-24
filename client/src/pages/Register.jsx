@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../api/axiosConfig'
 import { useNavigate, Link } from 'react-router-dom';
 import logoUrl from '../assets/logo.svg';
 
@@ -72,7 +72,7 @@ export default function Register() {
     if (!isFormValid) return;
 
     try {
-      const res = await axios.post('/api/auth/register', {
+      const res = await api.post('/api/auth/register', {
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,

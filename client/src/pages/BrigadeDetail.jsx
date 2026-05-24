@@ -18,7 +18,7 @@ export default function BrigadeDetail() {
   useEffect(() => {
     const fetchBrigade = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/brigades/${id}`);       
+        const res = await api.get(`${API_URL}/api/brigades/${id}`);       
         setBrigade(res.data);
       } catch (err) {
         console.error("Ошибка загрузки отряда");
@@ -40,7 +40,7 @@ export default function BrigadeDetail() {
     setMessage({ text: '', type: '' });
 
     try {
-      const res = await axios.post(`${API_URL}/api/applications/apply`, 
+      const res = await api.post(`${API_URL}/api/applications/apply`, 
         { brigadeId: id },
         { headers: { Authorization: `Bearer ${token}` } }
       );

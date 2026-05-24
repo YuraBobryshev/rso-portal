@@ -19,7 +19,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post('/api/events', 
+      await api.post('/api/events', 
         { 
           title, 
           description, 

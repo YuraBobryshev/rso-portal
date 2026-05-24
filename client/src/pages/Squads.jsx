@@ -12,7 +12,7 @@ export default function Squads() {
   const handleApply = async (brigadeId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post('/api/applications/apply', 
+      const res = await api.post('/api/applications/apply', 
         { brigadeId }, 
         { headers: { Authorization: `Bearer ${token}` } }
       );

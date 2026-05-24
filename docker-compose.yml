@@ -2,15 +2,12 @@ version: '3.8'
 
 services:
   app:
-    build: .
+    build: ./server  # <-- Вот здесь меняем точку на ./server
     restart: always
     env_file:
       - .env
-    # Убираем 'ports: - "5000:5000"', чтобы наружу торчал только Caddy
-    # Оставляем expose для внутренней сети Docker
     expose:
       - "5000"
-
   caddy:
     image: caddy:2-alpine
     restart: always

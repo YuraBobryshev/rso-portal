@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # 1. База данных Postgres
   db:
@@ -7,13 +5,13 @@ services:
     container_name: rso_db
     restart: always
     environment:
-      POSTGRES_USER: user          # Укажи свои значения из .env
-      POSTGRES_PASSWORD: password  # Укажи свои значения из .env
-      POSTGRES_DB: dbname          # Укажи свои значения из .env
+      POSTGRES_USER: rso_user
+      POSTGRES_PASSWORD: rso_password
+      POSTGRES_DB: rso_portal
     ports:
       - "5433:5432"
     volumes:
-      - pg_data:/var/lib/postgresql/data # Проверь, как назывался твой старый volume!
+      - pg_data:/var/lib/postgresql/data
 
   # 2. Бэкенд (Node.js API)
   app:
@@ -26,12 +24,12 @@ services:
     depends_on:
       - db
 
-  # 3. Фронтенд (React / Vue)
+  # 3. Фронтенд (React)
   client:
     build: ./client
     restart: always
     expose:
-      - "80" # Открываем порт только внутри сети Docker для Caddy
+      - "80"
 
   # 4. Обратный прокси (Caddy с авто-HTTPS)
   caddy:
@@ -51,4 +49,4 @@ services:
 volumes:
   caddy_data:
   caddy_config:
-  pg_data: # Этот volume должен совпадать с тем, что использовался ранее
+  pg_data:

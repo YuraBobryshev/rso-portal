@@ -13,22 +13,30 @@ jobs:
       - name: Deploying code via SSH to Callisto VPS
         uses: appleboy/ssh-action@v1.0.3
         with:
-          host: 176.98.177.3          # Прописали IP напрямую
-          username: root              # Прописали пользователя напрямую
-          key: ${{ secrets.SSH_PRIVATE_KEY }} # Ключ по-прежнему берем из секретов
+          host: 176.98.177.3
+          username: root
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
           script: |
-            echo "--- Подключаемся к директории проекта ---"
+            echo "--- Переходим в директорию проекта ---"
             cd ~/rso-portal
             
             echo "--- Стягиваем свежий код из Git ---"
             git pull origin main
             
-            echo "--- Запускаем пересборку Docker контейнеров в фоне ---"
+            echo "--- Перезапускаем и собираем Docker контейнеры ---"
             docker compose up -d --build
+            
+            echo "--- Ожидаем запуск базы данных (5 секунд) ---"
+            sleep 5
+            
+            echo "--- Автоматически применяем новую структуру БД (Prisma Push) ---"
+            docker compose exec -T app npx prisma db push --accept-data-loss
+            
+            echo "--- Автоматически генерируем 60 тестовых аккаунтов (Prisma Seed) ---"
+            docker compose exec -T app npx prisma db seed
             
             echo "--- Очищаем неиспользуемые старые образы Docker ---"
             docker image prune -f
             
-            echo "🚀 Автодеплой успешно завершен! Портал обновлен."
-            
+            echo "🚀 Автодеплой, синхронизация БД и сидинг успешно завершены!"

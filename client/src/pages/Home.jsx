@@ -153,30 +153,30 @@ export default function Home() {
 
         {/* ================= 3. НАПРАВЛЕНИЯ (ФИРМЕННЫЕ ПЛАКАТЫ) ================= */}
         <section className="max-w-[1400px] mx-auto px-6">
-          <div className="text-center mb-12">
+          <div className="text-center mb-8 sm:mb-12">
             <span className="text-[10px] sm:text-xs font-bold text-rso-blue uppercase tracking-widest">Наша Стратегия</span>
             <h2 className="text-3xl md:text-5xl font-black tracking-tight text-black mt-3 mb-4">Твой Вектор Развития</h2>
             <p className="text-gray-500 text-sm md:text-base font-medium max-w-xl mx-auto">Выбирай свое призвание среди 5 ключевых трудовых направлений Севастополя.</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-5">
             {vectors.map((item, index) => (
               <Link
                 to={`/brigades#direction-${item.code}`}
                 key={index}
-                className="aspect-[4/5] rounded-[2rem] p-6 flex flex-col justify-between relative overflow-hidden shadow-sm group hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer"
+                className="aspect-[4/5] rounded-2xl sm:rounded-[2rem] p-4 sm:p-6 flex flex-col justify-between relative overflow-hidden shadow-sm group hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer"
                 style={{ backgroundColor: item.accent }}
               >
-                <div className="text-white space-y-1 relative z-10">
-                  <div className="text-2xl font-black leading-none uppercase tracking-tight">
+                <div className="text-white space-y-0.5 sm:space-y-1 relative z-10">
+                  <div className="text-sm sm:text-xl lg:text-2xl font-black leading-none uppercase tracking-tight">
                     впереди <br /> лучшее лето
                   </div>
-                  <div className="text-sm font-medium opacity-90 pt-1">
+                  <div className="text-[9px] sm:text-sm font-medium opacity-90 pt-1">
                     ➔ {item.slogan}
                   </div>
                 </div>
                 
-                <div className="w-full flex justify-start items-end h-24 sm:h-28 opacity-95 group-hover:scale-105 transition-transform duration-500 relative z-10">
+                <div className="w-full flex justify-start items-end h-16 sm:h-24 lg:h-28 opacity-95 group-hover:scale-105 transition-transform duration-500 relative z-10">
                   <img 
                     src={item.logo} 
                     className="h-full w-auto object-contain max-w-full drop-shadow-md" 

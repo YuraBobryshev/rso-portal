@@ -1,11 +1,9 @@
-import api from '../api/axiosConfig'
+import axios from 'axios';
 
-// Создаем экземпляр с базовым URL
 const api = axios.create({
-  baseURL: '/api', // ВСЕ запросы автоматически получат этот префикс
+  baseURL: '/api', // Все запросы будут начинаться с /api
 });
 
-// Настраиваем передачу токена (чтобы не писать headers в каждом файле)
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {

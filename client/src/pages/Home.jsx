@@ -59,7 +59,7 @@ export default function Home() {
 
       <main className="pt-24 space-y-24 md:space-y-36">
         
-        {/* ================= 1. HERO СЕКЦИЯ ================= */}
+        {/* ================= 1. HERO СЕКЦИЯ (Без кнопки) ================= */}
         <section className="w-full max-w-[1500px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
           <div className="lg:col-span-7 space-y-8">
             <div className="inline-flex items-center gap-3 text-xs font-bold tracking-widest text-rso-blue uppercase">
@@ -68,7 +68,6 @@ export default function Home() {
               <span>МООО РСО</span>
             </div>
             
-            {/* Обновленный заголовок */}
             <h1 className="text-5xl sm:text-6xl md:text-[4.5rem] lg:text-[5.5rem] font-black uppercase tracking-tight leading-[0.9] text-black">
               СТУДЕНЧЕСКИЕ <br />
               ОТРЯДЫ <br />
@@ -78,11 +77,6 @@ export default function Home() {
             <p className="text-sm md:text-base text-gray-500 font-medium max-w-xl leading-relaxed">
               Главное молодежное движение Севастополя. Мы строим города, воспитываем детей, спасаем жизни и путешествуем по всей стране. Это твоё лучшее студенчество.
             </p>
-            <div className="pt-2">
-                <Link to="/register" className="inline-block bg-rso-blue text-white font-bold uppercase text-xs tracking-wider px-10 py-4.5 rounded-xl hover:bg-black transition-colors shadow-lg shadow-blue-500/20">
-                  Вступить в отряд →
-                </Link>
-            </div>
           </div>
 
           <div className="lg:col-span-5 relative w-full aspect-[4/3] lg:aspect-[5/6] bg-gray-50 border border-gray-100 rounded-[2.5rem] overflow-hidden shadow-sm group">
@@ -97,8 +91,59 @@ export default function Home() {
           </div>
         </section>
 
+        {/* ================= 2. О ДВИЖЕНИИ (НОВЫЙ БЛОК: ВОЗМОЖНОСТИ) ================= */}
+        <section className="max-w-[1300px] mx-auto px-6">
+          <div className="flex flex-col lg:flex-row gap-12 lg:gap-20 items-start">
+            
+            {/* Левая часть: Залипающий заголовок */}
+            <div className="lg:w-1/3 lg:sticky top-32 space-y-6">
+              <div>
+                <span className="text-xs font-bold text-rso-blue uppercase tracking-widest">Твои возможности</span>
+                <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-black mt-3 leading-[1.1]">
+                  Больше, чем <br/> просто работа
+                </h2>
+              </div>
+              <p className="text-gray-500 text-sm md:text-base font-medium leading-relaxed">
+                Российские Студенческие Отряды — это крупнейшая молодежная организация страны. Мы не просто даем работу на лето, мы создаем среду для твоего масштабного роста.
+              </p>
+            </div>
+            
+            {/* Правая часть: Bento-грид преимуществ */}
+            <div className="lg:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+              
+              {/* Карточка 1 */}
+              <div className="bg-gray-50 border border-gray-100 p-8 md:p-10 rounded-[2rem] hover:border-gray-200 transition-colors">
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-2xl shadow-sm mb-6 border border-gray-100">💼</div>
+                <h3 className="text-xl font-black uppercase tracking-tight text-black mb-3">Работа летом</h3>
+                <p className="text-xs md:text-sm text-gray-500 leading-relaxed font-medium">Стабильный заработок на крупнейших объектах страны. Официальное трудоустройство, белая зарплата и первая серьезная запись в твоей трудовой книжке.</p>
+              </div>
+              
+              {/* Карточка 2 (Акцентная) */}
+              <div className="bg-rso-blue border border-rso-blue p-8 md:p-10 rounded-[2rem] text-white shadow-xl shadow-blue-500/10 hover:-translate-y-1 transition-transform">
+                <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-2xl mb-6 backdrop-blur-sm border border-white/20">🎓</div>
+                <h3 className="text-xl font-black uppercase tracking-tight mb-3">Бесплатное обучение</h3>
+                <p className="text-xs md:text-sm text-blue-100 leading-relaxed font-medium">До начала трудового семестра штаб бесплатно обучает новичков. Ты получишь реальную профессию и свидетельство государственного образца.</p>
+              </div>
 
-        {/* ================= 4. НАПРАВЛЕНИЯ (ФИРМЕННЫЕ ПЛАКАТЫ) ================= */}
+              {/* Карточка 3 */}
+              <div className="bg-white border border-gray-100 p-8 md:p-10 rounded-[2rem] hover:shadow-[0_8px_30px_rgb(0,0,0,0.04)] transition-shadow">
+                <div className="w-14 h-14 bg-gray-50 rounded-2xl flex items-center justify-center text-2xl mb-6 border border-gray-100">🤝</div>
+                <h3 className="text-xl font-black uppercase tracking-tight text-black mb-3">Новые знакомства</h3>
+                <p className="text-xs md:text-sm text-gray-500 leading-relaxed font-medium">Слеты от Калининграда до Владивостока, творческие фестивали и песни у костра. Здесь ты найдешь настоящих друзей и единомышленников на всю жизнь.</p>
+              </div>
+
+              {/* Карточка 4 */}
+              <div className="bg-gray-50 border border-gray-100 p-8 md:p-10 rounded-[2rem] hover:border-gray-200 transition-colors">
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center text-2xl mb-6 shadow-sm border border-gray-100">🚀</div>
+                <h3 className="text-xl font-black uppercase tracking-tight text-black mb-3">Прояви себя</h3>
+                <p className="text-xs md:text-sm text-gray-500 leading-relaxed font-medium">Твоя площадка для карьерного роста. Стань командиром отряда, организуй масштабные проекты, участвуй в спорте и развивай лидерские навыки.</p>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        {/* ================= 3. НАПРАВЛЕНИЯ (ФИРМЕННЫЕ ПЛАКАТЫ) ================= */}
         <section className="max-w-[1300px] mx-auto px-6">
           <div className="text-center mb-12">
             <span className="text-xs font-bold text-rso-blue uppercase tracking-widest">Наша Стратегия</span>
@@ -136,7 +181,7 @@ export default function Home() {
         </section>
 
 
-        {/* ================= 5. НОВОСТИ ШТАБА ================= */}
+        {/* ================= 4. НОВОСТИ ШТАБА ================= */}
         <section className="max-w-[1500px] mx-auto px-6">
           <div className="flex justify-between items-end mb-10 border-b border-gray-100 pb-4">
             <div>
@@ -192,7 +237,7 @@ export default function Home() {
         </section>
 
 
-        {/* ================= 6. ПРИЗЫВ К ДЕЙСТВИЮ ================= */}
+        {/* ================= 5. ПРИЗЫВ К ДЕЙСТВИЮ ================= */}
         {!isLoggedIn && (
           <section className="max-w-[1300px] mx-auto px-6 pb-12">
             <div className="bg-gray-50/70 border border-gray-100 rounded-[2rem] p-8 md:p-14 text-center shadow-sm space-y-4">

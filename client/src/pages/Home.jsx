@@ -91,7 +91,7 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ================= 2. О ДВИЖЕНИИ (СТРОГИЙ BENTO-ГРИД С SVG) ================= */}
+        {/* ================= 2. О ДВИЖЕНИИ (СТРОГИЙ BENTO-ГРИД БЕЗ СИНЕЙ ЗАЛИВКИ) ================= */}
         <section className="max-w-[1400px] mx-auto px-6">
           <div className="flex flex-col lg:flex-row gap-12 lg:gap-16 items-stretch">
             
@@ -108,30 +108,30 @@ export default function Home() {
               </p>
             </div>
             
-            {/* Правая часть: Bento-грид преимуществ (auto-rows-fr выравнивает карточки по высоте) */}
+            {/* Правая часть: Bento-грид преимуществ (Все карточки белые) */}
             <div className="lg:w-7/12 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 auto-rows-fr">
               
               {/* Карточка 1 */}
-              <div className="bg-white border border-gray-100 p-8 md:p-10 rounded-[2rem] hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 flex flex-col h-full">
-                <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mb-8 border border-gray-100/50 text-gray-700">
+              <div className="bg-white border border-gray-100 p-8 md:p-10 rounded-[2rem] hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 flex flex-col h-full group">
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-8 border border-gray-200 text-gray-700 group-hover:border-gray-400 group-hover:bg-gray-50 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
                 </div>
                 <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-black mb-3">Работа летом</h3>
                 <p className="text-xs md:text-sm text-gray-500 leading-relaxed font-medium mt-auto">Стабильный заработок на крупнейших объектах страны. Официальное трудоустройство, белая зарплата и первая серьезная запись в твоей трудовой книжке.</p>
               </div>
               
-              {/* Карточка 2 (Акцентная) */}
-              <div className="bg-rso-blue border border-rso-blue p-8 md:p-10 rounded-[2rem] text-white shadow-xl shadow-blue-500/20 hover:-translate-y-1 transition-transform flex flex-col h-full">
-                <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mb-8 backdrop-blur-sm border border-white/20 text-white">
+              {/* Карточка 2 (Теперь белая, иконка синяя) */}
+              <div className="bg-white border border-gray-100 p-8 md:p-10 rounded-[2rem] hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 flex flex-col h-full group">
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-8 border border-gray-200 text-rso-blue group-hover:border-blue-200 group-hover:bg-blue-50 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.42 10.922a2 2 0 0 0-.019-3.838L12.83 4.314a2 2 0 0 0-1.66 0L2.6 7.08a2 2 0 0 0 0 3.838l9.36 4.314a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
                 </div>
-                <h3 className="text-lg md:text-xl font-black uppercase tracking-tight mb-3">Бесплатное обучение</h3>
-                <p className="text-xs md:text-sm text-blue-100 leading-relaxed font-medium mt-auto">До начала трудового семестра штаб бесплатно обучает новичков. Ты получишь реальную профессию и свидетельство государственного образца.</p>
+                <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-black mb-3">Бесплатное обучение</h3>
+                <p className="text-xs md:text-sm text-gray-500 leading-relaxed font-medium mt-auto">До начала трудового семестра штаб бесплатно обучает новичков. Ты получишь реальную профессию и свидетельство государственного образца.</p>
               </div>
 
               {/* Карточка 3 */}
-              <div className="bg-white border border-gray-100 p-8 md:p-10 rounded-[2rem] hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 flex flex-col h-full">
-                <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mb-8 border border-gray-100/50 text-yellow-500">
+              <div className="bg-white border border-gray-100 p-8 md:p-10 rounded-[2rem] hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 flex flex-col h-full group">
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-8 border border-gray-200 text-yellow-500 group-hover:border-yellow-200 group-hover:bg-yellow-50 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
                 </div>
                 <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-black mb-3">Новые знакомства</h3>
@@ -139,8 +139,8 @@ export default function Home() {
               </div>
 
               {/* Карточка 4 */}
-              <div className="bg-white border border-gray-100 p-8 md:p-10 rounded-[2rem] hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 flex flex-col h-full">
-                <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mb-8 border border-gray-100/50 text-red-500">
+              <div className="bg-white border border-gray-100 p-8 md:p-10 rounded-[2rem] hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 flex flex-col h-full group">
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mb-8 border border-gray-200 text-red-500 group-hover:border-red-200 group-hover:bg-red-50 transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
                 </div>
                 <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-black mb-3">Прояви себя</h3>

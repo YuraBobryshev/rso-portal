@@ -10,11 +10,3 @@ createRoot(document.getElementById('root')).render(
   </StrictMode>,
 )
 
-// Текущий код пытается заменить localhost, но не IP
-axios.interceptors.request.use((config) => {
-  // Добавь проверку на свой IP или просто перенаправляй все запросы к API
-  if (config.url && config.url.includes('176.98.177.3')) {
-    config.url = config.url.replace('http://176.98.177.3:5000', '');
-  }
-  return config;
-});

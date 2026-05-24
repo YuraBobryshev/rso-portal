@@ -17,7 +17,7 @@ export default function Header() {
     if (token) {
       const fetchUser = async () => {
         try {
-          const res = await axios.get('http://localhost:5000/api/auth/me', {
+          const res = await axios.get('/api/auth/me', {
             headers: { Authorization: `Bearer ${token}` }
           });
           setUser(res.data);

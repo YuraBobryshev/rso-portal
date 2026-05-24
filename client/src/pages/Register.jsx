@@ -72,7 +72,7 @@ export default function Register() {
     if (!isFormValid) return;
 
     try {
-      const res = await axios.post('http://localhost:5000/api/auth/register', {
+      const res = await axios.post('/api/auth/register', {
         email: formData.email,
         password: formData.password,
         firstName: formData.firstName,

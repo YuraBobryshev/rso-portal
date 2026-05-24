@@ -20,7 +20,7 @@ export default function News() {
 
   const fetchUser = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/auth/me', { 
+      const res = await axios.get('/api/auth/me', { 
         headers: { Authorization: `Bearer ${token}` } 
       });
       setUser(res.data);
@@ -31,7 +31,7 @@ export default function News() {
 
   const fetchPosts = async () => {
     try {
-      const res = await axios.get('http://localhost:5000/api/posts');
+      const res = await axios.get('/api/posts');
       setPosts(res.data);
     } catch (e) { 
       console.error(e); 
@@ -48,7 +48,7 @@ export default function News() {
     if (image) formData.append('image', image);
     
     try {
-      await axios.post('http://localhost:5000/api/posts', formData, {
+      await axios.post('/api/posts', formData, {
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
       });
       setNewPost({ title: '', content: '' }); 

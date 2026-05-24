@@ -6,13 +6,13 @@ export default function Squads() {
   const [brigades, setBrigades] = useState([]);
 
   useEffect(() => {
-    axios.get('http://localhost:5000/api/brigades').then(res => setBrigades(res.data));
+    axios.get('/api/brigades').then(res => setBrigades(res.data));
   }, []);
 
   const handleApply = async (brigadeId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await axios.post('http://localhost:5000/api/applications/apply', 
+      const res = await axios.post('/api/applications/apply', 
         { brigadeId }, 
         { headers: { Authorization: `Bearer ${token}` } }
       );

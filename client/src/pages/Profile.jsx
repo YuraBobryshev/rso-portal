@@ -40,13 +40,13 @@ export default function Profile() {
     const headers = { Authorization: `Bearer ${token}` };
     try {
       setLoading(true);
-      const userRes = await api.get(`${API_URL}/api/auth/me`, { headers });
+      const userRes = await api.get(`/auth/me`, { headers });
       setUser(userRes.data);
       setVkUrl(userRes.data.vkUrl || '');
       setTgUrl(userRes.data.tgUrl || '');
 
       setEventsLoading(true);
-      const eventsRes = await api.get(`${API_URL}/api/events`, { headers });
+      const eventsRes = await api.get(`/api/events`, { headers });
       setEvents(eventsRes.data);
 
       if (userRes.data.role === 'COMMANDER') {
@@ -65,7 +65,7 @@ export default function Profile() {
     const headers = { Authorization: `Bearer ${token}` };
     try {
       setCommanderLoading(true);
-      const res = await api.get(`${API_URL}/api/commander/dashboard`, { headers });
+      const res = await api.get(`/commander/dashboard`, { headers });
       setCommanderData(res.data);
     } catch (err) { console.error(err); } finally { setCommanderLoading(false); }
   };
@@ -77,7 +77,7 @@ export default function Profile() {
   const refreshEventsList = async () => {
     const headers = { Authorization: `Bearer ${token}` };
     try {
-      const eventsRes = await api.get(`${API_URL}/api/events`, { headers });
+      const eventsRes = await api.get(`/events`, { headers });
       setEvents(eventsRes.data);
       return eventsRes.data;
     } catch (err) { console.error(err); }

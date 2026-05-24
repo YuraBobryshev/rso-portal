@@ -42,7 +42,7 @@ export default function Admin() {
     const headers = { Authorization: `Bearer ${token}` };
     setLoading(true);
     try {
-      const usersRes = await api.get(`${API_URL}/api/admin/users`, { headers });
+      const usersRes = await api.get(`/admin/users`, { headers });
       setUsers(usersRes.data);
 
       const brigadesRes = await api.get(`${API_URL}/api/brigades`, { headers });
@@ -62,7 +62,7 @@ export default function Admin() {
     const headers = { Authorization: `Bearer ${token}` };
     setEventsLoading(true);
     try {
-      const res = await api.get(`${API_URL}/api/admin/events`, { headers });
+      const res = await api.get(`/admin/events`, { headers });
       setEvents(res.data);
     } catch (err) {
       console.error("Ошибка загрузки мероприятий штаба", err);
@@ -76,7 +76,7 @@ export default function Admin() {
     const headers = { Authorization: `Bearer ${token}` };
     setDashboardLoading(true);
     try {
-      const res = await api.get(`${API_URL}/api/admin/rating-stats`, { headers });
+      const res = await api.get(`/admin/rating-stats`, { headers });
       setDashboardData(res.data);
     } catch (err) {
       console.error("Ошибка загрузки рейтингов", err);

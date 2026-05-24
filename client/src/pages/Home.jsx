@@ -22,7 +22,7 @@ export default function Home() {
 
     const fetchLatestNews = async () => {
       try {
-        const res = await api.get('/api/posts');
+        const res = await api.get('/posts');
         setLatestNews(res.data.slice(0, 3)); 
       } catch (e) {
         console.error("Ошибка загрузки вестника");

@@ -12,7 +12,7 @@ export default function BrigadeDetail() {
   const [applying, setApplying] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
 
-  const API_URL = 'http://176.98.177.3:5000'; 
+  const API_URL = '/api'
   const token = localStorage.getItem('token');
 
   useEffect(() => {

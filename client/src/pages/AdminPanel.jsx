@@ -35,7 +35,7 @@ export default function Admin() {
 
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
-  const API_URL = 'http://176.98.177.3:5000'; // Твой боевой IP
+  const API_URL = '/api'
 
   const fetchData = async () => {
     if (!token) { navigate('/login'); return; }

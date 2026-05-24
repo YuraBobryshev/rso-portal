@@ -159,29 +159,28 @@ export default function Home() {
             <p className="text-gray-500 text-sm md:text-base font-medium max-w-xl mx-auto">Выбирай свое призвание среди 5 ключевых трудовых направлений Севастополя.</p>
           </div>
 
-          {/* ИСПОЛЬЗУЕМ aspect-square ДЛЯ МОБИЛОК (идеальные плитки) И aspect-[4/5] ДЛЯ ПК */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-5">
             {vectors.map((item, index) => (
               <Link
                 to={`/brigades#direction-${item.code}`}
                 key={index}
-                className="aspect-square sm:aspect-[4/5] rounded-[1.25rem] sm:rounded-[2rem] p-4 sm:p-6 flex flex-col justify-between relative overflow-hidden shadow-sm group hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer"
+                className="aspect-square sm:aspect-[4/5] rounded-[1.25rem] sm:rounded-[2rem] p-4 sm:p-5 lg:p-6 flex flex-col relative overflow-hidden shadow-sm group hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer"
                 style={{ backgroundColor: item.accent }}
               >
                 <div className="text-white space-y-0.5 sm:space-y-1 relative z-10">
-                  <div className="text-[11px] sm:text-xl lg:text-2xl font-black leading-tight sm:leading-none uppercase tracking-tight">
+                  <div className="text-[11px] sm:text-base lg:text-2xl font-black leading-tight sm:leading-none uppercase tracking-tight">
                     впереди <br /> лучшее лето
                   </div>
-                  <div className="text-[9px] sm:text-sm font-medium opacity-90 pt-0.5 sm:pt-1">
+                  <div className="text-[9px] sm:text-xs lg:text-sm font-medium opacity-90 pt-0.5 sm:pt-1">
                     ➔ {item.slogan}
                   </div>
                 </div>
                 
-                {/* ЛОГОТИП ПРИЖАТ ВЛЕВО-ВНИЗ */}
-                <div className="w-full flex justify-start items-end flex-1 opacity-95 group-hover:scale-105 transition-transform duration-500 relative z-10 mt-2 sm:mt-0">
+                {/* ИСПРАВЛЕННЫЙ ЛОГОТИП (Пропорциональное масштабирование без обрезки) */}
+                <div className="mt-auto pt-4 w-full opacity-95 group-hover:scale-105 transition-transform duration-500 relative z-10">
                   <img 
                     src={item.logo} 
-                    className="w-full max-w-[110px] sm:max-w-none sm:w-auto sm:h-24 lg:h-28 object-contain object-left-bottom drop-shadow-md" 
+                    className="w-[90%] md:w-[85%] h-auto object-contain object-left-bottom drop-shadow-md" 
                     alt={item.title} 
                   />
                 </div>

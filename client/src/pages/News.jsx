@@ -20,7 +20,7 @@ export default function News() {
 
   const fetchUser = async () => {
     try {
-      const res = await axios.get('/api/auth/me', { 
+      const res = await axios.get('/auth/me', { 
         headers: { Authorization: `Bearer ${token}` } 
       });
       setUser(res.data);

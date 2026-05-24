@@ -1,8 +1,4 @@
 севрсо.рф {
-    # Удаляем /api перед отправкой на бэкенд
-    uri strip_prefix /api
     reverse_proxy /api/* app:5000
-
-    # Отдаем статику фронтенда
     reverse_proxy /* client:80
 }

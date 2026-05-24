@@ -1,27 +1,54 @@
 version: '3.8'
 
 services:
+  # 1. База данных Postgres
+  db:
+    image: postgres:15-alpine
+    container_name: rso_db
+    restart: always
+    environment:
+      POSTGRES_USER: user          # Укажи свои значения из .env
+      POSTGRES_PASSWORD: password  # Укажи свои значения из .env
+      POSTGRES_DB: dbname          # Укажи свои значения из .env
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data # Проверь, как назывался твой старый volume!
+
+  # 2. Бэкенд (Node.js API)
   app:
-    build: ./server  # <-- Вот здесь меняем точку на ./server
+    build: ./server
     restart: always
     env_file:
       - .env
     expose:
       - "5000"
+    depends_on:
+      - db
+
+  # 3. Фронтенд (React / Vue)
+  client:
+    build: ./client
+    restart: always
+    expose:
+      - "80" # Открываем порт только внутри сети Docker для Caddy
+
+  # 4. Обратный прокси (Caddy с авто-HTTPS)
   caddy:
     image: caddy:2-alpine
     restart: always
     ports:
-      - "80:80"     # Нужен для HTTP-вызовов Let's Encrypt и редиректов
-      - "443:443"   # Основной порт для HTTPS
+      - "80:80"
+      - "443:443"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
       - app
+      - client
 
 volumes:
-  # Сохраняем сертификаты, чтобы не получать бан от Let's Encrypt при частых деплоях
   caddy_data:
   caddy_config:
+  pg_data: # Этот volume должен совпадать с тем, что использовался ранее

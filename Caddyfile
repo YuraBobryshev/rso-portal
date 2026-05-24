@@ -1,5 +1,13 @@
 xn--b1af2ahcd.xn--p1ai {
-    reverse_proxy app:5000
+    # Все запросы, начинающиеся с /api, отправляем на бэкенд
+    handle /api/* {
+        reverse_proxy app:5000
+    }
+
+    # Все остальные запросы (клиентская часть) отправляем на фронтенд
+    handle {
+        reverse_proxy client:80
+    }
 }
 
 www.xn--b1af2ahcd.xn--p1ai {

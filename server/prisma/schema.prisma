@@ -1,6 +1,6 @@
 // Настройки подключения
 generator client {
-  provider = "prisma-client-js" // Было "prisma-client-id" - исправляем на "js"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -10,14 +10,14 @@ datasource db {
 
 // 1. ВСЕ НАШИ РОЛИ
 enum Role {
-  USER // Просто зарегистрированный человек
-  CANDIDATE // Подал заявку и был одобрен командиром
-  BOETS // Полноценный член отряда
-  COMMANDER // Глава отряда (документы, отчеты)
-  COMMISSAR // Замглавы по мероприятиям
-  MASTER // Замглавы по работе
-  MEDIA // Контент-мейкер (новости, фото)
-  REG_HQ // РЕГИОНАЛЬНЫЙ ШТАБ (Админ всей системы)
+  USER 
+  CANDIDATE 
+  BOETS 
+  COMMANDER 
+  COMMISSAR 
+  MASTER 
+  MEDIA 
+  REG_HQ 
 }
 
 // 2. МОДЕЛЬ ПОЛЬЗОВАТЕЛЯ
@@ -28,9 +28,13 @@ model User {
   firstName      String
   lastName       String
   role           Role               @default(USER)
-  avatarUrl      String? // ПРОВЕРЬ ЭТУ СТРОКУ
+  avatarUrl      String?
   vkUrl          String?            @default("")
   tgUrl          String?            @default("")
+  
+  // НОВОЕ: ID пользователя ВКонтакте для отправки API-уведомлений
+  vkId           String?            
+
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   brigadeId      String?
@@ -38,32 +42,40 @@ model User {
   applications   Application[]
   achievements   Achievement[]
   participations EventParticipant[]
-  posts          Post[] // Связь: один пользователь может написать много постов
-  comments       Comment[] // ВОТ ЭТУ СТРОКУ НУЖНО ДОБАВИТЬ СЕЙЧАС
+  posts          Post[] 
+  comments       Comment[] 
 }
 
 model Brigade {
   id           String        @id @default(uuid())
   name         String        @unique
   description  String        @db.Text
-  type         String // Направление (ССО, СПО и т.д.)
-  logoUrl      String? // Аватарка/Эмблема в S3
-  colorScheme  String?       @default("#0804FF") // Цветовая гамма (HEX-код) 
+  type         String 
+  logoUrl      String?
+  colorScheme  String?       @default("#0804FF") 
+  
+  // НОВОЕ: ID беседы комсостава в ВК, куда бот будет присылать новые анкеты
+  vkChatId     String?       
+
   createdAt    DateTime      @default(now())
   users        User[]
   applications Application[]
   events       Event[]
   achievements Achievement[]
+  
+  // НОВОЕ: Связь с трудовыми объектами (один отряд может работать на многих объектах)
+  laborObjects LaborObject[] 
 }
 
-// Добавь статус в список перечислений (можно в любое место, где enum)
+// НОВОЕ: Статус CANCELED для самостоятельной отмены заявки бойцом
 enum AppStatus {
   PENDING
   APPROVED
   REJECTED
+  CANCELED
 }
 
-// Новая модель заявки
+// Модель заявки
 model Application {
   id        String    @id @default(uuid())
   userId    String
@@ -71,8 +83,21 @@ model Application {
   brigadeId String
   brigade   Brigade   @relation(fields: [brigadeId], references: [id])
   status    AppStatus @default(PENDING)
-  comment   String? // Причина отказа или доп. инфо
+  comment   String?
   createdAt DateTime  @default(now())
+}
+
+// НОВОЕ: Модель Трудовых объектов
+model LaborObject {
+  id          String    @id @default(uuid())
+  name        String    // Например: "Mriya Resort & SPA 5*"
+  location    String    // Например: "Ялта, Крым"
+  task        String    @db.Text // Описание производственной задачи
+  imageUrl    String?   // Фотография объекта
+  createdAt   DateTime  @default(now())
+
+  // Связь: На этом объекте могут работать сразу несколько отрядов
+  brigades    Brigade[] 
 }
 
 model Event {
@@ -81,18 +106,22 @@ model Event {
   description    String?
   date           DateTime
   location       String?
-  type           String             @default("LOCAL") // LOCAL или REGIONAL
-  brigadeId      String? // Если пусто — это региональное
+  type           String             @default("LOCAL") 
+  brigadeId      String?
   brigade        Brigade?           @relation(fields: [brigadeId], references: [id])
   createdAt      DateTime           @default(now())
   participations EventParticipant[]
 }
 
+// ОБНОВЛЕНО: Расширена модель достижений для системы грамот
 model Achievement {
-  id        String   @id @default(uuid())
-  title     String
-  imageUrl  String?
-  value     Int      @default(1) // "Ценность" в рейтинге
+  id          String   @id @default(uuid())
+  title       String
+  description String?  // НОВОЕ: За что выдана грамота
+  imageUrl    String?  // Скан или дизайн грамоты
+  value       Int      @default(1) 
+  issuedAt    DateTime @default(now()) // НОВОЕ: Дата выдачи
+  
   userId    String?
   user      User?    @relation(fields: [userId], references: [id])
   brigadeId String?
@@ -105,9 +134,9 @@ model EventParticipant {
   user     User    @relation(fields: [userId], references: [id])
   eventId  String
   event    Event   @relation(fields: [eventId], references: [id])
-  attended Boolean @default(false) // Отметка Мастера: был или нет
+  attended Boolean @default(false) 
 
-  @@unique([userId, eventId]) // Запрещаем записываться дважды
+  @@unique([userId, eventId]) 
 }
 
 model Post {
@@ -119,8 +148,6 @@ model Post {
 
   authorId String
   author   User   @relation(fields: [authorId], references: [id])
-
-  // ВОТ ЭТА СТРОКА ДОЛЖНА БЫТЬ:
   comments Comment[]
 }
 

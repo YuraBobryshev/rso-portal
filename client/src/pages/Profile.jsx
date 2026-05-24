@@ -46,7 +46,7 @@ export default function Profile() {
       setTgUrl(userRes.data.tgUrl || '');
 
       setEventsLoading(true);
-      const eventsRes = await api.get(`/api/events`, { headers });
+      const eventsRes = await api.get(`/events`, { headers });
       setEvents(eventsRes.data);
 
       if (userRes.data.role === 'COMMANDER') {
@@ -115,7 +115,7 @@ export default function Profile() {
     const headers = { Authorization: `Bearer ${token}` };
     const comment = rejectionComments[appId] || '';
     try {
-      await api.post(`$/commander/process-application`, {
+      await api.post(`/commander/process-application`, {
         appId,
         status,
         comment: status === 'REJECTED' ? comment : null

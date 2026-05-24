@@ -1,190 +1,277 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import React from 'react';
 import { Link } from 'react-router-dom';
 import Header from '../components/Header';
 
-// Возвращаем оригинальные импорты иконок из твоих ассетов
+// Импорт аватарок/иконок (используем те, что уже есть, либо дефолтные)
 import ssoLogo from '../assets/icons/sso.svg';
 import spoLogo from '../assets/icons/spo.svg';
 import sopLogo from '../assets/icons/sop.svg';
-import smoLogo from '../assets/icons/smo.svg';
-import sservoLogo from '../assets/icons/sservo.svg';
-
-const vectors = [
-    { name: 'Строительные отряды', logo: ssoLogo, acronym: 'ССО', description: 'Возводим будущее своими руками.', color: 'border-blue-500' },
-    { name: 'Педагогические отряды', logo: spoLogo, acronym: 'СПО', description: 'Зажигаем сердца и дарим детство.', color: 'border-yellow-400' },
-    { name: 'Отряды проводников', logo: sopLogo, acronym: 'СОП', description: 'Романтика дорог и стук колес.', color: 'border-slate-500' },
-    { name: 'Медицинские отряды', logo: smoLogo, acronym: 'СМО', description: 'Забота и здоровье в каждом сердце.', color: 'border-red-500' },
-    { name: 'Сервисные отряды', logo: sservoLogo, acronym: 'ССервО', description: 'Создаем комфорт и настроение.', color: 'border-green-500' },
-];
-
-const timelineEvents = [
-    { year: '2014', title: 'Возрождение', description: 'Первый сводный отряд Севастополя отправился на всероссийскую стройку в Сочи.' },
-    { year: '2019', title: 'Юбилейный год', description: 'СевРО получило официальный статус и флаг организации.' },
-    { year: '2021', title: 'Рекордные охваты', description: 'Впервые в регионе численность бойцов превысила 500 человек.' },
-    { year: '2026', title: 'Цифровая Эра', description: 'Запуск единой экосистемы управления и геймификации.' },
-];
 
 export default function Home() {
-    const [news, setNews] = useState([]);
-    const [isLoggedIn, setIsLoggedIn] = useState(false);
+  return (
+    <div className="bg-white min-h-screen text-gray-900 font-sans selection:bg-[#0052FF] selection:text-white pb-20">
+      <Header />
 
-    useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (token) setIsLoggedIn(true);
+      <main className="max-w-[1200px] mx-auto px-4 sm:px-6 pt-24">
+        
+        {/* ================= HERO СЕКЦИЯ (СИНИЙ БЛОК) ================= */}
+        <section className="relative bg-[#0052FF] rounded-[2.5rem] md:rounded-[3.5rem] pt-12 md:pt-16 px-6 md:px-14 pb-16 mt-6 shadow-2xl shadow-blue-500/20">
+          
+          {/* Декоративная плашка сверху */}
+          <div className="inline-block border border-white/30 rounded-full px-4 py-1.5 mb-8 backdrop-blur-sm relative z-10">
+            <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-white/90">
+              Двухмесячный трудовой семестр
+            </span>
+          </div>
 
-        const fetchNews = async () => {
-            try {
-                // Берем только 3 последние новости для превью на главной
-                const response = await axios.get('http://176.98.177.3:5000/api/posts');
-                setNews(response.data.slice(0, 3));
-            } catch (error) {
-                console.error('Error fetching news:', error);
-            }
-        };
+          <div className="flex flex-col md:flex-row relative">
+            
+            {/* Левая текстовая часть */}
+            <div className="w-full md:w-2/3 relative z-10 flex flex-col">
+              
+              {/* Ступенчатый заголовок 1-в-1 как на референсе */}
+              <div className="flex flex-col text-5xl sm:text-6xl md:text-[5rem] lg:text-[6rem] leading-[0.85] font-black uppercase tracking-tighter">
+                <span className="text-[#E1FF00]">СИСТЕМА</span>
+                <span className="text-white sm:ml-12 md:ml-32">РОСТА</span>
+                <span className="text-white flex items-center flex-wrap gap-2 md:gap-4">
+                  БОЙЦА С НУЛЯ
+                  {/* Иконка вместо Instagram */}
+                  <div className="w-10 h-10 md:w-14 md:h-14 bg-[#E1FF00] rounded-2xl flex items-center justify-center rotate-12 shadow-lg">
+                    <span className="text-xl md:text-3xl">🔥</span>
+                  </div>
+                </span>
+              </div>
 
-        fetchNews();
-    }, []);
+              <p className="mt-8 text-sm md:text-base font-medium text-blue-100 max-w-sm leading-relaxed">
+                Узнаешь, как провести лучшее лето, заработать первые деньги и найти верных друзей без опыта и резюме.
+              </p>
 
-    return (
-        <div className="bg-white min-h-screen text-gray-900 font-sans">
-            <Header />
+              <div className="mt-10 flex flex-wrap items-center gap-4">
+                <Link to="/register" className="bg-[#E1FF00] text-black px-8 py-4 rounded-full font-black uppercase text-xs tracking-wider hover:scale-105 transition-transform shadow-lg shadow-[#E1FF00]/20">
+                  Стать бойцом
+                </Link>
+                <a href="#program" className="border-2 border-white/50 text-white px-8 py-3.5 rounded-full font-black uppercase text-xs tracking-wider hover:bg-white/10 transition-colors">
+                  Программа
+                </a>
+              </div>
+            </div>
 
-            <main className="max-w-[1300px] mx-auto px-6 py-16 md:py-24 space-y-24">
-                
-                {/* --- SECTION 1: HERO & MANIFESTO --- */}
-                <section className="grid grid-cols-1 md:grid-cols-4 grid-rows-auto gap-6">
-                    <div className="md:col-span-2 md:row-span-2 bg-gray-50 border border-gray-100 p-10 rounded-[2.5rem] shadow-sm flex flex-col justify-center gap-6 group hover:border-rso-blue hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300">
-                        <div className="flex items-center gap-4">
-                            <img src="https://upload.wikimedia.org/wikipedia/ru/thumb/e/e0/Russian_Student_Squads_logo.svg/1200px-Russian_Student_Squads_logo.svg.png" alt="RSO Logo" className="h-16 w-auto" />
-                            <h2 className="text-sm font-semibold text-rso-blue uppercase tracking-widest">Российские Студенческие Отряды</h2>
-                        </div>
-                        <h1 className="text-5xl md:text-6xl font-extrabold tracking-tighter leading-tight text-black group-hover:text-rso-blue transition">
-                            Севастопольское <br /> региональное <br /> отделение
-                        </h1>
-                        <p className="text-gray-500 text-lg max-w-xl">
-                            Возрождаем традиции, строим будущее и закаляем характеры. Твой путь в команду сильнейших начинается здесь.
-                        </p>
-                    </div>
+            {/* ПРАВАЯ ЧАСТЬ: ВАШЕ ФОТО ДЕВУШКИ В БОЙЦОВКЕ */}
+            <div className="w-full md:w-1/3 absolute bottom-0 right-0 md:-right-10 flex justify-end items-end h-[120%] pointer-events-none z-0 hidden md:flex">
+              {/* TODO: ВСТАВЬ СЮДА ССЫЛКУ НА ФОТО ДЕВУШКИ В БОЙЦОВКЕ! 
+                Для идеального эффекта нужен PNG с прозрачным фоном.
+              */}
+              <img 
+                src="https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?q=80&w=800&auto=format&fit=crop" 
+                alt="Девушка в бойцовке" 
+                className="h-full w-auto object-cover object-bottom"
+                style={{ maskImage: 'linear-gradient(to top, rgba(0,0,0,1) 85%, rgba(0,0,0,0) 100%)', WebkitMaskImage: 'linear-gradient(to top, rgba(0,0,0,1) 85%, rgba(0,0,0,0) 100%)' }}
+              />
+            </div>
 
-                    <div className="bg-gray-50 border border-gray-100 p-8 rounded-[2.5rem] flex flex-col items-center justify-center text-center gap-2 hover:shadow-lg hover:shadow-blue-500/10 transition duration-300">
-                        <span className="text-7xl font-extrabold text-rso-blue tracking-tighter">10+</span>
-                        <span className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Лет Летописи</span>
-                    </div>
+          </div>
+        </section>
 
-                    <div className="bg-gray-50 border border-gray-100 p-8 rounded-[2.5rem] flex flex-col items-center justify-center text-center gap-2 group transition duration-300">
-                        <span className="text-7xl font-extrabold text-black group-hover:text-yellow-400 transition tracking-tighter">5</span>
-                        <span className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Направлений</span>
-                    </div>
 
-                    <Link to="/register" className="md:col-span-2 bg-rso-blue border border-rso-blue p-8 rounded-[2.5rem] text-center group hover:bg-blue-700 transition-all duration-300 flex items-center justify-center gap-4 shadow-lg shadow-blue-500/20">
-                        <span className="text-3xl font-extrabold text-white uppercase tracking-tighter">Стать бойцом</span>
-                        <span className="text-3xl text-white group-hover:translate-x-2 transition-transform">→</span>
-                    </Link>
-                </section>
-
-                {/* --- SECTION 2: ЛЕТОПИСЬ СЕВРО --- */}
-                <section className="space-y-10">
-                    <div className="flex items-center justify-between gap-6">
-                        <h2 className="text-4xl font-extrabold tracking-tighter text-black">Вехи Летописи СевРО</h2>
-                        <div className="flex-grow h-px bg-gray-200"></div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                        <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl space-y-4 hover:border-gray-300 transition">
-                            <span className="text-5xl font-black text-rso-blue tracking-tighter">{timelineEvents[0].year}</span>
-                            <h3 className="text-2xl font-bold text-black tracking-tight">{timelineEvents[0].title}</h3>
-                            <p className="text-gray-500">{timelineEvents[0].description}</p>
-                        </div>
-                        
-                        {/* Главный блок летописи с синим акцентом */}
-                        <div className="md:col-span-2 md:row-span-2 bg-rso-blue border border-rso-blue p-10 rounded-3xl flex flex-col justify-between shadow-xl shadow-blue-500/20 hover:shadow-blue-500/40 transition-all duration-300">
-                            <div className="space-y-6">
-                                <span className="text-8xl font-black text-white tracking-tighter">{timelineEvents[1].year}</span>
-                                <h3 className="text-4xl font-extrabold text-white tracking-tighter">{timelineEvents[1].title}</h3>
-                                <p className="text-blue-100 text-lg max-w-md">{timelineEvents[1].description}</p>
-                            </div>
-                        </div>
-
-                        <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl space-y-4 hover:border-gray-300 transition">
-                            <span className="text-5xl font-black text-rso-blue tracking-tighter">{timelineEvents[2].year}</span>
-                            <h3 className="text-2xl font-bold text-black tracking-tight">{timelineEvents[2].title}</h3>
-                            <p className="text-gray-500">{timelineEvents[2].description}</p>
-                        </div>
-                        
-                        <div className="bg-gray-50 border border-gray-100 p-8 rounded-3xl space-y-4 group hover:border-rso-blue transition duration-300">
-                            <span className="text-5xl font-black text-black group-hover:text-yellow-400 transition tracking-tighter">{timelineEvents[3].year}</span>
-                            <h3 className="text-2xl font-bold text-black tracking-tight">{timelineEvents[3].title}</h3>
-                            <p className="text-gray-500">{timelineEvents[3].description}</p>
-                        </div>
-                    </div>
-                </section>
-
-                {/* --- SECTION 3: ВЕСТИ ОТРЯДОВ --- */}
-                <section className="space-y-10">
-                    <div className="flex items-center justify-between gap-6">
-                        <div className="flex-grow h-px bg-gray-200"></div>
-                        <h2 className="text-4xl font-extrabold tracking-tighter text-black">Вестник СевРО</h2>
-                    </div>
-
-                    {news.length === 0 ? (
-                        <div className="text-center bg-gray-50 border border-dashed border-gray-200 p-16 rounded-3xl">
-                            <p className="text-gray-400 text-xl font-medium">Новостей пока нет, но они скоро появятся!</p>
-                        </div>
-                    ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                            {news.map(post => (
-                                <div key={post.id} className="bg-white border border-gray-100 shadow-sm p-8 rounded-3xl hover:border-rso-blue hover:shadow-md transition flex flex-col justify-between">
-                                    <div>
-                                        <div className="text-[10px] font-bold text-rso-blue uppercase tracking-wider mb-3">
-                                            {new Date(post.createdAt).toLocaleDateString('ru-RU')}
-                                        </div>
-                                        <h3 className="text-xl font-bold text-black mb-4 line-clamp-2">{post.title}</h3>
-                                        <p className="text-gray-500 text-sm line-clamp-3 mb-6">{post.content}</p>
-                                    </div>
-                                    <Link to="/news" className="text-sm font-bold text-rso-blue hover:text-blue-700 transition">Читать →</Link>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    
-                    <div className="text-center pt-4">
-                         <Link to="/news" className="inline-block px-8 py-4 bg-gray-50 border border-gray-200 text-gray-600 font-bold uppercase text-xs tracking-wider rounded-xl hover:bg-gray-100 hover:text-black transition">
-                            Открыть все новости
-                        </Link>
-                    </div>
-                </section>
-
-                {/* --- SECTION 4: НАПРАВЛЕНИЯ (Старые карточки с оригинальными лого) --- */}
-                <section className="space-y-12 pb-24">
-                    <div className="text-center max-w-2xl mx-auto">
-                        <h2 className="text-sm font-semibold text-rso-blue uppercase tracking-widest mb-4">Наша Стратегия</h2>
-                        <h1 className="text-5xl font-extrabold tracking-tighter leading-tight text-black">Твой Вектор Развития</h1>
-                        <p className="text-gray-500 text-lg mt-6">Выбирай свое призвание среди 5 ключевых трудовых направлений Севастополя.</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
-                        {vectors.map((item, index) => (
-                            <Link to="/brigades" key={index} className={`bg-white border-t-4 border-gray-100 shadow-sm ${item.color} p-8 rounded-3xl flex flex-col justify-between gap-6 hover:shadow-xl hover:shadow-gray-200 hover:-translate-y-2 transition duration-300 group cursor-pointer`}>
-                                <div className="space-y-5">
-                                    <div className="flex items-center justify-between">
-                                        {/* Возвращаем оригинальный цветной SVG */}
-                                        <img 
-                                            src={item.logo} 
-                                            alt={item.acronym} 
-                                            className="h-14 w-14 object-contain group-hover:scale-110 transition-transform duration-300"
-                                        />
-                                        <span className="text-4xl font-black text-gray-100 group-hover:text-gray-200 transition tracking-tighter">{item.acronym}</span>
-                                    </div>
-                                    <h3 className="text-xl font-bold text-black tracking-tight">{item.name}</h3>
-                                    <p className="text-gray-500 text-sm">{item.description}</p>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                </section>
-
-            </main>
+        {/* ================= СТРОКА ДАТ / НАПРАВЛЕНИЙ (Бегущая/Flex) ================= */}
+        <div className="flex justify-center flex-wrap gap-2 md:gap-4 py-10 md:py-14 border-b border-gray-100">
+          {['СТРОИТЕЛИ', 'ВОЖАТЫЕ', 'ПРОВОДНИКИ', 'МЕДИКИ', 'СЕРВИС', 'СТРОИТЕЛИ', 'ВОЖАТЫЕ'].map((tag, idx) => (
+            <span key={idx} className="border border-gray-200 text-gray-500 rounded-full px-5 py-1.5 text-[10px] font-black uppercase tracking-widest hover:border-black hover:text-black transition-colors cursor-default">
+              {tag}
+            </span>
+          ))}
         </div>
-    );
+
+
+        {/* ================= СЕКЦИЯ "ДЛЯ КОГО" (6 КАРТОЧЕК) ================= */}
+        <section className="py-16 md:py-20">
+          <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-center text-black mb-12">
+            Для кого это движение?
+          </h2>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            
+            {/* Карточка 1 (Желтая) */}
+            <div className="bg-[#FDFFC2] rounded-[2rem] p-8 flex flex-col justify-between min-h-[280px] relative overflow-hidden">
+              <div>
+                <h3 className="text-sm md:text-base font-black uppercase tracking-tight text-black mb-3">Кто хочет найти друзей, но не знает, с чего начать</h3>
+                <p className="text-xs text-gray-700 font-medium leading-relaxed">
+                  Для тех, кому не хватает живого общения, выездов на природу и настоящей студенческой романтики.
+                </p>
+              </div>
+              <div className="w-10 h-10 bg-[#E1FF00] rounded-full flex items-center justify-center self-end border border-yellow-300 shadow-sm mt-6">
+                <span className="text-lg">👇</span>
+              </div>
+            </div>
+
+            {/* Карточка 2 (Серая) */}
+            <div className="bg-[#F3F4F6] rounded-[2rem] p-8 flex flex-col justify-between min-h-[280px]">
+              <div>
+                <h3 className="text-sm md:text-base font-black uppercase tracking-tight text-black mb-3">Кто хочет яркий досуг</h3>
+                <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                  Нас постоянно окружают форумы, творческие фестивали, спартакиады и гитары у костра. Откладывать жизнь больше не придется.
+                </p>
+              </div>
+              <div className="w-10 h-10 bg-[#E1FF00] rounded-full flex items-center justify-center self-end shadow-sm mt-6">
+                <span className="text-lg">👇</span>
+              </div>
+            </div>
+
+            {/* Карточка 3 (Серая) */}
+            <div className="bg-[#F3F4F6] rounded-[2rem] p-8 flex flex-col justify-between min-h-[280px]">
+              <div>
+                <h3 className="text-sm md:text-base font-black uppercase tracking-tight text-black mb-3">Кто хочет иметь официальный доход</h3>
+                <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                  Кому надоело сидеть без денег. Стабильная работа на лето с хорошей зарплатой и записью в трудовой.
+                </p>
+              </div>
+              <div className="w-10 h-10 bg-[#E1FF00] rounded-full flex items-center justify-center self-end shadow-sm mt-6">
+                <span className="text-lg">👇</span>
+              </div>
+            </div>
+
+            {/* Карточка 4 (Серая) */}
+            <div className="bg-[#F3F4F6] rounded-[2rem] p-8 flex flex-col justify-between min-h-[280px]">
+              <div>
+                <h3 className="text-sm md:text-base font-black uppercase tracking-tight text-black mb-3">Кто хочет развиваться в офлайне и быть лидером</h3>
+                <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                  Чтобы в будущем занимать управленческие позиции и прокачать свои софт-скиллы на практике.
+                </p>
+              </div>
+              <div className="w-10 h-10 bg-[#E1FF00] rounded-full flex items-center justify-center self-end shadow-sm mt-6">
+                <span className="text-lg">👇</span>
+              </div>
+            </div>
+
+            {/* Карточка 5 (СИНЯЯ АКЦЕНТНАЯ) */}
+            <div className="bg-[#0052FF] rounded-[2rem] p-8 flex flex-col justify-between min-h-[280px] text-white">
+              <div>
+                <h3 className="text-sm md:text-base font-black uppercase tracking-tight mb-3">Кто не может выбрать нишу, не знает, кем стать</h3>
+                <p className="text-xs text-blue-100 font-medium leading-relaxed">
+                  Поможем с реализацией для первого старта в карьере: вожатый, строитель, медик или сервис.
+                </p>
+              </div>
+              <div className="w-10 h-10 bg-[#E1FF00] rounded-full flex items-center justify-center self-end shadow-sm mt-6 text-black">
+                <span className="text-lg">👇</span>
+              </div>
+            </div>
+
+            {/* Карточка 6 (Серая) */}
+            <div className="bg-[#F3F4F6] rounded-[2rem] p-8 flex flex-col justify-between min-h-[280px]">
+              <div>
+                <h3 className="text-sm md:text-base font-black uppercase tracking-tight text-black mb-3">Кто хочет вступить в нашу большую семью</h3>
+                <p className="text-xs text-gray-500 font-medium leading-relaxed">
+                  Бесплатное обучение по самым высоким стандартам и сертификат государственного образца.
+                </p>
+              </div>
+              <div className="w-10 h-10 bg-[#E1FF00] rounded-full flex items-center justify-center self-end shadow-sm mt-6">
+                <span className="text-lg">👇</span>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+
+        {/* ================= СТАТИСТИКА (Вместо Instagram аккаунтов) ================= */}
+        <section className="pb-16 md:pb-24">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            
+            {[
+              { role: 'Командир отряда', name: 'Иванов Иван', s1: '150+', s2: '4 года', s3: '10', l1: 'бойцов', l2: 'в РСО', l3: 'целин' },
+              { role: 'Комиссар отряда', name: 'Петрова Анна', s1: '30+', s2: '2 года', s3: '5', l1: 'ивентов', l2: 'в РСО', l3: 'целин' },
+              { role: 'Мастер отряда', name: 'Смирнов Алексей', s1: '4', s2: '3 года', s3: '8', l1: 'объекта', l2: 'в РСО', l3: 'целин' }
+            ].map((stat, idx) => (
+              <div key={idx} className="bg-white border border-gray-100 rounded-3xl p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col">
+                <div className="flex items-center gap-4 border-b border-gray-100 pb-4 mb-4">
+                  <div className="w-12 h-12 rounded-full bg-[#0052FF] text-white flex items-center justify-center font-black text-lg">
+                    {stat.name.charAt(0)}
+                  </div>
+                  <div>
+                    <div className="text-[10px] font-bold text-[#0052FF] uppercase tracking-wider">{stat.role}</div>
+                    <div className="font-black text-sm uppercase text-black">{stat.name}</div>
+                  </div>
+                </div>
+                <div className="flex justify-between text-center px-2">
+                  <div>
+                    <div className="font-black text-lg text-black">{stat.s1}</div>
+                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{stat.l1}</div>
+                  </div>
+                  <div>
+                    <div className="font-black text-lg text-black">{stat.s2}</div>
+                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{stat.l2}</div>
+                  </div>
+                  <div>
+                    <div className="font-black text-lg text-black">{stat.s3}</div>
+                    <div className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">{stat.l3}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+          </div>
+        </section>
+
+
+        {/* ================= ПРОГРАММА (Двухцветный блок) ================= */}
+        <section id="program" className="max-w-[800px] mx-auto pb-10">
+          <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tight text-center text-black mb-10">
+            Программа подготовки
+          </h2>
+
+          <div className="relative shadow-2xl shadow-blue-500/10 rounded-[2.5rem] md:rounded-[3.5rem] bg-white">
+            
+            {/* ВЕРХНИЙ БЛОК (ЖЕЛТЫЙ) */}
+            <div className="bg-[#E1FF00] rounded-t-[2.5rem] md:rounded-t-[3.5rem] p-8 md:p-12 flex flex-col md:flex-row md:items-center gap-4">
+              <span className="bg-black text-[#E1FF00] px-6 py-2 rounded-full font-black uppercase text-xs tracking-widest w-fit">
+                1 ЭТАП
+              </span>
+              <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-black">
+                ВЕСЕННЯЯ ШКОЛА
+              </h3>
+            </div>
+
+            {/* НИЖНИЙ БЛОК (СИНИЙ) */}
+            <div className="bg-[#0052FF] rounded-b-[2.5rem] md:rounded-b-[3.5rem] rounded-t-3xl -mt-6 p-8 md:p-12 text-white relative z-10">
+              <div className="flex flex-col md:flex-row md:items-center gap-4 mb-8">
+                <span className="bg-white/20 text-white px-6 py-2 rounded-full font-black uppercase text-xs tracking-widest w-fit backdrop-blur-sm border border-white/30">
+                  2 ЭТАП
+                </span>
+                <h3 className="text-2xl md:text-3xl font-black uppercase tracking-tight">
+                  ТРУДОВОЙ СЕМЕСТР
+                </h3>
+              </div>
+
+              {/* Рамка со списком */}
+              <div className="border-2 border-white/20 bg-white/5 rounded-3xl p-6 md:p-8 backdrop-blur-sm space-y-4 mb-8">
+                {[
+                  "Что выбрать без опыта: направления и специфика линейных отрядов.",
+                  "Узнаешь, как на самом деле работает система РСО и рейтинг.",
+                  "Чем отличается работа в ССО от работы в СПО.",
+                  "Какие отряды ведут к высокому заработку, а какие к путешествиям.",
+                  "Ошибки: почему новички иногда не проходят строгий отбор штаба.",
+                  "Дадим чек-лист, чтобы собрать идеальный рюкзак на твою первую Целину.",
+                  "Проведем экзамен и выдадим свидетельство государственного образца."
+                ].map((item, idx) => (
+                  <div key={idx} className="flex gap-4">
+                    <span className="text-[#E1FF00] font-black mt-0.5">•</span>
+                    <p className="text-sm md:text-base font-medium text-blue-50 leading-relaxed">{item}</p>
+                  </div>
+                ))}
+              </div>
+
+              {/* Плавающая кнопка (как на рефе) */}
+              <div className="flex justify-center -mb-16 relative z-20">
+                <Link to="/register" className="bg-[#E1FF00] text-black px-10 py-5 rounded-full font-black uppercase text-sm tracking-wider hover:scale-105 transition-transform shadow-xl shadow-[#E1FF00]/20">
+                  Подать заявку
+                </Link>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </main>
+    </div>
+  );
 }

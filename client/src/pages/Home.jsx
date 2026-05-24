@@ -9,6 +9,7 @@ import spoLogo from '../assets/icons/spo.svg';
 import sopLogo from '../assets/icons/sop.svg';
 import smoLogo from '../assets/icons/smo.svg';
 import sservoLogo from '../assets/icons/sservo.svg';
+import photoMain from '../assets/PhotoMain.jpg';
 
 export default function Home() {
   const [latestNews, setLatestNews] = useState([]);
@@ -39,6 +40,13 @@ export default function Home() {
     { code: 'СОП', title: 'Отряды проводников', slogan: 'в поезде', accent: '#FF4D39', logo: sopLogo },
     { code: 'СМО', title: 'Медицинские отряды', slogan: 'в медицине', accent: '#00E5FF', logo: smoLogo },
     { code: 'ССервО', title: 'Сервисные отряды', slogan: 'в сервисе', accent: '#66BB8A', logo: sservoLogo }
+  ];
+
+  const laborObjects = [
+    { name: "Mriya Resort & SPA 5*", location: "Ялта, Крым", task: "Сервисное обслуживание и организация премиум-отдыха" },
+    { name: "Всероссийская студенческая стройка «БАМ 2.0»", location: "Сибирь / Дальний Восток", task: "Реконструкция легендарной железнодорожной магистрали" },
+    { name: "Детские оздоровительные лагеря «Ласпи» и «Горный»", location: "Севастополь", task: "Педагогическое сопровождение и вожатская деятельность" },
+    { name: "АО «Гранд Сервис Экспресс» (Поезда «Таврия»)", location: "Маршруты по всей РФ", task: "Пассажирские перевозки в Город-Герой Севастополь" },
   ];
 
   return (
@@ -81,7 +89,7 @@ export default function Home() {
 
           <div className="relative w-full aspect-[4/5] sm:aspect-square lg:aspect-[4/5] bg-gray-50 rounded-[2rem] overflow-hidden shadow-sm group border border-gray-100/50">
             <img 
-              src="https://images.unsplash.com/photo-15444717305-2782549b5136?q=80&w=1974" 
+              src={photoMain} 
               className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
               alt="Студенты РСО" 
             />
@@ -190,7 +198,44 @@ export default function Home() {
         </section>
 
 
-        {/* ================= 4. НОВОСТИ ШТАБА ================= */}
+        {/* ================= 4. ТРУДОВЫЕ ОБЪЕКТЫ ================= */}
+        <section className="max-w-[1400px] mx-auto px-6">
+          <div className="mb-8 sm:mb-12">
+            <span className="text-[10px] sm:text-xs font-bold text-rso-blue uppercase tracking-widest">География работы</span>
+            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-black mt-3">Наши трудовые объекты</h2>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            {laborObjects.map((obj, i) => (
+              <div 
+                key={i} 
+                className="p-5 md:p-6 bg-white border border-gray-100 rounded-[1.5rem] md:rounded-[2rem] grid grid-cols-1 md:grid-cols-12 gap-4 items-center hover:shadow-lg hover:shadow-gray-200/50 transition-all duration-300 group"
+              >
+                <div className="md:col-span-4">
+                  <span className="text-[9px] font-bold text-gray-400 block uppercase tracking-wider mb-1">Проект</span>
+                  <div className="text-sm md:text-base font-black uppercase text-black group-hover:text-rso-blue transition-colors leading-tight">
+                    {obj.name}
+                  </div>
+                </div>
+                <div className="md:col-span-3">
+                  <span className="text-[9px] font-bold text-gray-400 block uppercase tracking-wider mb-1">Локация</span>
+                  <div className="text-xs font-bold text-gray-500 uppercase tracking-wide">
+                    {obj.location}
+                  </div>
+                </div>
+                <div className="md:col-span-5">
+                  <span className="text-[9px] font-bold text-gray-400 block uppercase tracking-wider mb-1">Производственная задача</span>
+                  <div className="text-xs md:text-sm text-gray-500 font-medium leading-relaxed">
+                    {obj.task}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+
+        {/* ================= 5. НОВОСТИ ШТАБА ================= */}
         <section className="max-w-[1400px] mx-auto px-6">
           <div className="flex justify-between items-end mb-10 border-b border-gray-100 pb-4">
             <div>
@@ -246,7 +291,7 @@ export default function Home() {
         </section>
 
 
-        {/* ================= 5. ПРИЗЫВ К ДЕЙСТВИЮ ================= */}
+        {/* ================= 6. ПРИЗЫВ К ДЕЙСТВИЮ ================= */}
         {!isLoggedIn && (
           <section className="max-w-[1400px] mx-auto px-6 pb-12">
             <div className="bg-gray-50 border border-gray-100 rounded-[2rem] md:rounded-[3rem] p-10 md:p-20 text-center shadow-sm flex flex-col items-center justify-center">

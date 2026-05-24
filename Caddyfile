@@ -1,4 +1,10 @@
 севрсо.рф {
+    # 1. Проксируем API: если путь начинается с /auth или /posts, пересылаем с добавлением /api
+    rewrite /auth/* /api{uri}
+    rewrite /posts/* /api{uri}
+    
     reverse_proxy /api/* app:5000
+    
+    # 2. Фронтенд
     reverse_proxy /* client:80
 }

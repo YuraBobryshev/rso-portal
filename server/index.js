@@ -630,7 +630,7 @@ app.get('/api/auth/yandex', (req, res) => {
 });
 
 // ==========================================
-// YANDEX OAUTH: Callback
+// YANDEX OAUTH: Callback (обработка ответа от Яндекса)
 // ==========================================
 app.get('/api/auth/yandex/callback', async (req, res) => {
   const { code } = req.query;
@@ -641,7 +641,8 @@ app.get('/api/auth/yandex/callback', async (req, res) => {
   }
 
   try {
-    // 1. Обмениваем code на токен (Яндекс требует данные в формате x-www-form-urlencoded)
+    // 1. Обмениваем временный code на access_token
+    // Яндекс строго требует передачу параметров в формате x-www-form-urlencoded
     const tokenResponse = await axios.post('https://oauth.yandex.ru/token', 
       new URLSearchParams({
         grant_type: 'authorization_code',
@@ -655,27 +656,33 @@ app.get('/api/auth/yandex/callback', async (req, res) => {
 
     const { access_token } = tokenResponse.data;
 
-    // 2. Получаем профиль пользователя
+    // 2. Используя access_token, запрашиваем данные профиля пользователя
     const userResponse = await axios.get('https://login.yandex.ru/info', {
       headers: { Authorization: `OAuth ${access_token}` }
     });
 
     const { id: yandexId, default_email: email, first_name, last_name, default_avatar_id } = userResponse.data;
-    // Яндекс отдает ID аватарки, строим полный URL
+    
+    // Если у пользователя есть аватарка, Яндекс возвращает её ID, собираем полноценную ссылку
     const avatarUrl = default_avatar_id ? `https://avatars.yandex.net/get-yapic/${default_avatar_id}/islands-200` : null;
 
-    // 3. Ищем или создаем пользователя
+    // 3. Ищем пользователя в БД по yandexId
     let user = await prisma.user.findUnique({ where: { yandexId } });
 
     if (!user) {
-      if (email) user = await prisma.user.findUnique({ where: { email } });
+      // Если по yandexId не нашли, проверяем совпадение по email
+      if (email) {
+        user = await prisma.user.findUnique({ where: { email } });
+      }
 
       if (user) {
+        // Если аккаунт с такой почтой уже есть, привязываем к нему yandexId
         user = await prisma.user.update({
           where: { id: user.id },
           data: { yandexId, avatarUrl: user.avatarUrl || avatarUrl }
         });
       } else {
+        // Если пользователя нет — создаем новую учетную запись бойца
         user = await prisma.user.create({
           data: {
             yandexId,
@@ -688,8 +695,14 @@ app.get('/api/auth/yandex/callback', async (req, res) => {
       }
     }
 
-    // 4. Генерируем токен и отправляем на фронт (С ИСПРАВЛЕННЫМ userId!)
-    const sysToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    // 4. Генерируем наш системный JWT-токен СевРО (используем строго userId)
+    const sysToken = jwt.sign(
+      { userId: user.id, role: user.role }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '7d' }
+    );
+
+    // 5. Перенаправляем пользователя на фронтенд, передавая токен в URL
     res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
 
   } catch (error) {
@@ -709,43 +722,57 @@ app.get('/api/auth/yandex', (req, res) => {
   res.redirect(yandexAuthUrl);
 });
 
+
 // ==========================================
-// YANDEX OAUTH: Callback
+// VK OAUTH: Инициация входа
 // ==========================================
-app.get('/api/auth/yandex/callback', async (req, res) => {
+app.get('/api/auth/vk', (req, res) => {
+  const redirectUri = `${DOMAIN_URL}/api/auth/vk/callback`;
+  
+  const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${process.env.VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=code&v=5.131`;
+  
+  res.redirect(vkAuthUrl);
+});
+
+// ==========================================
+// VK OAUTH: Callback
+// ==========================================
+app.get('/api/auth/vk/callback', async (req, res) => {
   const { code } = req.query;
-  const redirectUri = `${DOMAIN_URL}/api/auth/yandex/callback`;
+  const redirectUri = `${DOMAIN_URL}/api/auth/vk/callback`;
 
   if (!code) {
     return res.redirect(`${DOMAIN_URL}/login?error=no_code`);
   }
 
   try {
-    // 1. Обмениваем code на токен (Яндекс требует данные в формате x-www-form-urlencoded)
-    const tokenResponse = await axios.post('https://oauth.yandex.ru/token', 
-      new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        client_id: process.env.YANDEX_CLIENT_ID,
-        client_secret: process.env.YANDEX_CLIENT_SECRET,
-        redirect_uri: redirectUri
-      }).toString(),
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-    );
-
-    const { access_token } = tokenResponse.data;
-
-    // 2. Получаем профиль пользователя
-    const userResponse = await axios.get('https://login.yandex.ru/info', {
-      headers: { Authorization: `OAuth ${access_token}` }
+    // 1. Обмениваем code на токен (ВК сразу отдает email и user_id)
+    const tokenResponse = await axios.get('https://oauth.vk.com/access_token', {
+      params: {
+        client_id: process.env.VK_CLIENT_ID,
+        client_secret: process.env.VK_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        code
+      }
     });
 
-    const { id: yandexId, default_email: email, first_name, last_name, default_avatar_id } = userResponse.data;
-    // Яндекс отдает ID аватарки, строим полный URL
-    const avatarUrl = default_avatar_id ? `https://avatars.yandex.net/get-yapic/${default_avatar_id}/islands-200` : null;
+    const { access_token, user_id, email } = tokenResponse.data;
+
+    // 2. Получаем Имя, Фамилию и Аватарку
+    const userResponse = await axios.get('https://api.vk.com/method/users.get', {
+      params: {
+        user_ids: user_id,
+        fields: 'photo_200',
+        access_token,
+        v: '5.131'
+      }
+    });
+
+    const vkUser = userResponse.data.response[0];
+    const vkIdString = String(user_id);
 
     // 3. Ищем или создаем пользователя
-    let user = await prisma.user.findUnique({ where: { yandexId } });
+    let user = await prisma.user.findUnique({ where: { vkId: vkIdString } });
 
     if (!user) {
       if (email) user = await prisma.user.findUnique({ where: { email } });
@@ -753,16 +780,16 @@ app.get('/api/auth/yandex/callback', async (req, res) => {
       if (user) {
         user = await prisma.user.update({
           where: { id: user.id },
-          data: { yandexId, avatarUrl: user.avatarUrl || avatarUrl }
+          data: { vkId: vkIdString, avatarUrl: user.avatarUrl || vkUser.photo_200 }
         });
       } else {
         user = await prisma.user.create({
           data: {
-            yandexId,
-            email,
-            firstName: first_name || 'Боец',
-            lastName: last_name || 'РСО',
-            avatarUrl: avatarUrl,
+            vkId: vkIdString,
+            email: email || null,
+            firstName: vkUser.first_name,
+            lastName: vkUser.last_name,
+            avatarUrl: vkUser.photo_200,
           }
         });
       }
@@ -773,11 +800,10 @@ app.get('/api/auth/yandex/callback', async (req, res) => {
     res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
 
   } catch (error) {
-    console.error('Ошибка Yandex OAuth:', error.response?.data || error.message);
+    console.error('Ошибка VK OAuth:', error.response?.data || error.message);
     res.redirect(`${DOMAIN_URL}/login?error=auth_failed`);
   }
 });
-
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

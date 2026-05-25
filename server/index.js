@@ -730,6 +730,14 @@ app.post('/api/auth/vk', async (req, res) => {
   }
 });
 
+app.get('/api/auth/vk-start', (req, res) => {
+  const clientId = '54608474';
+  const redirectUri = 'https://xn--b1af2ahcd.xn--p1ai/login';
+  // Сервер просто перенаправляет пользователя на ВК, 
+  // но запрос теперь исходит от доверенного сервера, а не от прокси-браузера
+  const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&display=page&scope=email&response_type=code&state=vk`;
+  res.redirect(authUrl);
+});
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

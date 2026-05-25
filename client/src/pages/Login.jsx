@@ -145,12 +145,8 @@ export default function Login() {
           <div className="flex flex-col gap-3 mb-6">
           <button 
             type="button"
-            onClick={() => {
-              const clientId = '54608474';
-              const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/login');
-              window.location.href = `https://oauth.vk.com/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&display=page&scope=email&response_type=code&state=vk`;
-            }}
-            className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-[#0077FF] text-sm font-bold text-white py-3 rounded-xl hover:bg-[#005CE6] transition-colors"
+            onClick={() => window.location.href = 'https://xn--b1af2ahcd.xn--p1ai/api/auth/vk-start'}
+            className="w-full bg-[#0077FF] text-white py-3 rounded-xl font-bold"
           >
             Войти через ВКонтакте
           </button>

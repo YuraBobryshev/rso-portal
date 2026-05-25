@@ -603,10 +603,10 @@ app.get('/api/auth/google/callback', async (req, res) => {
 
     // 2.4 Генерируем твой стандартный системный JWT-токен СевРО для авторизации
     const sysToken = jwt.sign(
-      { id: user.id, role: user.role }, 
-      process.env.JWT_SECRET, 
-      { expiresIn: '7d' }
-    );
+          { userId: user.id, role: user.role }, 
+          process.env.JWT_SECRET, 
+          { expiresIn: '7d' }
+        );
 
     // 2.5 Редиректим пользователя обратно на страницу входа фронтенда, 
     // передавая наш сгенерированный JWT-токен в параметрах URL

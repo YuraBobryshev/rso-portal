@@ -101,7 +101,7 @@ export default function Login() {
 
   // --- ВКОНТАКТЕ ---
   const vkLogin = () => {
-    const clientId = 'ТВОЙ_VK_CLIENT_ID_СЮДА'; // Вставь сюда ID приложения ВК
+    const clientId = '54608474'; // Вставь сюда ID приложения ВК
     const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/login'); 
     // scope=email просит у ВК отдать почту пользователя
     window.location.href = `https://oauth.vk.com/authorize?client_id=${clientId}&display=page&redirect_uri=${redirectUri}&scope=email&response_type=code&v=5.199&state=vk`;

@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import api from '../api/axiosConfig'
+import api from '../api/axiosConfig';
 import { useNavigate, Link } from 'react-router-dom';
 import logoUrl from '../assets/logo.svg';
+// ИМПОРТ ДЛЯ GOOGLE:
+import { useGoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -36,10 +38,10 @@ export default function Login() {
     setErrors(validate());
   };
 
+  // --- СТАНДАРТНЫЙ ЛОГИН ---
   const handleLogin = async (e) => {
     e.preventDefault();
     
-    // Включаем touched для всех полей при отправке
     setTouched({ email: true, password: true });
     const formErrors = validate();
     setErrors(formErrors);
@@ -53,6 +55,29 @@ export default function Login() {
     } catch (err) {
       setServerError(err.response?.data?.message || 'Неверный логин или пароль');
     }
+  };
+
+  // --- GOOGLE ЛОГИН ---
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      try {
+        const res = await api.post('/auth/google', { code: tokenResponse.code });
+        localStorage.setItem('token', res.data.token);
+        navigate('/profile');
+      } catch (err) {
+        setServerError('Ошибка авторизации через Google');
+      }
+    },
+    flow: 'auth-code', // Получаем код для сервера, а не прямой токен
+  });
+
+  // --- ЯНДЕКС ЛОГИН ---
+  const yandexLogin = () => {
+    // ВАЖНО: Вставь сюда свой Client ID от Яндекса
+    const clientId = 'adb8160f0e97492b899ec3d783a364e7'; 
+    // Используем Punycode для надежности перенаправления
+    const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/api/auth/yandex/callback'); 
+    window.location.href = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}`;
   };
 
   return (
@@ -83,6 +108,33 @@ export default function Login() {
               {serverError}
             </div>
           )}
+
+          {/* КНОПКИ СОЦСЕТЕЙ */}
+          <div className="flex flex-col gap-3 mb-6">
+            <button 
+              type="button"
+              onClick={() => googleLogin()}
+              className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-white text-sm font-bold text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="h-5 w-5" />
+              Войти через Google
+            </button>
+            <button 
+              type="button"
+              onClick={yandexLogin}
+              className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-white text-sm font-bold text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors"
+            >
+              <img src="https://yastatic.net/s3/home/icons/yandex-red-logo-v2.svg" alt="Yandex" className="h-5 w-5" />
+              Войти через Яндекс
+            </button>
+          </div>
+
+          {/* РАЗДЕЛИТЕЛЬ */}
+          <div className="flex items-center my-6">
+            <div className="flex-1 border-t border-gray-100"></div>
+            <span className="px-3 text-xs text-gray-400 font-bold uppercase tracking-wider">или по почте</span>
+            <div className="flex-1 border-t border-gray-100"></div>
+          </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
             {/* EMAIL */}

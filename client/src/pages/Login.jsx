@@ -100,22 +100,32 @@ export default function Login() {
     window.location.href = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=yandex`;
   };
 
-// Внутри Login.jsx
-useEffect(() => {
-  const script = document.createElement('script');
-  script.src = "https://unpkg.com/@vkid/sdk@latest/dist-sdk/vkid-sdk.js";
-  script.onload = () => {
-    const vkid = new window.VKIDSDK.Config({
-      app: 54608627, // Твой верный ID
-      redirectUrl: 'https://xn--b1af2ahcd.xn--p1ai/login',
-      state: 'vk',
-    });
 
-    const oneTap = new window.VKIDSDK.OneTap();
-    // Рендерим кнопку виджета в элемент с id="vk_auth_widget"
-    oneTap.render({ container: document.getElementById('vk_auth_widget'), scheme: 'bright_light' });
-  };
-  document.body.appendChild(script);
+useEffect(() => {
+    // 1. Добавляем скрипт динамически, если его еще нет
+    const script = document.createElement('script');
+    script.src = "https://unpkg.com/@vkid/sdk@latest/dist-sdk/vkid-sdk.js";
+    script.async = true;
+    script.onload = () => {
+        // 2. Инициализируем только после загрузки скрипта
+        if (window.VKIDSDK) {
+            const vkid = new window.VKIDSDK.Config({
+                app: 54608627, // Убедись, что это ID именно сайта (не сервиса)
+                redirectUrl: 'https://xn--b1af2ahcd.xn--p1ai/login',
+                state: 'vk',
+            });
+
+            const oneTap = new window.VKIDSDK.OneTap();
+            const container = document.getElementById('vk_auth_widget');
+            if (container) {
+                oneTap.render({ container: container, scheme: 'bright_light' });
+            }
+        }
+    };
+    document.body.appendChild(script);
+
+    // Очистка при размонтировании
+    return () => { document.body.removeChild(script); };
 }, []);
 
 // И в JSX добавь этот div:

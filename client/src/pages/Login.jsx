@@ -6,22 +6,6 @@ import { useGoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
 
-    useEffect(() => {
-        const initVKID = () => {
-          if (window.VKIDSDK) {
-            const vkid = new window.VKIDSDK.Config({
-              app: 54608474,
-              redirectUrl: 'https://xn--b1af2ahcd.xn--p1ai/login',
-              state: 'vk',
-            });
-
-            const oneTap = new window.VKIDSDK.OneTap();
-            oneTap.render({ container: document.getElementById('vk_auth_widget'), scheme: 'bright_light' });
-          }
-        };
-        initVKID();
-      }, []);
-
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
@@ -116,17 +100,13 @@ export default function Login() {
     window.location.href = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=yandex`;
   };
 
-const vkLogin = async () => {
-    try {
-        const res = await fetch('https://xn--b1af2ahcd.xn--p1ai/api/auth/vk-start');
-        const data = await res.json();
-        if (data.url) {
-            // Прямой переход. ВАЖНО: Никаких .replace('oauth.vk.com', 'id.vk.com')!
-            window.location.href = data.url;
-        }
-    } catch (err) {
-        console.error("Ошибка:", err);
-    }
+const vkLogin = () => {
+    // Используем oauth.vk.com — это единственный рабочий метод для прямого редиректа
+    const clientId = '54608627'; 
+    const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/login');
+    const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&display=page&scope=email&response_type=code&v=5.199&state=vk`;
+    
+    window.location.href = authUrl;
 };
 
   

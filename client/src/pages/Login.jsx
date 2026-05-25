@@ -14,29 +14,43 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // --- ЛОВИМ КОД ОТ ЯНДЕКСА ИЛИ ВК ПРИ ВОЗВРАТЕ НА СТРАНИЦУ ---
+  // Инициализация VK ID виджета
+  useEffect(() => {
+    const initVKID = () => {
+      if (window.VKIDSDK) {
+        const vkid = new window.VKIDSDK.Config({
+          app: 54608474,
+          redirectUrl: 'https://xn--b1af2ahcd.xn--p1ai/login',
+          state: 'vk',
+        });
+
+        const oneTap = new window.VKIDSDK.OneTap();
+        oneTap.render({ container: document.getElementById('vk_auth_widget'), scheme: 'bright_light' });
+      }
+    };
+    initVKID();
+  }, []);
+
+  // Логика обработки возврата от соцсетей
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const code = urlParams.get('code');
-    const state = urlParams.get('state'); // По этому параметру мы узнаем, кто нас вернул
+    const state = urlParams.get('state');
 
     if (code) {
       const authWithSocial = async () => {
         try {
           let res;
-          // Смотрим, какая соцсеть нас перенаправила
           if (state === 'vk') {
             res = await api.post('/auth/vk', { code });
           } else {
             res = await api.post('/auth/yandex', { code });
           }
-          
           localStorage.setItem('token', res.data.token);
           navigate('/profile');
         } catch (err) {
           setServerError(`Ошибка авторизации через ${state === 'vk' ? 'ВКонтакте' : 'Яндекс'}`);
-          // Очищаем URL от невалидного кода
-          navigate('/login', { replace: true }); 
+          navigate('/login', { replace: true });
         }
       };
       authWithSocial();
@@ -46,29 +60,18 @@ export default function Login() {
   const validate = () => {
     const newErrors = {};
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
     if (!email) newErrors.email = 'Введите электронную почту';
     else if (!emailRegex.test(email)) newErrors.email = 'Неверный формат почты';
-
     if (!password) newErrors.password = 'Введите пароль';
     else if (password.length < 6) newErrors.password = 'Пароль не может быть короче 6 символов';
-
     return newErrors;
-  };
-
-  const handleBlur = (field) => {
-    setTouched({ ...touched, [field]: true });
-    setErrors(validate());
   };
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    setTouched({ email: true, password: true });
     const formErrors = validate();
     setErrors(formErrors);
-
     if (Object.keys(formErrors).length > 0) return;
-
     try {
       const res = await api.post('/auth/login', { email, password });
       localStorage.setItem('token', res.data.token);
@@ -78,7 +81,6 @@ export default function Login() {
     }
   };
 
-  // --- GOOGLE ---
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
@@ -92,163 +94,36 @@ export default function Login() {
     flow: 'auth-code',
   });
 
-  // --- ЯНДЕКС ---
   const yandexLogin = () => {
-    const clientId = 'adb8160f0e97492b899ec3d783a364e7'; // Твой Yandex Client ID
+    const clientId = 'adb8160f0e97492b899ec3d783a364e7';
     const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/login'); 
     window.location.href = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=yandex`;
   };
 
-  // --- ВКОНТАКТЕ ---
-
-const vkLogin = () => {
-    const clientId = '54608474'; 
-    // Мы пишем чистую строку, без кодирования внутри неё, 
-    // и используем encodeURIComponent только на весь аргумент
-    const redirectUri = 'https://xn--b1af2ahcd.xn--p1ai/login';
-    const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&display=page&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=code&state=vk`;
-    
-    window.location.href = authUrl;
-  };
-
-  
   return (
-    <div className="min-h-screen bg-gray-50/30 text-black font-sans flex flex-col selection:bg-rso-blue selection:text-white">
+    <div className="min-h-screen bg-gray-50/30 text-black font-sans flex flex-col">
       <header className="w-full max-w-[1500px] mx-auto h-16 px-6 flex justify-between items-center bg-transparent">
-         <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
-           <img src={logoUrl} alt="РСО Севастополь" className="h-8 object-contain" />
-         </Link>
-         <Link to="/" className="text-xs font-bold text-gray-400 hover:text-rso-blue transition-colors">
-           На главную →
-         </Link>
+         <Link to="/" className="flex items-center hover:opacity-90"><img src={logoUrl} alt="РСО" className="h-8" /></Link>
       </header>
 
       <main className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md bg-white border border-gray-100 rounded-2xl p-8 md:p-10 shadow-sm relative">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-black uppercase tracking-tight text-black">Вход в систему</h1>
-            <p className="text-xs text-gray-400 font-medium mt-1">Доступ к личному кабинету СевРО РСО</p>
-          </div>
-
-          {serverError && (
-            <div className="mb-6 bg-red-50 text-red-600 border border-red-100 rounded-xl p-3 text-xs font-semibold text-center">
-              {serverError}
-            </div>
-          )}
-
+        <div className="w-full max-w-md bg-white border border-gray-100 rounded-2xl p-8 shadow-sm">
+          <h1 className="text-3xl font-black uppercase text-center mb-8">Вход</h1>
+          {serverError && <div className="mb-4 text-red-600 text-xs text-center">{serverError}</div>}
+          
           <div className="flex flex-col gap-3 mb-6">
-            <button 
-              type="button"
-              onClick={vkLogin}
-              className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-[#0077FF] text-sm font-bold text-white py-3 rounded-xl hover:bg-[#005CE6] transition-colors"
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
-                <path fill="currentColor" d="M15.071 18.006c-5.918 0-9.336-4.108-9.48-10.957h2.894c.1 5.228 2.455 7.424 4.316 7.88v-7.88h2.72v4.498c1.834-.202 3.774-2.28 4.417-4.498h2.72c-.546 2.686-2.52 4.673-3.844 5.467 1.324.634 3.535 2.408 4.416 5.49H20.25c-.718-2.22-2.454-3.882-4.455-4.085v4.085h-.724z"/>
-              </svg>
-              Войти через ВКонтакте
-            </button>
-
-            <button 
-              type="button"
-              onClick={() => googleLogin()}
-              className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-white text-sm font-bold text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="h-5 w-5" />
-              Войти через Google
-            </button>
-            
-            <button 
-              type="button"
-              onClick={yandexLogin}
-              className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-white text-sm font-bold text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              <svg viewBox="0 0 48 48" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
-                <path fill="#FF0000" d="M24 48C10.745 48 0 37.255 0 24S10.745 0 24 0s24 10.745 24 24-10.745 24-24 24z"/>
-                <path fill="#FFFFFF" d="M25.54 36h-4.4l-3.32-8.38h-2.1V36h-3.95V13.12h10.3c3.4 0 5.82.77 7.28 2.31 1.45 1.53 2.18 3.73 2.18 6.6 0 2.53-.55 4.54-1.66 6.02-1.1 1.48-2.73 2.45-4.88 2.92L25.54 36zm-3.32-20h-6.5v8.72h6.5c1.88 0 3.23-.42 4.05-1.28.82-.85 1.23-2.17 1.23-3.96 0-1.27-.32-2.3-1-3-.67-.7-1.8-1.04-3.38-1.04z"/>
-              </svg>
-              Войти через Яндекс
-            </button>
+            <div id="vk_auth_widget" className="w-full"></div>
+            <button onClick={() => googleLogin()} className="w-full border py-3 rounded-xl text-sm font-bold">Войти через Google</button>
+            <button onClick={yandexLogin} className="w-full border py-3 rounded-xl text-sm font-bold">Войти через Яндекс</button>
           </div>
 
-          <div className="flex items-center my-6">
-            <div className="flex-1 border-t border-gray-100"></div>
-            <span className="px-3 text-xs text-gray-400 font-bold uppercase tracking-wider">или по почте</span>
-            <div className="flex-1 border-t border-gray-100"></div>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div className="relative">
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Электронная почта
-              </label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (touched.email) setErrors(validate());
-                }}
-                onBlur={() => handleBlur('email')}
-                className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none transition-all ${
-                  touched.email && errors.email 
-                    ? 'border-red-400 focus:border-red-500 bg-red-50/10' 
-                    : 'border-gray-200 focus:border-rso-blue focus:bg-white'
-                }`}
-                placeholder="name@example.com"
-              />
-              {touched.email && errors.email && (
-                <span className="text-[11px] text-red-500 font-medium mt-1 block pl-1">
-                  {errors.email}
-                </span>
-              )}
-            </div>
-
-            <div className="relative">
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Пароль доступа
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (touched.password) setErrors(validate());
-                }}
-                onBlur={() => handleBlur('password')}
-                className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none transition-all ${
-                  touched.password && errors.password 
-                    ? 'border-red-400 focus:border-red-500 bg-red-50/10' 
-                    : 'border-gray-200 focus:border-rso-blue focus:bg-white'
-                }`}
-                placeholder="••••••••"
-              />
-              {touched.password && errors.password && (
-                <span className="text-[11px] text-red-500 font-medium mt-1 block pl-1">
-                  {errors.password}
-                </span>
-              )}
-            </div>
-
-            <button 
-              type="submit" 
-              className="w-full bg-rso-blue text-white font-bold uppercase text-xs tracking-wider py-4 rounded-xl hover:bg-black transition-colors shadow-md shadow-blue-500/10 mt-2"
-            >
-              Войти в личный кабинет
-            </button>
+          <form onSubmit={handleLogin} className="space-y-4">
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border rounded-xl p-3 text-sm" placeholder="Почта" />
+            <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border rounded-xl p-3 text-sm" placeholder="Пароль" />
+            <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold">Войти</button>
           </form>
-
-          <div className="mt-8 text-center border-t border-gray-100 pt-5">
-            <p className="text-xs text-gray-400 font-medium mb-1.5">Ещё нет учетной записи?</p>
-            <Link to="/register" className="text-xs font-bold text-rso-blue hover:text-black transition-colors">
-              Подать заявку на вступление →
-            </Link>
-          </div>
         </div>
       </main>
-
-      <footer className="py-6 bg-transparent text-center">
-         <span className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Севастополь // 2026</span>
-      </footer>
     </div>
   );
 }

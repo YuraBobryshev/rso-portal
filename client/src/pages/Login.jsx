@@ -1,147 +1,75 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../api/axiosConfig';
-import { useNavigate, Link, useLocation } from 'react-router-dom';
 import logoUrl from '../assets/logo.svg';
-import { useGoogleLogin } from '@react-oauth/google';
-import React, { useEffect } from 'react';
-import { VKIDSDK } from '@vkid/sdk';
 
 export default function Login() {
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [serverError, setServerError] = useState('');
+  const [loading, setLoading] = useState(false);
   
   const navigate = useNavigate();
-  const location = useLocation();
 
-  // --- ЛОВИМ КОД ОТ ЯНДЕКСА ИЛИ ВК ПРИ ВОЗВРАТЕ НА СТРАНИЦУ ---
+  // === ЕДИНСТВЕННЫЙ ОБРАБОТЧИК ДЛЯ ВСЕХ СОЦСЕТЕЙ ===
+  // Caddy вернет пользователя сюда с параметром ?token=... или ?error=...
   useEffect(() => {
-    const urlParams = new URLSearchParams(location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state'); // По этому параметру мы узнаем, кто нас вернул
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    const error = urlParams.get('error');
 
-    if (code) {
-      const authWithSocial = async () => {
-        try {
-          let res;
-          // Смотрим, какая соцсеть нас перенаправила
-          if (state === 'vk') {
-            res = await api.post('/auth/vk', { code });
-          } else {
-            res = await api.post('/auth/yandex', { code });
-          }
-          
-          localStorage.setItem('token', res.data.token);
-          navigate('/profile');
-        } catch (err) {
-          setServerError(`Ошибка авторизации через ${state === 'vk' ? 'ВКонтакте' : 'Яндекс'}`);
-          // Очищаем URL от невалидного кода
-          navigate('/login', { replace: true }); 
-        }
-      };
-      authWithSocial();
+    if (token) {
+      localStorage.setItem('token', token);
+      // Мягко очищаем параметры из адресной строки для красоты безопасности
+      window.history.replaceState({}, document.title, window.location.pathname);
+      navigate('/profile');
     }
-  }, [location.search, navigate]);
 
-  const validate = () => {
-    const newErrors = {};
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    
-    if (!email) newErrors.email = 'Введите электронную почту';
-    else if (!emailRegex.test(email)) newErrors.email = 'Неверный формат почты';
+    if (error) {
+      setServerError('Не удалось авторизоваться через социальную сеть. Попробуйте снова.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [navigate]);
 
-    if (!password) newErrors.password = 'Введите пароль';
-    else if (password.length < 6) newErrors.password = 'Пароль не может быть короче 6 символов';
-
-    return newErrors;
+  // Классическая авторизация по почте/паролю
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleBlur = (field) => {
-    setTouched({ ...touched, [field]: true });
-    setErrors(validate());
-  };
-
-  const handleLogin = async (e) => {
+  const handleEmailLogin = async (e) => {
     e.preventDefault();
-    setTouched({ email: true, password: true });
-    const formErrors = validate();
-    setErrors(formErrors);
-
-    if (Object.keys(formErrors).length > 0) return;
+    setServerError('');
+    setLoading(true);
 
     try {
-      const res = await api.post('/auth/login', { email, password });
+      const res = await api.post('/auth/login', formData);
       localStorage.setItem('token', res.data.token);
       navigate('/profile');
     } catch (err) {
-      setServerError(err.response?.data?.message || 'Неверный логин или пароль');
+      setServerError(err.response?.data?.message || 'Неверный email или пароль');
+    } finally {
+      setLoading(false);
     }
   };
 
-  // --- GOOGLE ---
-  const googleLogin = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
-      try {
-        const res = await api.post('/auth/google', { code: tokenResponse.code });
-        localStorage.setItem('token', res.data.token);
-        navigate('/profile');
-      } catch (err) {
-        setServerError('Ошибка авторизации через Google');
-      }
-    },
-    flow: 'auth-code',
-  });
-
-  // --- ЯНДЕКС ---
-  const yandexLogin = () => {
-    const clientId = 'adb8160f0e97492b899ec3d783a364e7'; // Твой Yandex Client ID
-    const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/login'); 
-    window.location.href = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=yandex`;
-  };
-
-
-export default function VKLoginButton() {
-  useEffect(() => {
-    // Конфигурация SDK
-    VKIDSDK.Config.set({
-      app: 54608627, // Твой ID
-      redirectUrl: 'https://xn--b1af2ahcd.xn--p1ai/login',
-      state: 'vk',
-    });
-
-    // Создаем OneTap виджет
-    const oneTap = new VKIDSDK.OneTap();
-
-    // Рендерим его в div с ID 'vk_auth_widget'
-    const container = document.getElementById('vk_auth_widget');
-    if (container) {
-      oneTap.render({ container, scheme: 'bright_light' });
-    }
-  }, []);
-
-  return <div id="vk_auth_widget"></div>;
-}
-
-  
   return (
     <div className="min-h-screen bg-gray-50/30 text-black font-sans flex flex-col selection:bg-rso-blue selection:text-white">
+      
+      {/* ХЕДЕР */}
       <header className="w-full max-w-[1500px] mx-auto h-16 px-6 flex justify-between items-center bg-transparent">
          <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
-           <img src={logoUrl} alt="РСО Севастополь" className="h-8 object-contain" />
+           <img src={logoUrl} alt="РСО" className="h-8 object-contain" />
          </Link>
-         <Link to="/" className="text-xs font-bold text-gray-400 hover:text-rso-blue transition-colors">
-           На главную →
+         <Link to="/register" className="text-xs font-bold text-gray-400 hover:text-rso-blue transition-colors">
+           Еще нет аккаунта? Создать
          </Link>
       </header>
 
       <main className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md bg-white border border-gray-100 rounded-2xl p-8 md:p-10 shadow-sm relative">
+        <div className="w-full max-w-lg bg-white border border-gray-100 rounded-2xl p-8 md:p-10 shadow-sm relative">
+          
           <div className="text-center mb-8">
             <h1 className="text-3xl font-black uppercase tracking-tight text-black">Вход в систему</h1>
-            <p className="text-xs text-gray-400 font-medium mt-1">Доступ к личному кабинету СевРО РСО</p>
+            <p className="text-xs text-gray-400 font-medium mt-1">Цифровая экосистема Студенческих Отрядов Севастополя</p>
           </div>
 
           {serverError && (
@@ -150,105 +78,82 @@ export default function VKLoginButton() {
             </div>
           )}
 
-          <div className="flex flex-col gap-3 mb-6">
-
-          <div id="vk_auth_widget"></div>
-
-            <button 
-              type="button"
-              onClick={() => googleLogin()}
-              className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-white text-sm font-bold text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="h-5 w-5" />
-              Войти через Google
-            </button>
-            
-            <button 
-              type="button"
-              onClick={yandexLogin}
-              className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-white text-sm font-bold text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors"
-            >
-              <svg viewBox="0 0 48 48" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
-                <path fill="#FF0000" d="M24 48C10.745 48 0 37.255 0 24S10.745 0 24 0s24 10.745 24 24-10.745 24-24 24z"/>
-                <path fill="#FFFFFF" d="M25.54 36h-4.4l-3.32-8.38h-2.1V36h-3.95V13.12h10.3c3.4 0 5.82.77 7.28 2.31 1.45 1.53 2.18 3.73 2.18 6.6 0 2.53-.55 4.54-1.66 6.02-1.1 1.48-2.73 2.45-4.88 2.92L25.54 36zm-3.32-20h-6.5v8.72h6.5c1.88 0 3.23-.42 4.05-1.28.82-.85 1.23-2.17 1.23-3.96 0-1.27-.32-2.3-1-3-.67-.7-1.8-1.04-3.38-1.04z"/>
-              </svg>
-              Войти через Яндекс
-            </button>
-          </div>
-
-          <div className="flex items-center my-6">
-            <div className="flex-1 border-t border-gray-100"></div>
-            <span className="px-3 text-xs text-gray-400 font-bold uppercase tracking-wider">или по почте</span>
-            <div className="flex-1 border-t border-gray-100"></div>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-5">
-            <div className="relative">
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Электронная почта
-              </label>
+          {/* ФОРМА КЛАССИЧЕСКОГО ВХОДА */}
+          <form onSubmit={handleEmailLogin} className="space-y-4 mb-6">
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Электронная почта</label>
               <input
+                name="email"
                 type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (touched.email) setErrors(validate());
-                }}
-                onBlur={() => handleBlur('email')}
-                className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none transition-all ${
-                  touched.email && errors.email 
-                    ? 'border-red-400 focus:border-red-500 bg-red-50/10' 
-                    : 'border-gray-200 focus:border-rso-blue focus:bg-white'
-                }`}
-                placeholder="name@example.com"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none transition-all focus:border-rso-blue focus:bg-white text-black"
+                placeholder="example@mail.ru"
+                required
               />
-              {touched.email && errors.email && (
-                <span className="text-[11px] text-red-500 font-medium mt-1 block pl-1">
-                  {errors.email}
-                </span>
-              )}
             </div>
 
-            <div className="relative">
-              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">
-                Пароль доступа
-              </label>
+            <div>
+              <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Пароль</label>
               <input
+                name="password"
                 type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (touched.password) setErrors(validate());
-                }}
-                onBlur={() => handleBlur('password')}
-                className={`w-full bg-gray-50 border rounded-xl px-4 py-3 text-sm outline-none transition-all ${
-                  touched.password && errors.password 
-                    ? 'border-red-400 focus:border-red-500 bg-red-50/10' 
-                    : 'border-gray-200 focus:border-rso-blue focus:bg-white'
-                }`}
+                value={formData.password}
+                onChange={handleChange}
+                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none transition-all focus:border-rso-blue focus:bg-white text-black"
                 placeholder="••••••••"
+                required
               />
-              {touched.password && errors.password && (
-                <span className="text-[11px] text-red-500 font-medium mt-1 block pl-1">
-                  {errors.password}
-                </span>
-              )}
             </div>
 
             <button 
               type="submit" 
-              className="w-full bg-rso-blue text-white font-bold uppercase text-xs tracking-wider py-4 rounded-xl hover:bg-black transition-colors shadow-md shadow-blue-500/10 mt-2"
+              disabled={loading}
+              className="w-full font-bold uppercase text-xs tracking-wider py-4.5 bg-gray-900 text-white rounded-xl transition-all shadow-md hover:bg-black disabled:bg-gray-200"
             >
-              Войти в личный кабинет
+              {loading ? 'Авторизация...' : 'Войти по почте'}
             </button>
           </form>
 
-          <div className="mt-8 text-center border-t border-gray-100 pt-5">
-            <p className="text-xs text-gray-400 font-medium mb-1.5">Ещё нет учетной записи?</p>
-            <Link to="/register" className="text-xs font-bold text-rso-blue hover:text-black transition-colors">
-              Подать заявку на вступление →
-            </Link>
+          {/* РАЗДЕЛИТЕЛЬ BENTO */}
+          <div className="relative flex py-4 items-center">
+            <div className="flex-grow border-t border-gray-100"></div>
+            <span className="flex-shrink mx-4 text-[10px] font-bold text-gray-400 uppercase tracking-wider">Или через сервисы</span>
+            <div className="flex-grow border-t border-gray-100"></div>
           </div>
+
+          {/* КНОПКИ СЕТЕВЫХ СЕРВИСОВ (Прямые ссылки на бэкенд через Caddy) */}
+          <div className="space-y-3">
+            
+            {/* GOOGLE */}
+            <a 
+              href="https://xn--b1af2ahcd.xn--p1ai/api/auth/google" 
+              className="w-full flex items-center justify-center gap-3 border border-gray-100 bg-white text-xs font-bold uppercase tracking-wider text-gray-700 py-3.5 rounded-xl hover:bg-gray-50 hover:border-gray-200 transition-all shadow-xs"
+            >
+              <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="" className="h-4 w-4" />
+              <span>Войти через Google</span>
+            </a>
+
+            {/* ЯНДЕКС */}
+            <a 
+              href="https://xn--b1af2ahcd.xn--p1ai/api/auth/yandex" 
+              className="w-full flex items-center justify-center gap-3 border border-gray-100 bg-white text-xs font-bold uppercase tracking-wider text-gray-700 py-3.5 rounded-xl hover:bg-gray-50 hover:border-gray-200 transition-all shadow-xs"
+            >
+              <img src="https://www.svgrepo.com/show/349575/yandex.svg" alt="" className="h-4 w-4" />
+              <span>Войти через Яндекс</span>
+            </a>
+
+            {/* ВКОНТАКТЕ */}
+            <a 
+              href="https://xn--b1af2ahcd.xn--p1ai/api/auth/vk" 
+              className="w-full flex items-center justify-center gap-3 border border-gray-100 bg-[#0077FF] text-xs font-bold uppercase tracking-wider text-white py-3.5 rounded-xl hover:bg-[#0066DD] transition-all shadow-sm"
+            >
+              <img src="https://www.svgrepo.com/show/475689/vk-color.svg" alt="" className="h-4 w-4 filter brightness-0 invert" />
+              <span>Войти через ВКонтакте</span>
+            </a>
+
+          </div>
+
         </div>
       </main>
 

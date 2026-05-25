@@ -6,9 +6,9 @@ const jwt = require('jsonwebtoken');
 const authMiddleware = require('./middleware/auth');
 const { upload } = require('./s3Config'); 
 const axios = require('axios'); 
-
 const app = express();
 const prisma = new PrismaClient();
+const DOMAIN_URL = 'https://xn--b1af2ahcd.xn--p1ai';
 
 app.use(cors());
 app.use(express.json());
@@ -528,221 +528,96 @@ app.get('/api/admin/rating-stats', authMiddleware, checkRole(['REG_HQ']), async 
   }
 });
 
-app.post('/api/auth/google', async (req, res) => {
+
+// ==========================================
+// 1. Инициация входа: редирект юзера в Google
+// ==========================================
+app.get('/api/auth/google', (req, res) => {
+  // Ссылка, куда Google вернет пользователя с кодом. 
+  // Caddy поймает /api/... и отдаст этот запрос твоему Node.js
+  const redirectUri = `${DOMAIN_URL}/api/auth/google/callback`;
+  
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email%20profile`;
+  
+  res.redirect(googleAuthUrl);
+});
+
+// ==========================================
+// 2. Callback: Google возвращает code сюда
+// ==========================================
+app.get('/api/auth/google/callback', async (req, res) => {
+  const { code } = req.query;
+  const redirectUri = `${DOMAIN_URL}/api/auth/google/callback`;
+
+  if (!code) {
+    return res.redirect(`${DOMAIN_URL}/login?error=no_code`);
+  }
+
   try {
-    const { code } = req.body;
-    
-    // 1. Обмениваем код на access_token
+    // 2.1 Обмениваем code на access_token напрямую через сервера Google
     const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
       client_id: process.env.GOOGLE_CLIENT_ID,
       client_secret: process.env.GOOGLE_CLIENT_SECRET,
       code,
-      redirect_uri: 'postmessage', // <-- ВОТ ЗДЕСЬ МАГИЯ (Вместо ссылки пишем postmessage)
       grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
     });
 
-    const accessToken = tokenResponse.data.access_token;
+    const { access_token } = tokenResponse.data;
 
-    // 2. Получаем данные пользователя
+    // 2.2 Используя access_token, запрашиваем данные профиля (email, имя, аватарку)
     const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${accessToken}` },
+      headers: { Authorization: `Bearer ${access_token}` },
     });
 
     const { id: googleId, email, given_name, family_name, picture } = userResponse.data;
 
-    // 3. Ищем пользователя в базе
-    let user = await prisma.user.findUnique({ where: { email } });
+    // 2.3 Ищем пользователя по googleId
+    let user = await prisma.user.findUnique({ where: { googleId } });
 
-    if (user) {
-      // Если пользователь уже есть (например, регался по email), привязываем Google ID
-      if (!user.googleId) {
-        user = await prisma.user.update({
-          where: { email },
-          data: { googleId, avatarUrl: user.avatarUrl || picture },
-        });
+    if (!user) {
+      // Если по googleId не нашли, проверяем, нет ли пользователя с таким email
+      if (email) {
+        user = await prisma.user.findUnique({ where: { email } });
       }
-    } else {
-      // Если пользователя нет, создаем нового
-      user = await prisma.user.create({
-        data: {
-          email,
-          googleId,
-          firstName: given_name || 'Студент',
-          lastName: family_name || '',
-          avatarUrl: picture,
-          vkUrl: "",
-          tgUrl: ""
-        },
-      });
-    }
 
-    // 4. Генерируем наш JWT токен
-    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
-    
-    res.json({ token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role } });
-
-  } catch (error) {
-    console.error('Ошибка авторизации Google:', error.response?.data || error.message);
-    res.status(500).json({ message: 'Ошибка авторизации через Google' });
-  }
-});
-
-// ==========================================================
-// 🌐 АВТОРИЗАЦИЯ ЧЕРЕЗ ЯНДЕКС
-// ==========================================================
-
-// Роут для обмена кода от Яндекса
-app.post('/api/auth/yandex', async (req, res) => {
-  try {
-    const { code } = req.body;
-
-    // 1. Обмениваем код на токен
-    const tokenResponse = await axios.post('https://oauth.yandex.ru/token', 
-          new URLSearchParams({
-            grant_type: 'authorization_code',
-            code,
-            client_id: process.env.YANDEX_CLIENT_ID,
-            client_secret: process.env.YANDEX_CLIENT_SECRET,
-            redirect_uri: 'https://xn--b1af2ahcd.xn--p1ai/login' // <-- ДОБАВИЛИ ЭТУ СТРОКУ
-          }).toString(), 
-          { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-        );
-
-    const accessToken = tokenResponse.data.access_token;
-
-    // 2. Получаем данные пользователя
-    const userResponse = await axios.get('https://login.yandex.ru/info?format=json', {
-      headers: { Authorization: `OAuth ${accessToken}` },
-    });
-
-    const { id: yandexId, default_email: email, first_name, last_name, default_avatar_id } = userResponse.data;
-    const picture = default_avatar_id ? `https://avatars.yandex.net/get-yapic/${default_avatar_id}/islands-200` : null;
-
-    // 3. Ищем пользователя в базе
-    let user = await prisma.user.findUnique({ where: { email } });
-
-    if (user) {
-      if (!user.yandexId) {
-        user = await prisma.user.update({
-          where: { email },
-          data: { yandexId, avatarUrl: user.avatarUrl || picture },
-        });
-      }
-    } else {
-      user = await prisma.user.create({
-        data: {
-          email,
-          yandexId,
-          firstName: first_name || 'Студент',
-          lastName: last_name || '',
-          avatarUrl: picture,
-          vkUrl: "",
-          tgUrl: ""
-        },
-      });
-    }
-
-    // 4. Генерируем токен
-    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
-    res.json({ token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role } });
-
-  } catch (error) {
-    console.error('Ошибка авторизации Yandex:', error.response?.data || error.message);
-    res.status(500).json({ message: 'Ошибка авторизации через Яндекс' });
-  }
-});
-
-app.post('/api/auth/vk', async (req, res) => {
-  try {
-    const { access_token, user_id } = req.body; // Теперь мы ждем токен от виджета    // Ссылка возврата ОБЯЗАТЕЛЬНО должна совпадать с той, что в настройках приложения ВК
-    const redirectUri = 'https://xn--b1af2ahcd.xn--p1ai/login'; 
-
-    // 1. Обмениваем код на access_token и email от ВК
-      const tokenResponse = await axios.post('https://id.vk.com/oauth2/auth', null, {
-      params: {
-        grant_type: 'authorization_code',
-        client_id: process.env.VK_CLIENT_ID,
-        client_secret: process.env.VK_CLIENT_SECRET,
-        redirect_uri: 'https://xn--b1af2ahcd.xn--p1ai/login',
-        code: code,
-        code_verifier: '' // если ты не используешь PKCE, оставь пустым
-      }
-    });
-
-    const { access_token, user_id, email: vkEmail } = tokenResponse.data;
-
-    // 2. Запрашиваем данные профиля (Имя, Фамилия, Аватарка)
-    const userResponse = await axios.get('https://api.vk.com/method/users.get', {
-          params: {
-            user_ids: user_id,
-            fields: 'photo_200,email',
-            access_token: access_token, // Токен, который пришел от виджета
-            v: '5.199'
-          }
-        });
-        
-    const vkUser = userResponse.data.response[0];
-    const firstName = vkUser.first_name || 'Студент';
-    const lastName = vkUser.last_name || '';
-    const picture = vkUser.photo_200;
-    const vkIdString = String(user_id);
-    
-    // ВК отдает email только если юзер разрешил. Если нет - делаем заглушку, 
-    // т.к. Prisma требует уникальный email для каждого юзера.
-    const email = vkEmail || `vk_${user_id}@rso.local`;
-
-    // 3. Ищем пользователя в базе (по ВК ID или по почте)
-    let user = await prisma.user.findFirst({
-      where: {
-        OR: [ { vkId: vkIdString }, { email: email } ]
-      }
-    });
-
-    if (user) {
-      if (!user.vkId) {
-        // Привязываем ВК к существующей учетке
+      if (user) {
+        // Если пользователь с такой почтой уже есть, привязываем к нему GoogleId
         user = await prisma.user.update({
           where: { id: user.id },
-          data: { vkId: vkIdString, avatarUrl: user.avatarUrl || picture },
+          data: { googleId, avatarUrl: user.avatarUrl || picture }
+        });
+      } else {
+        // Если вообще нет такого пользователя — создаем новую учетку бойца
+        user = await prisma.user.create({
+          data: {
+            googleId,
+            email,
+            firstName: given_name || 'Боец',
+            lastName: family_name || 'РСО',
+            avatarUrl: picture,
+          }
         });
       }
-    } else {
-      // Создаем нового
-      user = await prisma.user.create({
-        data: {
-          email,
-          vkId: vkIdString,
-          firstName,
-          lastName,
-          avatarUrl: picture,
-          vkUrl: `https://vk.com/id${user_id}`, // Сразу сохраняем ссылку на ВК!
-          tgUrl: ""
-        },
-      });
     }
 
-    // 4. Генерируем токен и пускаем на сайт
-    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
-    res.json({ token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role } });
+    // 2.4 Генерируем твой стандартный системный JWT-токен СевРО для авторизации
+    const sysToken = jwt.sign(
+      { id: user.id, role: user.role }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '7d' }
+    );
+
+    // 2.5 Редиректим пользователя обратно на страницу входа фронтенда, 
+    // передавая наш сгенерированный JWT-токен в параметрах URL
+    res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
 
   } catch (error) {
-    console.error('Ошибка авторизации VK:', error.response?.data || error.message);
-    res.status(500).json({ message: 'Ошибка авторизации через ВКонтакте' });
+    console.error('Ошибка Google OAuth:', error.response?.data || error.message);
+    res.redirect(`${DOMAIN_URL}/login?error=auth_failed`);
   }
 });
 
-// В Login.jsx кнопка будет делать GET запрос сюда:
-app.get('/api/auth/vk-start', (req, res) => {
-  const clientId = '54608627'; 
-  const redirectUri = 'https://xn--b1af2ahcd.xn--p1ai/login';
-  
-  // ЭТО РАБОЧИЙ URL ДЛЯ VK ID (OAuth 2.1)
-  // Мы используем oauth.vk.com, так как это единственный рабочий endpoint 
-  // для браузерного редиректа, даже если приложение создано в VK ID
-  const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&display=page&scope=email&response_type=code&v=5.199&state=vk`;
-  
-  res.json({ url: authUrl });
-});
 
 
 

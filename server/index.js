@@ -730,13 +730,14 @@ app.post('/api/auth/vk', async (req, res) => {
   }
 });
 
+// В Login.jsx кнопка будет делать GET запрос сюда:
 app.get('/api/auth/vk-start', (req, res) => {
   const clientId = '54608474';
   const redirectUri = 'https://xn--b1af2ahcd.xn--p1ai/login';
-  // Сервер просто перенаправляет пользователя на ВК, 
-  // но запрос теперь исходит от доверенного сервера, а не от прокси-браузера
+  // Формируем ссылку, но теперь мы не делаем редирект браузером,
+  // мы отдаем её фронтенду, чтобы он открыл её в чистом окне
   const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&display=page&scope=email&response_type=code&state=vk`;
-  res.redirect(authUrl);
+  res.json({ url: authUrl });
 });
 
 const PORT = process.env.PORT || 5000;

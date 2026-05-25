@@ -729,13 +729,14 @@ app.get('/api/auth/yandex', (req, res) => {
 app.get('/api/auth/vk', (req, res) => {
   const redirectUri = `${DOMAIN_URL}/api/auth/vk/callback`;
   
+  // v=5.131 - обязательный параметр версии API ВК
   const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${process.env.VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=code&v=5.131`;
   
   res.redirect(vkAuthUrl);
 });
 
 // ==========================================
-// VK OAUTH: Callback
+// VK OAUTH: Callback (обработка ответа от ВК)
 // ==========================================
 app.get('/api/auth/vk/callback', async (req, res) => {
   const { code } = req.query;
@@ -746,7 +747,8 @@ app.get('/api/auth/vk/callback', async (req, res) => {
   }
 
   try {
-    // 1. Обмениваем code на токен (ВК сразу отдает email и user_id)
+    // 1. Обмениваем code на access_token
+    // Особенность ВК: он вместе с токеном сразу отдает user_id и email!
     const tokenResponse = await axios.get('https://oauth.vk.com/access_token', {
       params: {
         client_id: process.env.VK_CLIENT_ID,
@@ -769,34 +771,44 @@ app.get('/api/auth/vk/callback', async (req, res) => {
     });
 
     const vkUser = userResponse.data.response[0];
-    const vkIdString = String(user_id);
+    const vkIdString = String(user_id); // Prisma ожидает строку
 
-    // 3. Ищем или создаем пользователя
+    // 3. Ищем или создаем пользователя в базе
     let user = await prisma.user.findUnique({ where: { vkId: vkIdString } });
 
     if (!user) {
-      if (email) user = await prisma.user.findUnique({ where: { email } });
+      if (email) {
+        user = await prisma.user.findUnique({ where: { email } });
+      }
 
       if (user) {
+        // Привязываем ВК к существующему аккаунту
         user = await prisma.user.update({
           where: { id: user.id },
           data: { vkId: vkIdString, avatarUrl: user.avatarUrl || vkUser.photo_200 }
         });
       } else {
+        // Создаем абсолютно нового бойца
         user = await prisma.user.create({
           data: {
             vkId: vkIdString,
             email: email || null,
-            firstName: vkUser.first_name,
-            lastName: vkUser.last_name,
+            firstName: vkUser.first_name || 'Боец',
+            lastName: vkUser.last_name || 'РСО',
             avatarUrl: vkUser.photo_200,
           }
         });
       }
     }
 
-    // 4. Генерируем токен и отправляем на фронт (С ИСПРАВЛЕННЫМ userId!)
-    const sysToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    // 4. Генерируем токен СевРО (строго userId!)
+    const sysToken = jwt.sign(
+      { userId: user.id, role: user.role }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: '7d' }
+    );
+
+    // 5. Перенаправляем в профиль
     res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
 
   } catch (error) {

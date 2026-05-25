@@ -652,6 +652,84 @@ app.post('/api/auth/yandex', async (req, res) => {
   }
 });
 
+app.post('/api/auth/vk', async (req, res) => {
+  try {
+    const { code } = req.body;
+    // Ссылка возврата ОБЯЗАТЕЛЬНО должна совпадать с той, что в настройках приложения ВК
+    const redirectUri = 'https://xn--b1af2ahcd.xn--p1ai/login'; 
+
+    // 1. Обмениваем код на access_token и email от ВК
+    const tokenResponse = await axios.get('https://oauth.vk.com/access_token', {
+      params: {
+        client_id: process.env.VK_CLIENT_ID,
+        client_secret: process.env.VK_CLIENT_SECRET,
+        redirect_uri: redirectUri,
+        code: code
+      }
+    });
+
+    const { access_token, user_id, email: vkEmail } = tokenResponse.data;
+
+    // 2. Запрашиваем данные профиля (Имя, Фамилия, Аватарка)
+    const userResponse = await axios.get('https://api.vk.com/method/users.get', {
+      params: {
+        user_ids: user_id,
+        fields: 'photo_200',
+        access_token: access_token,
+        v: '5.199'
+      }
+    });
+
+    const vkUser = userResponse.data.response[0];
+    const firstName = vkUser.first_name || 'Студент';
+    const lastName = vkUser.last_name || '';
+    const picture = vkUser.photo_200;
+    const vkIdString = String(user_id);
+    
+    // ВК отдает email только если юзер разрешил. Если нет - делаем заглушку, 
+    // т.к. Prisma требует уникальный email для каждого юзера.
+    const email = vkEmail || `vk_${user_id}@rso.local`;
+
+    // 3. Ищем пользователя в базе (по ВК ID или по почте)
+    let user = await prisma.user.findFirst({
+      where: {
+        OR: [ { vkId: vkIdString }, { email: email } ]
+      }
+    });
+
+    if (user) {
+      if (!user.vkId) {
+        // Привязываем ВК к существующей учетке
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { vkId: vkIdString, avatarUrl: user.avatarUrl || picture },
+        });
+      }
+    } else {
+      // Создаем нового
+      user = await prisma.user.create({
+        data: {
+          email,
+          vkId: vkIdString,
+          firstName,
+          lastName,
+          avatarUrl: picture,
+          vkUrl: `https://vk.com/id${user_id}`, // Сразу сохраняем ссылку на ВК!
+          tgUrl: ""
+        },
+      });
+    }
+
+    // 4. Генерируем токен и пускаем на сайт
+    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role } });
+
+  } catch (error) {
+    console.error('Ошибка авторизации VK:', error.response?.data || error.message);
+    res.status(500).json({ message: 'Ошибка авторизации через ВКонтакте' });
+  }
+});
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

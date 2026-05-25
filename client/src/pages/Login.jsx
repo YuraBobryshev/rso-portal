@@ -14,25 +14,32 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // --- ЛОВИМ КОД ОТ ЯНДЕКСА ПРИ ВОЗВРАТЕ НА СТРАНИЦУ ---
+  // --- ЛОВИМ КОД ОТ ЯНДЕКСА ИЛИ ВК ПРИ ВОЗВРАТЕ НА СТРАНИЦУ ---
   useEffect(() => {
     const urlParams = new URLSearchParams(location.search);
     const code = urlParams.get('code');
+    const state = urlParams.get('state'); // По этому параметру мы узнаем, кто нас вернул
 
     if (code) {
-      const authWithYandex = async () => {
+      const authWithSocial = async () => {
         try {
-          // Отправляем перехваченный код на наш бэкенд
-          const res = await api.post('/auth/yandex', { code });
+          let res;
+          // Смотрим, какая соцсеть нас перенаправила
+          if (state === 'vk') {
+            res = await api.post('/auth/vk', { code });
+          } else {
+            res = await api.post('/auth/yandex', { code });
+          }
+          
           localStorage.setItem('token', res.data.token);
           navigate('/profile');
         } catch (err) {
-          setServerError('Ошибка авторизации через Яндекс');
+          setServerError(`Ошибка авторизации через ${state === 'vk' ? 'ВКонтакте' : 'Яндекс'}`);
           // Очищаем URL от невалидного кода
           navigate('/login', { replace: true }); 
         }
       };
-      authWithYandex();
+      authWithSocial();
     }
   }, [location.search, navigate]);
 
@@ -71,6 +78,7 @@ export default function Login() {
     }
   };
 
+  // --- GOOGLE ---
   const googleLogin = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
@@ -84,11 +92,19 @@ export default function Login() {
     flow: 'auth-code',
   });
 
+  // --- ЯНДЕКС ---
   const yandexLogin = () => {
     const clientId = 'adb8160f0e97492b899ec3d783a364e7'; // Твой Yandex Client ID
-    // Теперь Яндекс вернет нас просто на страницу логина
     const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/login'); 
-    window.location.href = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}`;
+    window.location.href = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=yandex`;
+  };
+
+  // --- ВКОНТАКТЕ ---
+  const vkLogin = () => {
+    const clientId = 'ТВОЙ_VK_CLIENT_ID_СЮДА'; // Вставь сюда ID приложения ВК
+    const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/login'); 
+    // scope=email просит у ВК отдать почту пользователя
+    window.location.href = `https://oauth.vk.com/authorize?client_id=${clientId}&display=page&redirect_uri=${redirectUri}&scope=email&response_type=code&v=5.199&state=vk`;
   };
 
   return (
@@ -118,6 +134,17 @@ export default function Login() {
           <div className="flex flex-col gap-3 mb-6">
             <button 
               type="button"
+              onClick={vkLogin}
+              className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-[#0077FF] text-sm font-bold text-white py-3 rounded-xl hover:bg-[#005CE6] transition-colors"
+            >
+              <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
+                <path fill="currentColor" d="M15.071 18.006c-5.918 0-9.336-4.108-9.48-10.957h2.894c.1 5.228 2.455 7.424 4.316 7.88v-7.88h2.72v4.498c1.834-.202 3.774-2.28 4.417-4.498h2.72c-.546 2.686-2.52 4.673-3.844 5.467 1.324.634 3.535 2.408 4.416 5.49H20.25c-.718-2.22-2.454-3.882-4.455-4.085v4.085h-.724z"/>
+              </svg>
+              Войти через ВКонтакте
+            </button>
+
+            <button 
+              type="button"
               onClick={() => googleLogin()}
               className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-white text-sm font-bold text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors"
             >
@@ -130,7 +157,6 @@ export default function Login() {
               onClick={yandexLogin}
               className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-white text-sm font-bold text-gray-700 py-3 rounded-xl hover:bg-gray-50 transition-colors"
             >
-              {/* Встроенная SVG иконка Яндекса */}
               <svg viewBox="0 0 48 48" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
                 <path fill="#FF0000" d="M24 48C10.745 48 0 37.255 0 24S10.745 0 24 0s24 10.745 24 24-10.745 24-24 24z"/>
                 <path fill="#FFFFFF" d="M25.54 36h-4.4l-3.32-8.38h-2.1V36h-3.95V13.12h10.3c3.4 0 5.82.77 7.28 2.31 1.45 1.53 2.18 3.73 2.18 6.6 0 2.53-.55 4.54-1.66 6.02-1.1 1.48-2.73 2.45-4.88 2.92L25.54 36zm-3.32-20h-6.5v8.72h6.5c1.88 0 3.23-.42 4.05-1.28.82-.85 1.23-2.17 1.23-3.96 0-1.27-.32-2.3-1-3-.67-.7-1.8-1.04-3.38-1.04z"/>

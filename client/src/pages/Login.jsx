@@ -3,6 +3,8 @@ import api from '../api/axiosConfig';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import logoUrl from '../assets/logo.svg';
 import { useGoogleLogin } from '@react-oauth/google';
+import React, { useEffect } from 'react';
+import { VKIDSDK } from '@vkid/sdk';
 
 export default function Login() {
 
@@ -101,34 +103,27 @@ export default function Login() {
   };
 
 
-useEffect(() => {
-    // 1. Добавляем скрипт динамически, если его еще нет
-    const script = document.createElement('script');
-    script.src = "https://unpkg.com/@vkid/sdk@latest/dist-sdk/vkid-sdk.js";
-    script.async = true;
-    script.onload = () => {
-        // 2. Инициализируем только после загрузки скрипта
-        if (window.VKIDSDK) {
-            const vkid = new window.VKIDSDK.Config({
-                app: 54608627, // Убедись, что это ID именно сайта (не сервиса)
-                redirectUrl: 'https://xn--b1af2ahcd.xn--p1ai/login',
-                state: 'vk',
-            });
+export default function VKLoginButton() {
+  useEffect(() => {
+    // Конфигурация SDK
+    VKIDSDK.Config.set({
+      app: 54608627, // Твой ID
+      redirectUrl: 'https://xn--b1af2ahcd.xn--p1ai/login',
+      state: 'vk',
+    });
 
-            const oneTap = new window.VKIDSDK.OneTap();
-            const container = document.getElementById('vk_auth_widget');
-            if (container) {
-                oneTap.render({ container: container, scheme: 'bright_light' });
-            }
-        }
-    };
-    document.body.appendChild(script);
+    // Создаем OneTap виджет
+    const oneTap = new VKIDSDK.OneTap();
 
-    // Очистка при размонтировании
-    return () => { document.body.removeChild(script); };
-}, []);
+    // Рендерим его в div с ID 'vk_auth_widget'
+    const container = document.getElementById('vk_auth_widget');
+    if (container) {
+      oneTap.render({ container, scheme: 'bright_light' });
+    }
+  }, []);
 
-// И в JSX добавь этот div:
+  return <div id="vk_auth_widget"></div>;
+}
 
   
   return (

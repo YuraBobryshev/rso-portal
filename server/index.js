@@ -752,7 +752,7 @@ app.get('/api/auth/yandex', (req, res) => {
 // ==========================================
 app.get('/api/auth/vk', (req, res) => {
   const vkClientId = '54608627'; 
-  const vkRedirectUri = 'https://севрсо.рф/api/auth/vk/callback';
+  const vkRedirectUri = 'https://xn--b1af2ahcd.xn--p1ai/api/auth/vk/callback';
 
   // 1. Генерируем криптографические ключи PKCE
   const codeVerifier = base64URLEncode(crypto.randomBytes(32));
@@ -782,7 +782,7 @@ app.get('/api/auth/vk', (req, res) => {
 // ==========================================
 app.get('/api/auth/vk/callback', async (req, res) => {
   const { code, state } = req.query;
-  const vkRedirectUri = 'https://севрсо.рф/api/auth/vk/callback';
+  const vkRedirectUri = 'https://xn--b1af2ahcd.xn--p1ai/api/auth/vk/callback';
   const vkClientId = '54608627';
   
   // ВНИМАНИЕ: Сюда нужно вставить "Защищенный ключ" из нового кабинета VK ID!

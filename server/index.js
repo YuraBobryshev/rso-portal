@@ -9,6 +9,8 @@ const axios = require('axios');
 const app = express();
 const prisma = new PrismaClient();
 const DOMAIN_URL = 'https://xn--b1af2ahcd.xn--p1ai';
+const crypto = require('crypto');
+
 
 app.use(cors());
 app.use(express.json());
@@ -24,6 +26,28 @@ const checkRole = (allowedRoles) => async (req, res, next) => {
     res.status(500).json({ message: 'Ошибка проверки прав доступа' });
   }
 };
+
+// Вспомогательные функции для новой системы (PKCE и Куки)
+function base64URLEncode(buffer) {
+  return buffer.toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+function parseCookies(req) {
+  const list = {};
+  const cookieHeader = req.headers?.cookie;
+  if (!cookieHeader) return list;
+  cookieHeader.split(';').forEach(cookie => {
+    let [name, ...rest] = cookie.split('=');
+    name = name?.trim();
+    if (!name) return;
+    list[name] = decodeURIComponent(rest.join('=').trim());
+  });
+  return list;
+}
+
 
 // =============================================================================
 // 🔐 БЛОК 1: АВТОРИЗАЦИЯ И ПРОФИЛЬ
@@ -724,50 +748,102 @@ app.get('/api/auth/yandex', (req, res) => {
 
 
 // ==========================================
-// VK OAUTH: Инициация входа
+// VK ID OAUTH 2.1: Инициация входа
 // ==========================================
 app.get('/api/auth/vk', (req, res) => {
+  const vkClientId = '54608627'; 
   const vkRedirectUri = 'https://севрсо.рф/api/auth/vk/callback';
-  const vkClientId = '54608627'; // Твой 100% правильный ID
-  
-  const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${vkClientId}&display=page&redirect_uri=${encodeURIComponent(vkRedirectUri)}&scope=email&response_type=code&v=5.131`;
-  
-  res.redirect(vkAuthUrl);
+
+  // 1. Генерируем криптографические ключи PKCE
+  const codeVerifier = base64URLEncode(crypto.randomBytes(32));
+  const codeChallenge = base64URLEncode(crypto.createHash('sha256').update(codeVerifier).digest());
+  const state = crypto.randomBytes(16).toString('hex');
+  const deviceId = crypto.randomBytes(16).toString('hex');
+
+  // 2. Сохраняем ключи во временную cookie (чтобы не потерять их при редиректе)
+  const cookieData = JSON.stringify({ codeVerifier, state, deviceId });
+  res.setHeader('Set-Cookie', `vk_auth=${encodeURIComponent(cookieData)}; Path=/; HttpOnly; Max-Age=300; SameSite=Lax`);
+
+  // 3. Формируем новую ссылку на id.vk.ru (Вместо старого oauth.vk.com)
+  const authUrl = new URL('https://id.vk.ru/authorize');
+  authUrl.searchParams.append('response_type', 'code');
+  authUrl.searchParams.append('client_id', vkClientId);
+  authUrl.searchParams.append('redirect_uri', vkRedirectUri);
+  authUrl.searchParams.append('state', state);
+  authUrl.searchParams.append('code_challenge', codeChallenge);
+  authUrl.searchParams.append('code_challenge_method', 's256');
+  authUrl.searchParams.append('scope', 'vkid.personal_info'); // Права профиля для VK ID
+
+  res.redirect(authUrl.toString());
 });
 
 // ==========================================
-// VK OAUTH: Callback
+// VK ID OAUTH 2.1: Callback (Обмен кода на токен)
 // ==========================================
 app.get('/api/auth/vk/callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, state } = req.query;
   const vkRedirectUri = 'https://севрсо.рф/api/auth/vk/callback';
+  const vkClientId = '54608627';
   
-  const vkClientId = '54608627'; // Твой 100% правильный ID
-  const vkClientSecret = '9fYVPkQyX5IGZ0IIR2R5'; // Вставь ключ именно от 54608627
+  // ВНИМАНИЕ: Сюда нужно вставить "Защищенный ключ" из нового кабинета VK ID!
+  const vkClientSecret = 'ТВОЙ_НОВЫЙ_СЕКРЕТНЫЙ_КЛЮЧ'; 
 
   if (!code) {
     return res.redirect(`${DOMAIN_URL}/login?error=no_code`);
   }
 
+  // 1. Достаем наши ключи-верификаторы из куки
+  const cookies = parseCookies(req);
+  if (!cookies.vk_auth) {
+    console.error('Сессия устарела (нет куки vk_auth)');
+    return res.redirect(`${DOMAIN_URL}/login?error=session_expired`);
+  }
+
+  let sessionData;
   try {
-    const tokenResponse = await axios.get('https://oauth.vk.com/access_token', {
-      params: {
+    sessionData = JSON.parse(cookies.vk_auth);
+  } catch (e) {
+    return res.redirect(`${DOMAIN_URL}/login?error=session_invalid`);
+  }
+
+  if (state !== sessionData.state) {
+    return res.redirect(`${DOMAIN_URL}/login?error=invalid_state`);
+  }
+
+  try {
+    // 2. Идем на новые сервера VK ID за токеном
+    const tokenParams = new URLSearchParams({
+      grant_type: 'authorization_code',
+      client_id: vkClientId,
+      client_secret: vkClientSecret,
+      code: code,
+      code_verifier: sessionData.codeVerifier,
+      redirect_uri: vkRedirectUri,
+      device_id: sessionData.deviceId,
+      state: state
+    });
+
+    const tokenResponse = await axios.post('https://id.vk.ru/oauth2/auth', tokenParams.toString(), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
+
+    const { access_token, user_id } = tokenResponse.data;
+
+    // 3. Запрашиваем информацию профиля из новой API-ручки
+    const userResponse = await axios.post('https://id.vk.ru/oauth2/user_info', 
+      new URLSearchParams({
         client_id: vkClientId,
-        client_secret: vkClientSecret,
-        redirect_uri: vkRedirectUri, 
-        code
-      }
-    });
+        access_token: access_token
+      }).toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
 
-    const { access_token, user_id, email } = tokenResponse.data;
+    // Новое API отдает данные чуть в другом формате
+    const vkUser = userResponse.data.user || userResponse.data;
+    const vkIdString = String(vkUser.user_id || user_id);
+    const email = vkUser.email || null;
 
-    const userResponse = await axios.get('https://api.vk.com/method/users.get', {
-      params: { user_ids: user_id, fields: 'photo_200', access_token, v: '5.131' }
-    });
-
-    const vkUser = userResponse.data.response[0];
-    const vkIdString = String(user_id);
-
+    // 4. Ищем или создаем бойца в базе
     let user = await prisma.user.findUnique({ where: { vkId: vkIdString } });
 
     if (!user) {
@@ -776,31 +852,36 @@ app.get('/api/auth/vk/callback', async (req, res) => {
       if (user) {
         user = await prisma.user.update({
           where: { id: user.id },
-          data: { vkId: vkIdString, avatarUrl: user.avatarUrl || vkUser.photo_200 }
+          data: { vkId: vkIdString, avatarUrl: user.avatarUrl || vkUser.avatar }
         });
       } else {
         user = await prisma.user.create({
           data: {
             vkId: vkIdString,
-            email: email || null,
+            email: email,
             firstName: vkUser.first_name || 'Боец',
             lastName: vkUser.last_name || 'РСО',
-            avatarUrl: vkUser.photo_200,
+            avatarUrl: vkUser.avatar || null,
           }
         });
       }
     }
 
+    // 5. Выдаем наш системный токен СевРО
     const sysToken = jwt.sign(
       { userId: user.id, role: user.role }, 
       process.env.JWT_SECRET, 
       { expiresIn: '7d' }
     );
-
+    
+    // Подметаем за собой: удаляем временную куку
+    res.setHeader('Set-Cookie', `vk_auth=; Path=/; HttpOnly; Max-Age=0`);
+    
+    // Редирект в профиль
     res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
 
   } catch (error) {
-    console.error('Ошибка VK OAuth:', error.response?.data || error.message);
+    console.error('Ошибка VK ID OAuth:', error.response?.data || error.message);
     res.redirect(`${DOMAIN_URL}/login?error=auth_failed`);
   }
 });

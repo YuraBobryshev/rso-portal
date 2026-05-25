@@ -100,8 +100,7 @@ export default function Login() {
   };
 
   // --- ВКОНТАКТЕ ---
-// --- ВКОНТАКТЕ ---
-// --- ВКОНТАКТЕ ---
+
   const vkLogin = () => {
     const clientId = '54608474'; 
     // window.location.origin сам возьмет нужный домен прямо из твоей адресной строки

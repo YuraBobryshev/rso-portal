@@ -727,32 +727,33 @@ app.get('/api/auth/yandex', (req, res) => {
 // VK OAUTH: Инициация входа
 // ==========================================
 app.get('/api/auth/vk', (req, res) => {
-  // ИСПОЛЬЗУЕМ КИРИЛЛИЦУ: ВК требует 100% текстового совпадения с панелью!
   const vkRedirectUri = 'https://севрсо.рф/api/auth/vk/callback';
+  const vkClientId = '54608627'; // Твой 100% правильный ID
   
-  const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${process.env.VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent(vkRedirectUri)}&scope=email&response_type=code&v=5.131`;
+  const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${vkClientId}&display=page&redirect_uri=${encodeURIComponent(vkRedirectUri)}&scope=email&response_type=code&v=5.131`;
   
   res.redirect(vkAuthUrl);
 });
 
 // ==========================================
-// VK OAUTH: Callback (обработка ответа от ВК)
+// VK OAUTH: Callback
 // ==========================================
 app.get('/api/auth/vk/callback', async (req, res) => {
   const { code } = req.query;
-  // Здесь тоже обязательно указываем кириллицу при обмене кода на токен!
   const vkRedirectUri = 'https://севрсо.рф/api/auth/vk/callback';
+  
+  const vkClientId = '54608627'; // Твой 100% правильный ID
+  const vkClientSecret = '9fYVPkQyX5IGZ0IIR2R5'; // Вставь ключ именно от 54608627
 
   if (!code) {
     return res.redirect(`${DOMAIN_URL}/login?error=no_code`);
   }
 
   try {
-    // 1. Обмениваем code на access_token (с кириллическим redirect_uri)
     const tokenResponse = await axios.get('https://oauth.vk.com/access_token', {
       params: {
-        client_id: process.env.VK_CLIENT_ID,
-        client_secret: process.env.VK_CLIENT_SECRET,
+        client_id: vkClientId,
+        client_secret: vkClientSecret,
         redirect_uri: vkRedirectUri, 
         code
       }
@@ -760,26 +761,17 @@ app.get('/api/auth/vk/callback', async (req, res) => {
 
     const { access_token, user_id, email } = tokenResponse.data;
 
-    // 2. Получаем данные профиля (Имя, Фамилия, Аватарка)
     const userResponse = await axios.get('https://api.vk.com/method/users.get', {
-      params: {
-        user_ids: user_id,
-        fields: 'photo_200',
-        access_token,
-        v: '5.131'
-      }
+      params: { user_ids: user_id, fields: 'photo_200', access_token, v: '5.131' }
     });
 
     const vkUser = userResponse.data.response[0];
     const vkIdString = String(user_id);
 
-    // 3. Ищем или создаем пользователя
     let user = await prisma.user.findUnique({ where: { vkId: vkIdString } });
 
     if (!user) {
-      if (email) {
-        user = await prisma.user.findUnique({ where: { email } });
-      }
+      if (email) user = await prisma.user.findUnique({ where: { email } });
 
       if (user) {
         user = await prisma.user.update({
@@ -799,14 +791,12 @@ app.get('/api/auth/vk/callback', async (req, res) => {
       }
     }
 
-    // 4. Генерируем токен (используем правильный userId)
     const sysToken = jwt.sign(
       { userId: user.id, role: user.role }, 
       process.env.JWT_SECRET, 
       { expiresIn: '7d' }
     );
 
-    // 5. Возвращаем юзера в личный кабинет
     res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
 
   } catch (error) {

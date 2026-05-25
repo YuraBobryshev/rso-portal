@@ -100,14 +100,25 @@ export default function Login() {
     window.location.href = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=yandex`;
   };
 
-const vkLogin = () => {
-    // Используем oauth.vk.com — это единственный рабочий метод для прямого редиректа
-    const clientId = '54608627'; 
-    const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/login');
-    const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&display=page&scope=email&response_type=code&v=5.199&state=vk`;
-    
-    window.location.href = authUrl;
-};
+// Внутри Login.jsx
+useEffect(() => {
+  const script = document.createElement('script');
+  script.src = "https://unpkg.com/@vkid/sdk@latest/dist-sdk/vkid-sdk.js";
+  script.onload = () => {
+    const vkid = new window.VKIDSDK.Config({
+      app: 54608627, // Твой верный ID
+      redirectUrl: 'https://xn--b1af2ahcd.xn--p1ai/login',
+      state: 'vk',
+    });
+
+    const oneTap = new window.VKIDSDK.OneTap();
+    // Рендерим кнопку виджета в элемент с id="vk_auth_widget"
+    oneTap.render({ container: document.getElementById('vk_auth_widget'), scheme: 'bright_light' });
+  };
+  document.body.appendChild(script);
+}, []);
+
+// И в JSX добавь этот div:
 
   
   return (
@@ -136,13 +147,7 @@ const vkLogin = () => {
 
           <div className="flex flex-col gap-3 mb-6">
 
-          <button 
-              type="button"
-              onClick={vkLogin} // <-- Вызываем новую функцию
-              className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-[#0077FF] text-sm font-bold text-white py-3 rounded-xl hover:bg-[#005CE6] transition-colors"
-            >
-              Войти через ВКонтакте
-          </button>
+          <div id="vk_auth_widget"></div>
 
             <button 
               type="button"

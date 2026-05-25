@@ -654,8 +654,7 @@ app.post('/api/auth/yandex', async (req, res) => {
 
 app.post('/api/auth/vk', async (req, res) => {
   try {
-    const { code } = req.body;
-    // Ссылка возврата ОБЯЗАТЕЛЬНО должна совпадать с той, что в настройках приложения ВК
+    const { access_token, user_id } = req.body; // Теперь мы ждем токен от виджета    // Ссылка возврата ОБЯЗАТЕЛЬНО должна совпадать с той, что в настройках приложения ВК
     const redirectUri = 'https://xn--b1af2ahcd.xn--p1ai/login'; 
 
     // 1. Обмениваем код на access_token и email от ВК
@@ -674,14 +673,14 @@ app.post('/api/auth/vk', async (req, res) => {
 
     // 2. Запрашиваем данные профиля (Имя, Фамилия, Аватарка)
     const userResponse = await axios.get('https://api.vk.com/method/users.get', {
-      params: {
-        user_ids: user_id,
-        fields: 'photo_200',
-        access_token: access_token,
-        v: '5.199'
-      }
-    });
-
+          params: {
+            user_ids: user_id,
+            fields: 'photo_200,email',
+            access_token: access_token, // Токен, который пришел от виджета
+            v: '5.199'
+          }
+        });
+        
     const vkUser = userResponse.data.response[0];
     const firstName = vkUser.first_name || 'Студент';
     const lastName = vkUser.last_name || '';
@@ -744,6 +743,8 @@ app.get('/api/auth/vk-start', (req, res) => {
   
   res.json({ url: authUrl });
 });
+
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

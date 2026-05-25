@@ -6,21 +6,31 @@ import { useGoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
 
-    useEffect(() => {
-        const initVKID = () => {
-          if (window.VKIDSDK) {
-            const vkid = new window.VKIDSDK.Config({
-              app: 54608474,
-              redirectUrl: 'https://xn--b1af2ahcd.xn--p1ai/login',
-              state: 'vk',
-            });
+  useEffect(() => {
+    const initVKID = () => {
+      // Проверяем, загрузился ли SDK (теперь он доступен через VKIDSDK)
+      if (window.VKIDSDK) {
+        const VKID = window.VKIDSDK;
+        
+        VKID.Config.set({
+          app: 54608474,
+          redirectUrl: 'https://xn--b1af2ahcd.xn--p1ai/login',
+          state: 'vk',
+        });
 
-            const oneTap = new window.VKIDSDK.OneTap();
-            oneTap.render({ container: document.getElementById('vk_auth_widget'), scheme: 'bright_light' });
-          }
-        };
-        initVKID();
-      }, []);
+        const oneTap = new VKID.OneTap();
+        
+        // Рендерим кнопку, если контейнер уже есть в DOM
+        const container = document.getElementById('vk_auth_widget');
+        if (container) {
+          oneTap.render({ container: container, scheme: 'bright_light' });
+        }
+      }
+    };
+
+    // Простая задержка, чтобы скрипт точно успел выполниться
+    setTimeout(initVKID, 500);
+  }, []);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -147,7 +157,7 @@ export default function Login() {
           <div className="flex flex-col gap-3 mb-6">
 
           <div id="vk_auth_widget" className="w-full flex justify-center mb-4"></div>
-          
+
             <button 
               type="button"
               onClick={() => googleLogin()}

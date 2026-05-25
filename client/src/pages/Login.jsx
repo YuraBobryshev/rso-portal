@@ -143,12 +143,12 @@ export default function Login() {
           )}
 
           <div className="flex flex-col gap-3 mb-6">
-            
+
             <button 
               type="button"
               onClick={() => {
                 // 1. Убедитесь, что ID приложения верный
-                const clientId = '54608474'; 
+                const clientId = '54608627'; 
                 const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/login');
                 
                 // 2. Прямой переход без использования сторонних скриптов

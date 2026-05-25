@@ -100,13 +100,14 @@ export default function Login() {
   };
 
   // --- ВКОНТАКТЕ ---
+// --- ВКОНТАКТЕ ---
   const vkLogin = () => {
-    const clientId = '54608474'; // Вставь сюда ID приложения ВК
-    const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/login'); 
-    // scope=email просит у ВК отдать почту пользователя
-    window.location.href = `https://oauth.vk.com/authorize?client_id=${clientId}&display=page&redirect_uri=${redirectUri}&scope=email&response_type=code&v=5.199&state=vk`;
+    const clientId = '54608474'; 
+    // ЖЕСТКО прописываем красивую ссылку, чтобы она 100% совпала с тем, что в настройках ВК
+    const redirectUri = encodeURIComponent('https://севрсо.рф/login'); 
+    window.location.href = `https://oauth.vk.com/authorize?client_id=${clientId}&display=page&redirect_uri=${redirectUri}&scope=email&response_type=code&state=vk`;
   };
-
+  
   return (
     <div className="min-h-screen bg-gray-50/30 text-black font-sans flex flex-col selection:bg-rso-blue selection:text-white">
       <header className="w-full max-w-[1500px] mx-auto h-16 px-6 flex justify-between items-center bg-transparent">

@@ -101,10 +101,11 @@ export default function Login() {
 
   // --- ВКОНТАКТЕ ---
 // --- ВКОНТАКТЕ ---
+// --- ВКОНТАКТЕ ---
   const vkLogin = () => {
     const clientId = '54608474'; 
-    // ЖЕСТКО прописываем красивую ссылку, чтобы она 100% совпала с тем, что в настройках ВК
-    const redirectUri = encodeURIComponent('https://севрсо.рф/login'); 
+    // window.location.origin сам возьмет нужный домен прямо из твоей адресной строки
+    const redirectUri = encodeURIComponent(`${window.location.origin}/login`); 
     window.location.href = `https://oauth.vk.com/authorize?client_id=${clientId}&display=page&redirect_uri=${redirectUri}&scope=email&response_type=code&state=vk`;
   };
   

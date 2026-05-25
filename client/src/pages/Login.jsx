@@ -104,9 +104,10 @@ export default function Login() {
   const vkLogin = () => {
     const clientId = '54608474'; 
     // window.location.origin сам возьмет нужный домен прямо из твоей адресной строки
-    const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/login');
-    window.location.href = `https://oauth.vk.com/authorize?client_id=${clientId}&display=page&redirect_uri=${redirectUri}&scope=email&response_type=code&state=vk`;
-  };
+    const redirectUri = 'https://xn--b1af2ahcd.xn--p1ai/login';
+    const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&display=page&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=code&state=vk`;
+    window.location.href = authUrl;
+    };
   
   return (
     <div className="min-h-screen bg-gray-50/30 text-black font-sans flex flex-col selection:bg-rso-blue selection:text-white">

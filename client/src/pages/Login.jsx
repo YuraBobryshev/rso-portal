@@ -5,6 +5,23 @@ import logoUrl from '../assets/logo.svg';
 import { useGoogleLogin } from '@react-oauth/google';
 
 export default function Login() {
+
+    useEffect(() => {
+        const initVKID = () => {
+          if (window.VKIDSDK) {
+            const vkid = new window.VKIDSDK.Config({
+              app: 54608474,
+              redirectUrl: 'https://xn--b1af2ahcd.xn--p1ai/login',
+              state: 'vk',
+            });
+
+            const oneTap = new window.VKIDSDK.OneTap();
+            oneTap.render({ container: document.getElementById('vk_auth_widget'), scheme: 'bright_light' });
+          }
+        };
+        initVKID();
+      }, []);
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
@@ -101,15 +118,6 @@ export default function Login() {
 
   // --- ВКОНТАКТЕ ---
 
-const vkLogin = () => {
-    const clientId = '54608474'; 
-    // Мы пишем чистую строку, без кодирования внутри неё, 
-    // и используем encodeURIComponent только на весь аргумент
-    const redirectUri = 'https://xn--b1af2ahcd.xn--p1ai/login';
-    const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&display=page&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=code&state=vk`;
-    
-    window.location.href = authUrl;
-  };
 
   
   return (
@@ -137,17 +145,9 @@ const vkLogin = () => {
           )}
 
           <div className="flex flex-col gap-3 mb-6">
-            <button 
-              type="button"
-              onClick={vkLogin}
-              className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-[#0077FF] text-sm font-bold text-white py-3 rounded-xl hover:bg-[#005CE6] transition-colors"
-            >
-              <svg viewBox="0 0 24 24" width="20" height="20" xmlns="http://www.w3.org/2000/svg">
-                <path fill="currentColor" d="M15.071 18.006c-5.918 0-9.336-4.108-9.48-10.957h2.894c.1 5.228 2.455 7.424 4.316 7.88v-7.88h2.72v4.498c1.834-.202 3.774-2.28 4.417-4.498h2.72c-.546 2.686-2.52 4.673-3.844 5.467 1.324.634 3.535 2.408 4.416 5.49H20.25c-.718-2.22-2.454-3.882-4.455-4.085v4.085h-.724z"/>
-              </svg>
-              Войти через ВКонтакте
-            </button>
 
+          <div id="vk_auth_widget" className="w-full flex justify-center mb-4"></div>
+          
             <button 
               type="button"
               onClick={() => googleLogin()}

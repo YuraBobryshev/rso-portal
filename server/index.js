@@ -537,7 +537,7 @@ app.post('/api/auth/google', async (req, res) => {
       client_id: process.env.GOOGLE_CLIENT_ID,
       client_secret: process.env.GOOGLE_CLIENT_SECRET,
       code,
-      redirect_uri: 'https://севрсо.рф/api/auth/google/callback', // Или Punycode, если использовал его
+      redirect_uri: 'postmessage', // <-- ВОТ ЗДЕСЬ МАГИЯ (Вместо ссылки пишем postmessage)
       grant_type: 'authorization_code',
     });
 
@@ -598,14 +598,15 @@ app.post('/api/auth/yandex', async (req, res) => {
 
     // 1. Обмениваем код на токен
     const tokenResponse = await axios.post('https://oauth.yandex.ru/token', 
-      new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        client_id: process.env.YANDEX_CLIENT_ID,
-        client_secret: process.env.YANDEX_CLIENT_SECRET,
-      }).toString(), 
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
-    );
+          new URLSearchParams({
+            grant_type: 'authorization_code',
+            code,
+            client_id: process.env.YANDEX_CLIENT_ID,
+            client_secret: process.env.YANDEX_CLIENT_SECRET,
+            redirect_uri: 'https://xn--b1af2ahcd.xn--p1ai/login' // <-- ДОБАВИЛИ ЭТУ СТРОКУ
+          }).toString(), 
+          { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+        );
 
     const accessToken = tokenResponse.data.access_token;
 

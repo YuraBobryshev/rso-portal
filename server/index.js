@@ -786,7 +786,7 @@ app.get('/api/auth/vk/callback', async (req, res) => {
   const vkClientId = '54608627';
   
   // ВНИМАНИЕ: Сюда нужно вставить "Защищенный ключ" из нового кабинета VK ID!
-  const vkClientSecret = 'ТВОЙ_НОВЫЙ_СЕКРЕТНЫЙ_КЛЮЧ'; 
+  const vkClientSecret = '9fYVPkQyX5IGZ0IIR2R5'; 
 
   if (!code) {
     return res.redirect(`${DOMAIN_URL}/login?error=no_code`);

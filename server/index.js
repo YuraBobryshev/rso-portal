@@ -727,10 +727,10 @@ app.get('/api/auth/yandex', (req, res) => {
 // VK OAUTH: Инициация входа
 // ==========================================
 app.get('/api/auth/vk', (req, res) => {
-  const redirectUri = `${DOMAIN_URL}/api/auth/vk/callback`;
+  // ИСПОЛЬЗУЕМ КИРИЛЛИЦУ: ВК требует 100% текстового совпадения с панелью!
+  const vkRedirectUri = 'https://севрсо.рф/api/auth/vk/callback';
   
-  // v=5.131 - обязательный параметр версии API ВК
-  const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${process.env.VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent(redirectUri)}&scope=email&response_type=code&v=5.131`;
+  const vkAuthUrl = `https://oauth.vk.com/authorize?client_id=${process.env.VK_CLIENT_ID}&display=page&redirect_uri=${encodeURIComponent(vkRedirectUri)}&scope=email&response_type=code&v=5.131`;
   
   res.redirect(vkAuthUrl);
 });
@@ -740,27 +740,27 @@ app.get('/api/auth/vk', (req, res) => {
 // ==========================================
 app.get('/api/auth/vk/callback', async (req, res) => {
   const { code } = req.query;
-  const redirectUri = `${DOMAIN_URL}/api/auth/vk/callback`;
+  // Здесь тоже обязательно указываем кириллицу при обмене кода на токен!
+  const vkRedirectUri = 'https://севрсо.рф/api/auth/vk/callback';
 
   if (!code) {
     return res.redirect(`${DOMAIN_URL}/login?error=no_code`);
   }
 
   try {
-    // 1. Обмениваем code на access_token
-    // Особенность ВК: он вместе с токеном сразу отдает user_id и email!
+    // 1. Обмениваем code на access_token (с кириллическим redirect_uri)
     const tokenResponse = await axios.get('https://oauth.vk.com/access_token', {
       params: {
         client_id: process.env.VK_CLIENT_ID,
         client_secret: process.env.VK_CLIENT_SECRET,
-        redirect_uri: redirectUri,
+        redirect_uri: vkRedirectUri, 
         code
       }
     });
 
     const { access_token, user_id, email } = tokenResponse.data;
 
-    // 2. Получаем Имя, Фамилию и Аватарку
+    // 2. Получаем данные профиля (Имя, Фамилия, Аватарка)
     const userResponse = await axios.get('https://api.vk.com/method/users.get', {
       params: {
         user_ids: user_id,
@@ -771,9 +771,9 @@ app.get('/api/auth/vk/callback', async (req, res) => {
     });
 
     const vkUser = userResponse.data.response[0];
-    const vkIdString = String(user_id); // Prisma ожидает строку
+    const vkIdString = String(user_id);
 
-    // 3. Ищем или создаем пользователя в базе
+    // 3. Ищем или создаем пользователя
     let user = await prisma.user.findUnique({ where: { vkId: vkIdString } });
 
     if (!user) {
@@ -782,13 +782,11 @@ app.get('/api/auth/vk/callback', async (req, res) => {
       }
 
       if (user) {
-        // Привязываем ВК к существующему аккаунту
         user = await prisma.user.update({
           where: { id: user.id },
           data: { vkId: vkIdString, avatarUrl: user.avatarUrl || vkUser.photo_200 }
         });
       } else {
-        // Создаем абсолютно нового бойца
         user = await prisma.user.create({
           data: {
             vkId: vkIdString,
@@ -801,14 +799,14 @@ app.get('/api/auth/vk/callback', async (req, res) => {
       }
     }
 
-    // 4. Генерируем токен СевРО (строго userId!)
+    // 4. Генерируем токен (используем правильный userId)
     const sysToken = jwt.sign(
       { userId: user.id, role: user.role }, 
       process.env.JWT_SECRET, 
       { expiresIn: '7d' }
     );
 
-    // 5. Перенаправляем в профиль
+    // 5. Возвращаем юзера в личный кабинет
     res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
 
   } catch (error) {

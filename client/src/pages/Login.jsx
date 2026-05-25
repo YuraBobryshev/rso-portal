@@ -8,28 +8,33 @@ export default function Login() {
 
   useEffect(() => {
     const initVKID = () => {
-      // Проверяем, загрузился ли SDK (теперь он доступен через VKIDSDK)
+      // VKIDSDK теперь должен быть доступен здесь
       if (window.VKIDSDK) {
         const VKID = window.VKIDSDK;
-        
+
         VKID.Config.set({
           app: 54608474,
           redirectUrl: 'https://xn--b1af2ahcd.xn--p1ai/login',
           state: 'vk',
         });
 
-        const oneTap = new VKID.OneTap();
-        
-        // Рендерим кнопку, если контейнер уже есть в DOM
+        // Проверяем наличие контейнера
         const container = document.getElementById('vk_auth_widget');
         if (container) {
+          const oneTap = new VKID.OneTap();
           oneTap.render({ container: container, scheme: 'bright_light' });
         }
+      } else {
+        console.error("VKIDSDK не загрузился!");
       }
     };
 
-    // Простая задержка, чтобы скрипт точно успел выполниться
-    setTimeout(initVKID, 500);
+    // Если скрипт уже загружен, инициализируем сразу, если нет - ждем
+    if (window.VKIDSDK) {
+      initVKID();
+    } else {
+      window.addEventListener('load', initVKID);
+    }
   }, []);
 
   const [email, setEmail] = useState('');

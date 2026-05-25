@@ -659,12 +659,14 @@ app.post('/api/auth/vk', async (req, res) => {
     const redirectUri = 'https://xn--b1af2ahcd.xn--p1ai/login'; 
 
     // 1. Обмениваем код на access_token и email от ВК
-    const tokenResponse = await axios.get('https://oauth.vk.com/access_token', {
+      const tokenResponse = await axios.post('https://id.vk.com/oauth2/auth', null, {
       params: {
+        grant_type: 'authorization_code',
         client_id: process.env.VK_CLIENT_ID,
         client_secret: process.env.VK_CLIENT_SECRET,
-        redirect_uri: redirectUri,
-        code: code
+        redirect_uri: 'https://xn--b1af2ahcd.xn--p1ai/login',
+        code: code,
+        code_verifier: '' // если ты не используешь PKCE, оставь пустым
       }
     });
 
@@ -732,11 +734,10 @@ app.post('/api/auth/vk', async (req, res) => {
 
 // В Login.jsx кнопка будет делать GET запрос сюда:
 app.get('/api/auth/vk-start', (req, res) => {
-  const clientId = '54608474';
+  const clientId = '54608627'; // Твой ID
   const redirectUri = 'https://xn--b1af2ahcd.xn--p1ai/login';
-  // Формируем ссылку, но теперь мы не делаем редирект браузером,
-  // мы отдаем её фронтенду, чтобы он открыл её в чистом окне
-  const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&display=page&scope=email&response_type=code&state=vk`;
+  const authUrl = `https://id.vk.com/oauth2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&display=page&scope=email&response_type=code&state=vk`;
+  
   res.json({ url: authUrl });
 });
 

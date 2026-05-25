@@ -116,6 +116,21 @@ export default function Login() {
     window.location.href = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=yandex`;
   };
 
+  const vkLogin = async () => {
+    try {
+        // Запрос к нашему серверу, чтобы получить правильную ссылку
+        const res = await fetch('https://xn--b1af2ahcd.xn--p1ai/api/auth/vk-start');
+        const data = await res.json();
+        
+        // Открываем полученную ссылку
+        if (data.url) {
+            window.location.href = data.url;
+        }
+    } catch (err) {
+        console.error("Ошибка при получении ссылки:", err);
+    }
+};
+
 
   
   return (
@@ -144,20 +159,13 @@ export default function Login() {
 
           <div className="flex flex-col gap-3 mb-6">
 
-            <button 
+          <button 
               type="button"
-              onClick={() => {
-                // 1. Убедитесь, что ID приложения верный
-                const clientId = '54608627'; 
-                const redirectUri = encodeURIComponent('https://xn--b1af2ahcd.xn--p1ai/login');
-                
-                // 2. Прямой переход без использования сторонних скриптов
-                window.location.href = `https://oauth.vk.com/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&display=page&scope=email&response_type=code&state=vk`;
-              }}
+              onClick={vkLogin} // <-- Вызываем новую функцию
               className="w-full flex items-center justify-center gap-3 border border-gray-200 bg-[#0077FF] text-sm font-bold text-white py-3 rounded-xl hover:bg-[#005CE6] transition-colors"
             >
               Войти через ВКонтакте
-            </button>
+          </button>
 
             <button 
               type="button"

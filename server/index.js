@@ -734,9 +734,13 @@ app.post('/api/auth/vk', async (req, res) => {
 
 // В Login.jsx кнопка будет делать GET запрос сюда:
 app.get('/api/auth/vk-start', (req, res) => {
-  const clientId = '54608627'; // Твой ID
+  const clientId = '54608627'; 
   const redirectUri = 'https://xn--b1af2ahcd.xn--p1ai/login';
-  const authUrl = `https://id.vk.com/oauth2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&display=page&scope=email&response_type=code&state=vk`;
+  
+  // ЭТО РАБОЧИЙ URL ДЛЯ VK ID (OAuth 2.1)
+  // Мы используем oauth.vk.com, так как это единственный рабочий endpoint 
+  // для браузерного редиректа, даже если приложение создано в VK ID
+  const authUrl = `https://oauth.vk.com/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&display=page&scope=email&response_type=code&v=5.199&state=vk`;
   
   res.json({ url: authUrl });
 });

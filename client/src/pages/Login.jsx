@@ -116,21 +116,18 @@ export default function Login() {
     window.location.href = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=yandex`;
   };
 
-  const vkLogin = async () => {
+const vkLogin = async () => {
     try {
-        // Запрос к нашему серверу, чтобы получить правильную ссылку
         const res = await fetch('https://xn--b1af2ahcd.xn--p1ai/api/auth/vk-start');
         const data = await res.json();
-        
-        // Открываем полученную ссылку
         if (data.url) {
+            // Прямой переход. ВАЖНО: Никаких .replace('oauth.vk.com', 'id.vk.com')!
             window.location.href = data.url;
         }
     } catch (err) {
-        console.error("Ошибка при получении ссылки:", err);
+        console.error("Ошибка:", err);
     }
 };
-
 
   
   return (

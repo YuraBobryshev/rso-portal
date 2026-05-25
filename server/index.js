@@ -5,6 +5,7 @@ const { PrismaClient } = require('@prisma/client');
 const jwt = require('jsonwebtoken');
 const authMiddleware = require('./middleware/auth');
 const { upload } = require('./s3Config'); 
+const axios = require('axios'); 
 
 const app = express();
 const prisma = new PrismaClient();
@@ -526,6 +527,130 @@ app.get('/api/admin/rating-stats', authMiddleware, checkRole(['REG_HQ']), async 
     res.status(500).json({ message: "Ошибка сервера при калькуляции рейтинга штаба" });
   }
 });
+
+app.post('/api/auth/google', async (req, res) => {
+  try {
+    const { code } = req.body;
+    
+    // 1. Обмениваем код на access_token
+    const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
+      client_id: process.env.GOOGLE_CLIENT_ID,
+      client_secret: process.env.GOOGLE_CLIENT_SECRET,
+      code,
+      redirect_uri: 'https://севрсо.рф/api/auth/google/callback', // Или Punycode, если использовал его
+      grant_type: 'authorization_code',
+    });
+
+    const accessToken = tokenResponse.data.access_token;
+
+    // 2. Получаем данные пользователя
+    const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    const { id: googleId, email, given_name, family_name, picture } = userResponse.data;
+
+    // 3. Ищем пользователя в базе
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (user) {
+      // Если пользователь уже есть (например, регался по email), привязываем Google ID
+      if (!user.googleId) {
+        user = await prisma.user.update({
+          where: { email },
+          data: { googleId, avatarUrl: user.avatarUrl || picture },
+        });
+      }
+    } else {
+      // Если пользователя нет, создаем нового
+      user = await prisma.user.create({
+        data: {
+          email,
+          googleId,
+          firstName: given_name || 'Студент',
+          lastName: family_name || '',
+          avatarUrl: picture,
+          vkUrl: "",
+          tgUrl: ""
+        },
+      });
+    }
+
+    // 4. Генерируем наш JWT токен
+    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    
+    res.json({ token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role } });
+
+  } catch (error) {
+    console.error('Ошибка авторизации Google:', error.response?.data || error.message);
+    res.status(500).json({ message: 'Ошибка авторизации через Google' });
+  }
+});
+
+// ==========================================================
+// 🌐 АВТОРИЗАЦИЯ ЧЕРЕЗ ЯНДЕКС
+// ==========================================================
+
+// Роут для обмена кода от Яндекса
+app.post('/api/auth/yandex', async (req, res) => {
+  try {
+    const { code } = req.body;
+
+    // 1. Обмениваем код на токен
+    const tokenResponse = await axios.post('https://oauth.yandex.ru/token', 
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        client_id: process.env.YANDEX_CLIENT_ID,
+        client_secret: process.env.YANDEX_CLIENT_SECRET,
+      }).toString(), 
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+
+    const accessToken = tokenResponse.data.access_token;
+
+    // 2. Получаем данные пользователя
+    const userResponse = await axios.get('https://login.yandex.ru/info?format=json', {
+      headers: { Authorization: `OAuth ${accessToken}` },
+    });
+
+    const { id: yandexId, default_email: email, first_name, last_name, default_avatar_id } = userResponse.data;
+    const picture = default_avatar_id ? `https://avatars.yandex.net/get-yapic/${default_avatar_id}/islands-200` : null;
+
+    // 3. Ищем пользователя в базе
+    let user = await prisma.user.findUnique({ where: { email } });
+
+    if (user) {
+      if (!user.yandexId) {
+        user = await prisma.user.update({
+          where: { email },
+          data: { yandexId, avatarUrl: user.avatarUrl || picture },
+        });
+      }
+    } else {
+      user = await prisma.user.create({
+        data: {
+          email,
+          yandexId,
+          firstName: first_name || 'Студент',
+          lastName: last_name || '',
+          avatarUrl: picture,
+          vkUrl: "",
+          tgUrl: ""
+        },
+      });
+    }
+
+    // 4. Генерируем токен
+    const token = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+    res.json({ token, user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role } });
+
+  } catch (error) {
+    console.error('Ошибка авторизации Yandex:', error.response?.data || error.message);
+    res.status(500).json({ message: 'Ошибка авторизации через Яндекс' });
+  }
+});
+
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

@@ -24,7 +24,7 @@ enum Role {
 model User {
   id             String             @id @default(uuid())
   email          String             @unique
-  password       String
+  password       String?
   firstName      String
   lastName       String
   role           Role               @default(USER)
@@ -33,7 +33,9 @@ model User {
   tgUrl          String?            @default("")
   
   // НОВОЕ: ID пользователя ВКонтакте для отправки API-уведомлений
-  vkId           String?            
+  vkId           String?
+  googleId  String?  @unique
+  yandexId  String?  @unique            
 
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt

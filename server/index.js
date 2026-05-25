@@ -618,7 +618,165 @@ app.get('/api/auth/google/callback', async (req, res) => {
   }
 });
 
+// ==========================================
+// YANDEX OAUTH: Инициация входа
+// ==========================================
+app.get('/api/auth/yandex', (req, res) => {
+  const redirectUri = `${DOMAIN_URL}/api/auth/yandex/callback`;
+  
+  const yandexAuthUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${process.env.YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  
+  res.redirect(yandexAuthUrl);
+});
 
+// ==========================================
+// YANDEX OAUTH: Callback
+// ==========================================
+app.get('/api/auth/yandex/callback', async (req, res) => {
+  const { code } = req.query;
+  const redirectUri = `${DOMAIN_URL}/api/auth/yandex/callback`;
+
+  if (!code) {
+    return res.redirect(`${DOMAIN_URL}/login?error=no_code`);
+  }
+
+  try {
+    // 1. Обмениваем code на токен (Яндекс требует данные в формате x-www-form-urlencoded)
+    const tokenResponse = await axios.post('https://oauth.yandex.ru/token', 
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        client_id: process.env.YANDEX_CLIENT_ID,
+        client_secret: process.env.YANDEX_CLIENT_SECRET,
+        redirect_uri: redirectUri
+      }).toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+
+    const { access_token } = tokenResponse.data;
+
+    // 2. Получаем профиль пользователя
+    const userResponse = await axios.get('https://login.yandex.ru/info', {
+      headers: { Authorization: `OAuth ${access_token}` }
+    });
+
+    const { id: yandexId, default_email: email, first_name, last_name, default_avatar_id } = userResponse.data;
+    // Яндекс отдает ID аватарки, строим полный URL
+    const avatarUrl = default_avatar_id ? `https://avatars.yandex.net/get-yapic/${default_avatar_id}/islands-200` : null;
+
+    // 3. Ищем или создаем пользователя
+    let user = await prisma.user.findUnique({ where: { yandexId } });
+
+    if (!user) {
+      if (email) user = await prisma.user.findUnique({ where: { email } });
+
+      if (user) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { yandexId, avatarUrl: user.avatarUrl || avatarUrl }
+        });
+      } else {
+        user = await prisma.user.create({
+          data: {
+            yandexId,
+            email,
+            firstName: first_name || 'Боец',
+            lastName: last_name || 'РСО',
+            avatarUrl: avatarUrl,
+          }
+        });
+      }
+    }
+
+    // 4. Генерируем токен и отправляем на фронт (С ИСПРАВЛЕННЫМ userId!)
+    const sysToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
+
+  } catch (error) {
+    console.error('Ошибка Yandex OAuth:', error.response?.data || error.message);
+    res.redirect(`${DOMAIN_URL}/login?error=auth_failed`);
+  }
+});
+
+// ==========================================
+// YANDEX OAUTH: Инициация входа
+// ==========================================
+app.get('/api/auth/yandex', (req, res) => {
+  const redirectUri = `${DOMAIN_URL}/api/auth/yandex/callback`;
+  
+  const yandexAuthUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${process.env.YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  
+  res.redirect(yandexAuthUrl);
+});
+
+// ==========================================
+// YANDEX OAUTH: Callback
+// ==========================================
+app.get('/api/auth/yandex/callback', async (req, res) => {
+  const { code } = req.query;
+  const redirectUri = `${DOMAIN_URL}/api/auth/yandex/callback`;
+
+  if (!code) {
+    return res.redirect(`${DOMAIN_URL}/login?error=no_code`);
+  }
+
+  try {
+    // 1. Обмениваем code на токен (Яндекс требует данные в формате x-www-form-urlencoded)
+    const tokenResponse = await axios.post('https://oauth.yandex.ru/token', 
+      new URLSearchParams({
+        grant_type: 'authorization_code',
+        code,
+        client_id: process.env.YANDEX_CLIENT_ID,
+        client_secret: process.env.YANDEX_CLIENT_SECRET,
+        redirect_uri: redirectUri
+      }).toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+
+    const { access_token } = tokenResponse.data;
+
+    // 2. Получаем профиль пользователя
+    const userResponse = await axios.get('https://login.yandex.ru/info', {
+      headers: { Authorization: `OAuth ${access_token}` }
+    });
+
+    const { id: yandexId, default_email: email, first_name, last_name, default_avatar_id } = userResponse.data;
+    // Яндекс отдает ID аватарки, строим полный URL
+    const avatarUrl = default_avatar_id ? `https://avatars.yandex.net/get-yapic/${default_avatar_id}/islands-200` : null;
+
+    // 3. Ищем или создаем пользователя
+    let user = await prisma.user.findUnique({ where: { yandexId } });
+
+    if (!user) {
+      if (email) user = await prisma.user.findUnique({ where: { email } });
+
+      if (user) {
+        user = await prisma.user.update({
+          where: { id: user.id },
+          data: { yandexId, avatarUrl: user.avatarUrl || avatarUrl }
+        });
+      } else {
+        user = await prisma.user.create({
+          data: {
+            yandexId,
+            email,
+            firstName: first_name || 'Боец',
+            lastName: last_name || 'РСО',
+            avatarUrl: avatarUrl,
+          }
+        });
+      }
+    }
+
+    // 4. Генерируем токен и отправляем на фронт (С ИСПРАВЛЕННЫМ userId!)
+    const sysToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
+    res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
+
+  } catch (error) {
+    console.error('Ошибка Yandex OAuth:', error.response?.data || error.message);
+    res.redirect(`${DOMAIN_URL}/login?error=auth_failed`);
+  }
+});
 
 
 const PORT = process.env.PORT || 5000;

@@ -839,9 +839,21 @@ app.get('/api/auth/vk/callback', async (req, res) => {
     );
 
     // Новое API отдает данные чуть в другом формате
-    const vkUser = userResponse.data.user || userResponse.data;
-    const vkIdString = String(vkUser.user_id || user_id);
+const vkData = userResponse.data;
+    
+    // В VK ID данные часто лежат внутри объекта user или прямо в корне
+    const vkUser = vkData.user || vkData;
+    
+    // Пытаемся вытащить ID из всех возможных полей, которые дает ВК
+    const rawId = vkUser.id || vkUser.user_id || user_id;
+    const vkIdString = rawId ? String(rawId) : null;
+    
     const email = vkUser.email || null;
+
+    if (!vkIdString) {
+        console.error("Не удалось получить ID от ВК. Данные от API:", vkData);
+        return res.redirect(`${DOMAIN_URL}/login?error=auth_failed_no_id`);
+    }
 
     // 4. Ищем или создаем бойца в базе
     let user = await prisma.user.findUnique({ where: { vkId: vkIdString } });

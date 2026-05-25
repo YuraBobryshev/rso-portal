@@ -33,7 +33,7 @@ model User {
   tgUrl          String?            @default("")
   
   // НОВОЕ: ID пользователя ВКонтакте для отправки API-уведомлений
-  vkId           String?
+  vkId      String?  @unique  // Добавь эту строчку! 
   googleId  String?  @unique
   yandexId  String?  @unique            
 

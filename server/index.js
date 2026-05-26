@@ -101,7 +101,10 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
         vkUrl: true, 
         tgUrl: true, 
         avatarUrl: true,
-        // СВЕЖИЙ ПАТЧ: Подтягиваем последнюю поданную заявку юзера
+        password: true,   // Выбираем для проверки наличия
+        vkId: true,       // Выбираем для проверки привязки
+        googleId: true,   // Выбираем для проверки привязки
+        yandexId: true,   // Выбираем для проверки привязки
         applications: {
           include: { brigade: { select: { name: true } } },
           orderBy: { createdAt: 'desc' },
@@ -109,21 +112,84 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
         }
       }
     });
-    res.json(user);
+
+    if (!user) {
+      return res.status(404).json({ message: 'Пользователь не найден' });
+    }
+
+    // Формируем безопасный ответ с булевыми флагами
+    const responseData = {
+      id: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      role: user.role,
+      createdAt: user.createdAt,
+      brigade: user.brigade,
+      vkUrl: user.vkUrl,
+      tgUrl: user.tgUrl,
+      avatarUrl: user.avatarUrl,
+      applications: user.applications,
+      // Умные флаги для фронтенда:
+      hasPassword: !!user.password,
+      hasVk: !!user.vkId,
+      hasGoogle: !!user.googleId,
+      hasYandex: !!user.yandexId
+    };
+
+    res.json(responseData);
   } catch (error) {
+    console.error('Ошибка при получении профиля:', error);
     res.status(500).json({ message: "Ошибка сервера при получении профиля" });
   }
 });
 
 app.patch('/api/auth/profile', authMiddleware, async (req, res) => {
   try {
-    const { vkUrl, tgUrl } = req.body;
-    await prisma.user.update({
+    const { vkUrl, tgUrl, firstName, lastName } = req.body;
+    
+    // Динамически формируем объект для обновления базы данных
+    const updateData = {};
+    
+    if (vkUrl !== undefined) updateData.vkUrl = vkUrl || "";
+    if (tgUrl !== undefined) updateData.tgUrl = tgUrl || "";
+    
+    // Валидируем имя, если оно передано
+    if (firstName !== undefined) {
+      if (!firstName.trim()) {
+        return res.status(400).json({ message: 'Имя не может быть пустым' });
+      }
+      updateData.firstName = firstName.trim();
+    }
+    
+    // Валидируем фамилию, если она передана
+    if (lastName !== undefined) {
+      if (!lastName.trim()) {
+        return res.status(400).json({ message: 'Фамилия не может быть пустой' });
+      }
+      updateData.lastName = lastName.trim();
+    }
+
+    // Обновляем данные в Postgres через Prisma
+    const updatedUser = await prisma.user.update({
       where: { id: req.user.userId },
-      data: { vkUrl: vkUrl || "", tgUrl: tgUrl || "" }
+      data: updateData,
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        vkUrl: true,
+        tgUrl: true,
+        avatarUrl: true
+      }
     });
-    res.json({ message: "Успешно" });
-  } catch (error) { res.status(500).json({ message: "Ошибка сервера" }); }
+
+    res.json({ message: "Профиль успешно обновлен", user: updatedUser });
+  } catch (error) { 
+    console.error('Ошибка обновления профиля:', error);
+    res.status(500).json({ message: "Ошибка сервера при обновлении профиля" }); 
+  }
 });
 
 app.post('/api/auth/upload-avatar', authMiddleware, upload.single('avatar'), async (req, res) => {
@@ -133,6 +199,40 @@ app.post('/api/auth/upload-avatar', authMiddleware, upload.single('avatar'), asy
     await prisma.user.update({ where: { id: req.user.userId }, data: { avatarUrl: imageUrl } });
     res.json({ message: "Avatar updated", avatarUrl: imageUrl });
   } catch (error) { res.status(500).json({ message: "Ошибка загрузки" }); }
+});
+
+app.post('/api/auth/set-password', authMiddleware, async (req, res) => {
+  try {
+    const { password } = req.body;
+
+    if (!password || password.length < 6) {
+      return res.status(400).json({ message: 'Пароль должен быть не менее 6 символов' });
+    }
+
+    // 1. Проверяем, нет ли уже пароля у пользователя (защита от перезаписи без старого пароля)
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.userId },
+      select: { password: true }
+    });
+
+    if (user && user.password) {
+      return res.status(400).json({ message: 'Пароль уже установлен. Для изменения используйте роут смены пароля.' });
+    }
+
+    // 2. Хешируем новый пароль через bcryptjs
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 3. Сохраняем в базу данных
+    await prisma.user.update({
+      where: { id: req.user.userId },
+      data: { password: hashedPassword }
+    });
+
+    res.json({ message: 'Пароль успешно установлен. Теперь вы можете входить по почте.' });
+  } catch (error) {
+    console.error('Ошибка установки пароля:', error);
+    res.status(500).json({ message: 'Ошибка сервера при установке пароля' });
+  }
 });
 
 // =============================================================================

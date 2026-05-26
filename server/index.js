@@ -10,6 +10,7 @@ const app = express();
 const prisma = new PrismaClient();
 const DOMAIN_URL = 'https://xn--b1af2ahcd.xn--p1ai';
 const crypto = require('crypto');
+const ExcelJS = require('exceljs');
 
 
 app.use(cors());
@@ -536,7 +537,7 @@ app.get('/api/commander/export-members', authMiddleware, checkRole(['COMMANDER']
       { header: 'Email', key: 'email', width: 30 }
     ];
 
-    // Красиво стилизуем заголовок таблицы
+    // Красиво стилизуем заголовок таблицы (Синий фон, белый текст)
     worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
     worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0052FF' } };
     worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };

@@ -41,7 +41,6 @@ export default function Profile() {
     }
   };
 
-  // === НОВЫЙ БЛОК: ПЕРЕХВАТЧИК ОТВЕТОВ ОТ БЭКЕНДА ===
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const successMsg = urlParams.get('success');
@@ -132,23 +131,20 @@ export default function Profile() {
     navigate('/login');
   };
 
-  // === НОВАЯ ФУНКЦИЯ ДЛЯ ВЫГРУЗКИ EXCEL ===
+  // ФУНКЦИЯ ДЛЯ ВЫГРУЗКИ EXCEL
   const handleDownloadReport = async () => {
     try {
       setActionLoading(true);
-      setMessage({ text: 'Генерируем отчет...', type: 'success' }); // Временное сообщение
+      setMessage({ text: 'Генерируем отчет...', type: 'success' });
 
-      // Важно: responseType: 'blob' нужен для корректного скачивания бинарных файлов
       const res = await api.get('/commander/export-members', {
         responseType: 'blob' 
       });
       
-      // Создаем временную ссылку в памяти браузера
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
       
-      // Пытаемся вытащить имя файла из заголовков бэкенда (Content-Disposition)
       const contentDisposition = res.headers['content-disposition'];
       let fileName = 'Sostav.xlsx';
       if (contentDisposition) {
@@ -158,8 +154,8 @@ export default function Profile() {
       
       link.setAttribute('download', fileName);
       document.body.appendChild(link);
-      link.click(); // Эмулируем клик для скачивания
-      link.parentNode.removeChild(link); // Удаляем ссылку
+      link.click();
+      link.parentNode.removeChild(link);
       
       setMessage({ text: 'Отчет успешно скачан!', type: 'success' });
     } catch (error) {
@@ -170,7 +166,6 @@ export default function Profile() {
     }
   };
 
-  // === ЗАЩИТА ОТ БЕЛОГО ЭКРАНА СМЕРТИ (ОШИБКИ 502) ===
   if (!loading && !user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50/30 selection:bg-rso-blue selection:text-white px-6">
@@ -409,7 +404,10 @@ export default function Profile() {
               )
               
             ) : (
-              <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+              <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xs">
+                
+                {/* ИСПРАВЛЕННАЯ ШАПКА ОТРЯДА С КНОПКОЙ */}
+                <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
                   <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">
                     Состав моего отряда ({user.brigade.name})
                   </h3>
@@ -419,7 +417,6 @@ export default function Profile() {
                       Всего: {brigadeMembers.length} бойцов
                     </span>
                     
-                    {/* КНОПКА ТОЛЬКО ДЛЯ РОЛИ COMMANDER */}
                     {user.role === 'COMMANDER' && (
                       <button 
                         onClick={handleDownloadReport}
@@ -432,6 +429,24 @@ export default function Profile() {
                     )}
                   </div>
                 </div>
+
+                {/* ВОЗВРАЩЕННЫЙ СПИСОК БОЙЦОВ */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-2">
+                  {brigadeMembers.map((member) => (
+                    <div key={member.id} className="flex items-center gap-3 p-3 bg-gray-50/70 border border-gray-100 rounded-xl">
+                      <img 
+                        src={member.avatarUrl || 'https://www.svgrepo.com/show/501227/user-profile.svg'} 
+                        alt="" 
+                        className="w-10 h-10 rounded-lg object-cover bg-gray-200"
+                      />
+                      <div className="truncate">
+                        <span className="block text-xs font-black text-black truncate">{member.lastName} {member.firstName}</span>
+                        <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 block mt-0.5">{member.role}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
           </div>

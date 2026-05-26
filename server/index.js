@@ -828,9 +828,14 @@ app.get('/api/auth/vk/callback', async (req, res) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
 
-    const { access_token, user_id } = tokenResponse.data;
+    console.log('--- ПОЛНЫЙ ОТВЕТ ОТ ВК ---', JSON.stringify(tokenResponse.data, null, 2));
 
-    console.log('--- ПОЛУЧЕННЫЙ ТОКЕН ---', access_token);
+    const access_token = tokenResponse.data.access_token || tokenResponse.data.id_token;
+    const user_id = tokenResponse.data.user_id || tokenResponse.data.uid;
+
+    if (!access_token) {
+        return res.redirect(`${DOMAIN_URL}/login?error=no_token_received`);
+    }
 
     // 3. Запрашиваем информацию профиля из новой API-ручки
     const userResponse = await axios.post('https://id.vk.ru/oauth2/user_info', 

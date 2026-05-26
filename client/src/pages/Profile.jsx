@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import logoUrl from '../assets/logo.svg';
 
@@ -10,11 +10,11 @@ export default function Profile() {
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
 
-  // Формы
   const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '' });
   const [passwordForm, setPasswordForm] = useState({ password: '', confirmPassword: '' });
 
   const navigate = useNavigate();
+  const location = useLocation();
 
   const fetchProfile = async () => {
     try {
@@ -117,24 +117,28 @@ export default function Profile() {
     );
   }
 
-  // --- ВЫЧИСЛЯЕМЫЕ ПЕРЕМЕННЫЕ ДЛЯ UI ---
   const isPassLengthValid = passwordForm.password.length >= 6;
   const isPassMatch = passwordForm.password.length > 0 && passwordForm.password === passwordForm.confirmPassword;
-  
   const latestApp = user.applications && user.applications.length > 0 ? user.applications[0] : null;
 
+  // ДОСТАЕМ ТОКЕН ДЛЯ ПРИВЯЗКИ
+  const currentToken = localStorage.getItem('token');
+
   return (
-    <div className="min-h-screen bg-gray-50/30 text-black font-sans pb-12 selection:bg-rso-blue selection:text-white">
+    // Добавлен pb-24 для мобилок, чтобы контент не перекрывался нижним меню
+    <div className="min-h-screen bg-gray-50/30 text-black font-sans pb-24 md:pb-12 selection:bg-rso-blue selection:text-white">
+      
+      {/* ДЕСКТОПНЫЙ ХЕДЕР */}
       <header className="w-full max-w-[1500px] mx-auto h-16 px-6 flex justify-between items-center bg-transparent">
         <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
           <img src={logoUrl} alt="РСО" className="h-8 object-contain" />
         </Link>
-        <button onClick={handleLogout} className="text-xs font-bold text-red-500 hover:text-red-600 uppercase tracking-wider transition-colors">
+        <button onClick={handleLogout} className="hidden md:block text-xs font-bold text-red-500 hover:text-red-600 uppercase tracking-wider transition-colors">
           Выйти из системы
         </button>
       </header>
 
-      <main className="w-full max-w-[1500px] mx-auto px-6 mt-6">
+      <main className="w-full max-w-[1500px] mx-auto px-4 md:px-6 mt-4 md:mt-6">
         
         {message.text && (
           <div className={`mb-6 border rounded-xl p-4 text-xs font-semibold text-center transition-all shadow-xs ${
@@ -172,7 +176,7 @@ export default function Profile() {
               </div>
             </div>
           </div>
-          <div className="text-center md:text-right">
+          <div className="text-center md:text-right hidden md:block">
             <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block">В экосистеме с</span>
             <span className="text-sm font-black text-black block mt-0.5">{new Date(user.createdAt).toLocaleDateString('ru-RU')}</span>
           </div>
@@ -285,7 +289,6 @@ export default function Profile() {
             {user.role === 'USER' || !user.brigade ? (
               
               latestApp ? (
-                // ЕСЛИ ЕСТЬ ЗАЯВКА
                 <div className={`border rounded-3xl p-8 text-center relative overflow-hidden shadow-xs ${
                   latestApp.status === 'PENDING' ? 'bg-amber-50/50 border-amber-100' :
                   latestApp.status === 'REJECTED' ? 'bg-red-50/50 border-red-100' :
@@ -321,7 +324,6 @@ export default function Profile() {
                   </div>
                 </div>
               ) : (
-                // ЕСЛИ ЗАЯВОК НЕТ
                 <div className="bg-rso-blue/5 border border-rso-blue/10 rounded-3xl p-8 text-center relative overflow-hidden shadow-xs">
                   <div className="relative z-10 max-w-md mx-auto">
                     <h3 className="text-xl font-black uppercase tracking-tight text-black">Вступи в ряды Студенческих Отрядов!</h3>
@@ -339,7 +341,6 @@ export default function Profile() {
               )
               
             ) : (
-              // ЕСЛИ УЖЕ В ОТРЯДЕ
               <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xs">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Состав моего отряда ({user.brigade.name})</h3>
@@ -379,7 +380,8 @@ export default function Profile() {
                   {user.hasVk ? (
                     <span className="text-[9px] font-black uppercase tracking-wider text-green-600 bg-green-50 border border-green-100 px-2 py-1 rounded-md">Подключено</span>
                   ) : (
-                    <a href="https://xn--b1af2ahcd.xn--p1ai/api/auth/vk" className="text-[9px] font-black uppercase tracking-wider text-[#0077FF] bg-[#0077FF]/10 border border-[#0077FF]/20 px-3 py-1.5 rounded-md hover:bg-[#0077FF]/20 transition-colors">
+                    // ПЕРЕДАЕМ ТОКЕН В URL
+                    <a href={`https://xn--b1af2ahcd.xn--p1ai/api/auth/vk?link_token=${currentToken}`} className="text-[9px] font-black uppercase tracking-wider text-[#0077FF] bg-[#0077FF]/10 border border-[#0077FF]/20 px-3 py-1.5 rounded-md hover:bg-[#0077FF]/20 transition-colors">
                       Привязать
                     </a>
                   )}
@@ -394,7 +396,7 @@ export default function Profile() {
                   {user.hasGoogle ? (
                     <span className="text-[9px] font-black uppercase tracking-wider text-green-600 bg-green-50 border border-green-100 px-2 py-1 rounded-md">Подключено</span>
                   ) : (
-                    <a href="https://xn--b1af2ahcd.xn--p1ai/api/auth/google" className="text-[9px] font-black uppercase tracking-wider text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-200 transition-colors">
+                    <a href={`https://xn--b1af2ahcd.xn--p1ai/api/auth/google?link_token=${currentToken}`} className="text-[9px] font-black uppercase tracking-wider text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-200 transition-colors">
                       Привязать
                     </a>
                   )}
@@ -409,7 +411,7 @@ export default function Profile() {
                   {user.hasYandex ? (
                     <span className="text-[9px] font-black uppercase tracking-wider text-green-600 bg-green-50 border border-green-100 px-2 py-1 rounded-md">Подключено</span>
                   ) : (
-                    <a href="https://xn--b1af2ahcd.xn--p1ai/api/auth/yandex" className="text-[9px] font-black uppercase tracking-wider text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors">
+                    <a href={`https://xn--b1af2ahcd.xn--p1ai/api/auth/yandex?link_token=${currentToken}`} className="text-[9px] font-black uppercase tracking-wider text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors">
                       Привязать
                     </a>
                   )}
@@ -422,6 +424,31 @@ export default function Profile() {
         </div>
 
       </main>
+
+      {/* МОБИЛЬНОЕ МЕНЮ (НИЖНИЙ ТАБ-БАР) */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
+        <Link to="/" className={`flex flex-col items-center gap-1 ${location.pathname === '/' ? 'text-rso-blue' : 'text-gray-400'}`}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span className="text-[9px] font-bold uppercase tracking-widest">Главная</span>
+        </Link>
+        <Link to="/news" className={`flex flex-col items-center gap-1 ${location.pathname === '/news' ? 'text-rso-blue' : 'text-gray-400'}`}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="8" x2="16" y1="12" y2="12"/><line x1="8" x2="16" y1="16" y2="16"/><line x1="8" x2="10" y1="8" y2="8"/></svg>
+          <span className="text-[9px] font-bold uppercase tracking-widest">Лента</span>
+        </Link>
+        <Link to="/brigades" className={`flex flex-col items-center gap-1 ${location.pathname === '/brigades' ? 'text-rso-blue' : 'text-gray-400'}`}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span className="text-[9px] font-bold uppercase tracking-widest">Отряды</span>
+        </Link>
+        <Link to="/profile" className={`flex flex-col items-center gap-1 ${location.pathname === '/profile' ? 'text-rso-blue' : 'text-gray-400'}`}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>
+          <span className="text-[9px] font-bold uppercase tracking-widest">Профиль</span>
+        </Link>
+        <button onClick={handleLogout} className="flex flex-col items-center gap-1 text-red-400 hover:text-red-500">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" x2="9" y1="12" y2="12"/></svg>
+          <span className="text-[9px] font-bold uppercase tracking-widest">Выход</span>
+        </button>
+      </nav>
+
     </div>
   );
 }

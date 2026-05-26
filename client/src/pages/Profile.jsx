@@ -26,13 +26,17 @@ export default function Profile() {
         lastName: res.data.lastName || ''
       });
 
-      if (res.data.brigade && res.data.brigade.id) {
+            if (res.data.brigade && res.data.brigade.id) {
+        // Оставляем этот запрос, так как на бэкенде он отдает расширенный список юзеров с avatarUrl
         const brigadeRes = await api.get(`/brigades/${res.data.brigade.id}`);
         setBrigadeMembers(brigadeRes.data.users || []);
+        
         if (res.data.role === 'COMMANDER') {
-          const appsRes = await api.get('/commander/applications');
-          setApplications(appsRes.data);
-              }
+          // Вместо несуществующего роута стучимся в работающий dashboard командира
+          const dashboardRes = await api.get('/commander/dashboard');
+          // Извлекаем оттуда массив активных заявок
+          setApplications(dashboardRes.data.applications || []);
+        }
       }
     } catch (err) {
       console.error(err);

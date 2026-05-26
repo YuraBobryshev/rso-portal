@@ -28,15 +28,12 @@ export default function Profile() {
         lastName: res.data.lastName || ''
       });
 
-            if (res.data.brigade && res.data.brigade.id) {
-        // Оставляем этот запрос, так как на бэкенде он отдает расширенный список юзеров с avatarUrl
+      if (res.data.brigade && res.data.brigade.id) {
         const brigadeRes = await api.get(`/brigades/${res.data.brigade.id}`);
         setBrigadeMembers(brigadeRes.data.users || []);
         
         if (res.data.role === 'COMMANDER') {
-          // Вместо несуществующего роута стучимся в работающий dashboard командира
           const dashboardRes = await api.get('/commander/dashboard');
-          // Извлекаем оттуда массив активных заявок
           setApplications(dashboardRes.data.applications || []);
         }
       }
@@ -142,16 +139,12 @@ export default function Profile() {
     navigate('/login');
   };
 
-  // ФУНКЦИЯ ДЛЯ ВЫГРУЗКИ EXCEL
-  // УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ДЛЯ ВЫГРУЗКИ EXCEL ОТЧЕТОВ КОМСОСТАВА
   const handleDownloadExcel = async (url, defaultFileName) => {
     try {
       setActionLoading(true);
       setMessage({ text: 'Генерируем отчет...', type: 'success' });
 
-      const res = await api.get(url, {
-        responseType: 'blob' 
-      });
+      const res = await api.get(url, { responseType: 'blob' });
       
       const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
@@ -175,6 +168,16 @@ export default function Profile() {
       setMessage({ text: 'Ошибка при выгрузке отчета. Проверьте права доступа.', type: 'error' });
     } finally {
       setActionLoading(false);
+    }
+  };
+
+  const processApplication = async (appId, status) => {
+    try {
+      await api.post('/commander/process-application', { appId, status });
+      setApplications(prev => prev.filter(app => app.id !== appId));
+      setMessage({ text: 'Статус заявки обновлен!', type: 'success' });
+    } catch (err) {
+      setMessage({ text: 'Ошибка при обработке заявки', type: 'error' });
     }
   };
 
@@ -203,16 +206,6 @@ export default function Profile() {
   const isPassMatch = passwordForm.password.length > 0 && passwordForm.password === passwordForm.confirmPassword;
   const latestApp = user.applications && user.applications.length > 0 ? user.applications[0] : null;
   const currentToken = localStorage.getItem('token');
-
-  const processApplication = async (appId, status) => {
-  try {
-    await api.post('/commander/process-application', { appId, status });
-    setApplications(prev => prev.filter(app => app.id !== appId));
-    setMessage({ text: 'Статус заявки обновлен!', type: 'success' });
-  } catch (err) {
-    setMessage({ text: 'Ошибка при обработке заявки', type: 'error' });
-  }
-};
 
   return (
     <div className="min-h-screen bg-gray-50/30 text-black font-sans pb-24 md:pb-12 selection:bg-rso-blue selection:text-white">
@@ -269,8 +262,10 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* ГЛАВНАЯ СЕТКА ПРОФИЛЯ */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
+          {/* ЛЕВАЯ КОЛОНКА (ДАННЫЕ И ОТРЯД) */}
           <div className="lg:col-span-2 space-y-6">
             
             <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xs">
@@ -371,7 +366,6 @@ export default function Profile() {
             )}
 
             {user.role === 'USER' || !user.brigade ? (
-              
               latestApp ? (
                 <div className={`border rounded-3xl p-8 text-center relative overflow-hidden shadow-xs ${
                   latestApp.status === 'PENDING' ? 'bg-amber-50/50 border-amber-100' :
@@ -384,23 +378,18 @@ export default function Profile() {
                        latestApp.status === 'REJECTED' ? 'Заявка отклонена' :
                        'Статус заявки'}
                     </h3>
-                    
                     {latestApp.status === 'PENDING' && (
                       <p className="text-xs text-amber-700 font-medium leading-relaxed">
                         Твоя анкета на вступление в отряд <strong>{latestApp.brigade?.name}</strong> находится на проверке у комсостава. Ожидай изменения статуса.
                       </p>
                     )}
-
                     {latestApp.status === 'REJECTED' && (
                       <>
                         <p className="text-xs text-red-600 font-medium leading-relaxed mb-4">
                           К сожалению, твоя заявка в отряд <strong>{latestApp.brigade?.name}</strong> была отклонена.
                           {latestApp.comment && <span className="block mt-2 italic">Причина: {latestApp.comment}</span>}
                         </p>
-                        <Link 
-                          to="/brigades" 
-                          className="inline-block font-bold uppercase text-[10px] tracking-wider px-6 py-3.5 bg-gray-900 text-white rounded-xl transition-all hover:bg-black"
-                        >
+                        <Link to="/brigades" className="inline-block font-bold uppercase text-[10px] tracking-wider px-6 py-3.5 bg-gray-900 text-white rounded-xl transition-all hover:bg-black">
                           Выбрать другой отряд
                         </Link>
                       </>
@@ -414,20 +403,16 @@ export default function Profile() {
                     <p className="text-xs text-gray-500 font-medium mt-2 leading-relaxed">
                       Ты еще не привязан ни к одному линейному студенческому отряду. Стань частью лучшего движения страны!
                     </p>
-                    <Link 
-                      to="/brigades" 
-                      className="inline-block mt-5 font-bold uppercase text-[10px] tracking-wider px-6 py-3.5 bg-rso-blue text-white rounded-xl transition-all hover:bg-blue-600 shadow-md shadow-blue-500/10"
-                    >
+                    <Link to="/brigades" className="inline-block mt-5 font-bold uppercase text-[10px] tracking-wider px-6 py-3.5 bg-rso-blue text-white rounded-xl transition-all hover:bg-blue-600 shadow-md shadow-blue-500/10">
                       Выбрать свой отряд
                     </Link>
                   </div>
                 </div>
               )
-              
             ) : (
               <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xs">
                 
-                {/* ИСПРАВЛЕННАЯ ШАПКА ОТРЯДА С КНОПКОЙ */}
+                {/* ШАПКА ОТРЯДА С РОЛЕВЫМИ КНОПКАМИ ЭКСПОРТА */}
                 <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
                   <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">
                     Состав моего отряда ({user.brigade.name})
@@ -440,18 +425,42 @@ export default function Profile() {
                     
                     {user.role === 'COMMANDER' && (
                       <button 
-                        onClick={handleDownloadReport}
+                        onClick={() => handleDownloadExcel('/commander/export-members', 'Sostav.xlsx')}
                         disabled={actionLoading}
                         className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-sm shadow-green-500/20 disabled:opacity-50"
+                        title="Выгрузить состав отряда в Excel"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Excel</span>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Состав (Excel)</span>
+                      </button>
+                    )}
+
+                    {user.role === 'MASTER' && (
+                      <button 
+                        onClick={() => handleDownloadExcel('/master/export-attendance', 'Attendance.xlsx')}
+                        disabled={actionLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-500/20 disabled:opacity-50"
+                        title="Выгрузить общую ведомость посещаемости"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Посещаемость</span>
+                      </button>
+                    )}
+
+                    {user.role === 'COMMISSAR' && (
+                      <button 
+                        onClick={() => handleDownloadExcel('/commissar/export-events', 'Events_Quarter.xlsx')}
+                        disabled={actionLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors shadow-sm shadow-rose-500/20 disabled:opacity-50"
+                        title="Выгрузить квартальный отчет по мероприятиям"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Отчет по движу</span>
                       </button>
                     )}
                   </div>
                 </div>
 
-                {/* ВОЗВРАЩЕННЫЙ СПИСОК БОЙЦОВ */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-2">
                   {brigadeMembers.map((member) => (
                     <div key={member.id} className="flex items-center gap-3 p-3 bg-gray-50/70 border border-gray-100 rounded-xl">
@@ -473,15 +482,14 @@ export default function Profile() {
                 </div>
               </div>
             )}
-
           </div>
 
+          {/* ПРАВАЯ КОЛОНКА */}
           <div className="space-y-6">
-            <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-xs">
+            <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xs">
               <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">Связанные аккаунты</h3>
               
               <div className="space-y-3">
-                {/* ВКОНТАКТЕ */}
                 <div className="flex items-center justify-between p-3.5 border border-gray-100 rounded-xl bg-gray-50/50">
                   <div className="flex items-center gap-3">
                     <img src="https://cdn.simpleicons.org/vk/0077FF" alt="VK" className="h-5 w-5" />
@@ -496,7 +504,6 @@ export default function Profile() {
                   )}
                 </div>
 
-                {/* GOOGLE */}
                 <div className="flex items-center justify-between p-3.5 border border-gray-100 rounded-xl bg-gray-50/50">
                   <div className="flex items-center gap-3">
                     <img src="https://cdn.simpleicons.org/google" alt="Google" className="h-5 w-5" />
@@ -511,7 +518,6 @@ export default function Profile() {
                   )}
                 </div>
 
-                {/* ЯНДЕКС */}
                 <div className="flex items-center justify-between p-3.5 border border-gray-100 rounded-xl bg-gray-50/50">
                   <div className="flex items-center gap-3">
                     <img src="https://cdn.simpleicons.org/yandex/FC3F1D" alt="Yandex" className="h-5 w-5" />
@@ -526,69 +532,36 @@ export default function Profile() {
                   )}
                 </div>
               </div>
-
             </div>
-          </div>
 
-                {/* ИСПРАВЛЕННАЯ ШАПКА ОТРЯДА С РОЛЕВЫМИ КНОПКАМИ ЭКСПОРТА */}
-                <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">
-                    Состав моего отряда ({user.brigade.name})
-                  </h3>
-                  
-                  <div className="flex items-center gap-4">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                      Всего: {brigadeMembers.length} бойцов
-                    </span>
-                    
-                    {/* КНОПКА КОМАНДИРА */}
-                    {user.role === 'COMMANDER' && (
-                      <button 
-                        onClick={() => handleDownloadExcel('/commander/export-members', 'Sostav.xlsx')}
-                        disabled={actionLoading}
-                        className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-sm shadow-green-500/20 disabled:opacity-50"
-                        title="Выгрузить состав отряда в Excel"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Состав (Excel)</span>
-                      </button>
-                    )}
-
-                    {/* КНОПКА МАСТЕРА */}
-                    {user.role === 'MASTER' && (
-                      <button 
-                        onClick={() => handleDownloadExcel('/master/export-attendance', 'Attendance.xlsx')}
-                        disabled={actionLoading}
-                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-500/20 disabled:opacity-50"
-                        title="Выгрузить общую ведомость посещаемости"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Посещаемость (Excel)</span>
-                      </button>
-                    )}
-
-                    {/* КНОПКА КОМИССАРА */}
-                    {user.role === 'COMMISSAR' && (
-                      <button 
-                        onClick={() => handleDownloadExcel('/commissar/export-events', 'Events_Quarter.xlsx')}
-                        disabled={actionLoading}
-                        className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors shadow-sm shadow-rose-500/20 disabled:opacity-50"
-                        title="Выгрузить квартальный отчет по мероприятиям"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
-                        <span className="text-[10px] font-bold uppercase tracking-wider">Отчет по движу (Excel)</span>
-                      </button>
-                    )}
-                  </div>
+            {/* ВОССТАНОВЛЕННАЯ ПАНЕЛЬ ЗАЯВОК КОМАНДИРА */}
+            {user?.role === 'COMMANDER' && applications.length > 0 && (
+              <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xs">
+                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">Заявки в отряд ({applications.length})</h3>
+                <div className="space-y-3">
+                  {applications.map(app => (
+                    <div key={app.id} className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 bg-gray-50/50 border border-gray-100 rounded-2xl gap-4">
+                      <div className="truncate w-full sm:w-auto">
+                        <span className="block font-bold text-sm text-black uppercase truncate">{app.user.lastName} {app.user.firstName}</span>
+                        <span className="text-[10px] font-bold text-gray-400 lowercase truncate block mt-0.5">{app.user.email}</span>
+                      </div>
+                      <div className="flex gap-2 w-full sm:w-auto shrink-0">
+                        <button onClick={() => processApplication(app.id, 'APPROVED')} className="flex-1 sm:flex-none px-4 py-2 bg-green-50 text-green-600 border border-green-100 hover:bg-green-100 hover:border-green-200 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all">Принять</button>
+                        <button onClick={() => processApplication(app.id, 'REJECTED')} className="flex-1 sm:flex-none px-4 py-2 bg-red-50 text-red-500 border border-red-100 hover:bg-red-100 hover:border-red-200 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all">Отклонить</button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-                        
+              </div>
+            )}
+          </div>
         </div>
 
-            <EventCalendar userRole={user.role} />
+        {/* КАЛЕНДАРЬ МЕРОПРИЯТИЙ (В САМОМ НИЗУ СЕТКИ) */}
+        <EventCalendar userRole={user.role} />
 
       </main>
 
-      {/* МОБИЛЬНОЕ МЕНЮ */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
         <Link to="/" className={`flex flex-col items-center gap-1 ${location.pathname === '/' ? 'text-rso-blue' : 'text-gray-400'}`}>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>

@@ -590,13 +590,18 @@ app.get('/api/auth/google/callback', async (req, res) => {
     const { access_token } = tokenResponse.data;
 
     // 2.2 Используя access_token, запрашиваем данные профиля (email, имя, аватарку)
-    const userResponse = await axios.get('https://id.vk.ru/oauth2/user_info', {
+    const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
       headers: { 
         'Authorization': `Bearer ${access_token}` 
       }
     });
+
     const { id: googleId, email, given_name, family_name, picture } = userResponse.data;
 
+    if (!googleId) {
+        console.error("Не удалось получить googleId. Ответ:", userResponse.data);
+        return res.redirect(`${DOMAIN_URL}/login?error=no_google_id`);
+    }
     // 2.3 Ищем пользователя по googleId
     let user = await prisma.user.findUnique({ where: { googleId } });
 

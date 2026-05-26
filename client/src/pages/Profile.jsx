@@ -143,21 +143,22 @@ export default function Profile() {
   };
 
   // ФУНКЦИЯ ДЛЯ ВЫГРУЗКИ EXCEL
-  const handleDownloadReport = async () => {
+  // УНИВЕРСАЛЬНАЯ ФУНКЦИЯ ДЛЯ ВЫГРУЗКИ EXCEL ОТЧЕТОВ КОМСОСТАВА
+  const handleDownloadExcel = async (url, defaultFileName) => {
     try {
       setActionLoading(true);
       setMessage({ text: 'Генерируем отчет...', type: 'success' });
 
-      const res = await api.get('/commander/export-members', {
+      const res = await api.get(url, {
         responseType: 'blob' 
       });
       
-      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
-      link.href = url;
+      link.href = blobUrl;
       
       const contentDisposition = res.headers['content-disposition'];
-      let fileName = 'Sostav.xlsx';
+      let fileName = defaultFileName;
       if (contentDisposition) {
         const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
         if (fileNameMatch && fileNameMatch.length === 2) fileName = fileNameMatch[1];
@@ -170,7 +171,7 @@ export default function Profile() {
       
       setMessage({ text: 'Отчет успешно скачан!', type: 'success' });
     } catch (error) {
-      console.error('Ошибка скачивания:', error);
+      console.error('Ошибка скачивания отчета:', error);
       setMessage({ text: 'Ошибка при выгрузке отчета. Проверьте права доступа.', type: 'error' });
     } finally {
       setActionLoading(false);
@@ -529,26 +530,60 @@ export default function Profile() {
             </div>
           </div>
 
-                {user?.role === 'COMMANDER' && applications.length > 0 && (
-        <div className="bg-white border border-gray-100 rounded-3xl p-8 mt-6">
-          <h3 className="text-xs font-black uppercase text-gray-400 mb-6">Заявки в отряд ({applications.length})</h3>
-          {applications.map(app => (
-            <div key={app.id} className="flex justify-between items-center py-4 border-b">
-              <div>
-                <span className="block font-bold text-sm">{app.user.lastName} {app.user.firstName}</span>
-                <span className="text-[10px] text-gray-400 uppercase">{app.user.email}</span>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => processApplication(app.id, 'APPROVED')} className="text-green-600 text-[10px] font-bold uppercase">Принять</button>
-                <button onClick={() => processApplication(app.id, 'REJECTED')} className="text-red-500 text-[10px] font-bold uppercase">Отклонить</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                {/* ИСПРАВЛЕННАЯ ШАПКА ОТРЯДА С РОЛЕВЫМИ КНОПКАМИ ЭКСПОРТА */}
+                <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">
+                    Состав моего отряда ({user.brigade.name})
+                  </h3>
+                  
+                  <div className="flex items-center gap-4">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      Всего: {brigadeMembers.length} бойцов
+                    </span>
+                    
+                    {/* КНОПКА КОМАНДИРА */}
+                    {user.role === 'COMMANDER' && (
+                      <button 
+                        onClick={() => handleDownloadExcel('/commander/export-members', 'Sostav.xlsx')}
+                        disabled={actionLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-sm shadow-green-500/20 disabled:opacity-50"
+                        title="Выгрузить состав отряда в Excel"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Состав (Excel)</span>
+                      </button>
+                    )}
+
+                    {/* КНОПКА МАСТЕРА */}
+                    {user.role === 'MASTER' && (
+                      <button 
+                        onClick={() => handleDownloadExcel('/master/export-attendance', 'Attendance.xlsx')}
+                        disabled={actionLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-500/20 disabled:opacity-50"
+                        title="Выгрузить общую ведомость посещаемости"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Посещаемость (Excel)</span>
+                      </button>
+                    )}
+
+                    {/* КНОПКА КОМИССАРА */}
+                    {user.role === 'COMMISSAR' && (
+                      <button 
+                        onClick={() => handleDownloadExcel('/commissar/export-events', 'Events_Quarter.xlsx')}
+                        disabled={actionLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-rose-500 text-white rounded-lg hover:bg-rose-600 transition-colors shadow-sm shadow-rose-500/20 disabled:opacity-50"
+                        title="Выгрузить квартальный отчет по мероприятиям"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Отчет по движу (Excel)</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
                         
         </div>
-        
+
             <EventCalendar userRole={user.role} />
 
       </main>

@@ -729,6 +729,153 @@ app.get('/api/admin/rating-stats', authMiddleware, checkRole(['REG_HQ']), async 
   }
 });
 
+// =============================================================================
+// 📊 БЛОК: ОТЧЕТЫ МАСТЕРА И КОМИССАРА
+// =============================================================================
+
+// 1. ОТЧЕТ МАСТЕРА (Посещаемость бойцов отряда)
+app.get('/api/master/export-attendance', authMiddleware, checkRole(['MASTER', 'REG_HQ']), async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    if (!user || !user.brigadeId) return res.status(400).json({ message: "Отряд не найден" });
+
+    const brigade = await prisma.brigade.findUnique({ where: { id: user.brigadeId } });
+
+    // Достаем всех бойцов отряда вместе с их записями на мероприятия
+    const members = await prisma.user.findMany({
+      where: { brigadeId: user.brigadeId },
+      include: {
+        participations: {
+          include: { event: true }
+        }
+      },
+      orderBy: { role: 'desc' }
+    });
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Посещаемость');
+
+    worksheet.columns = [
+      { header: '№', key: 'index', width: 5 },
+      { header: 'ФИО бойца', key: 'name', width: 30 },
+      { header: 'Роль', key: 'role', width: 15 },
+      { header: 'Записан (шт)', key: 'total', width: 15 },
+      { header: 'Посетил (шт)', key: 'attended', width: 15 },
+      { header: 'Пропустил (шт)', key: 'missed', width: 15 },
+      { header: '% Посещаемости', key: 'percent', width: 18 }
+    ];
+
+    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF66BB8A' } }; // Зеленый акцент
+    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+    members.forEach((m, idx) => {
+      const total = m.participations.length;
+      const attended = m.participations.filter(p => p.attended).length;
+      const missed = total - attended;
+      const percent = total > 0 ? Math.round((attended / total) * 100) + '%' : '0%';
+
+      worksheet.addRow({
+        index: idx + 1,
+        name: `${m.lastName || ''} ${m.firstName || ''}`.trim(),
+        role: m.role,
+        total,
+        attended,
+        missed,
+        percent
+      });
+    });
+
+    const cleanBrigadeName = brigade.name.replace(/[^a-zA-Z0-9а-яА-ЯёЁ ]/g, '').trim();
+    const fileName = `Attendance_${cleanBrigadeName}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Ошибка выгрузки Мастера:', error);
+    res.status(500).json({ message: "Ошибка генерации отчета" });
+  }
+});
+
+// 2. ОТЧЕТ КОМИССАРА (Мероприятия за квартал)
+app.get('/api/commissar/export-events', authMiddleware, checkRole(['COMMISSAR', 'REG_HQ']), async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    if (!user || !user.brigadeId) return res.status(400).json({ message: "Отряд не найден" });
+
+    const brigade = await prisma.brigade.findUnique({ where: { id: user.brigadeId } });
+
+    // Вычисляем дату ровно 3 месяца назад
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    // Достаем все мероприятия за последние 3 месяца
+    const events = await prisma.event.findMany({
+      where: {
+        date: { gte: threeMonthsAgo }
+      },
+      include: {
+        participations: {
+          include: { user: true }
+        }
+      },
+      orderBy: { date: 'desc' }
+    });
+
+    // Фильтруем только те мероприятия, где БЫЛ хотя бы один боец этого отряда
+    const brigadeEvents = events.map(e => {
+      // Считаем только тех, кто реально пришел (attended: true)
+      const brigadeParticipants = e.participations.filter(p => p.user.brigadeId === user.brigadeId && p.attended);
+      return {
+        ...e,
+        brigadeParticipantsCount: brigadeParticipants.length
+      };
+    }).filter(e => e.brigadeParticipantsCount > 0);
+
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Квартальный отчет');
+
+    worksheet.columns = [
+      { header: '№', key: 'index', width: 5 },
+      { header: 'Дата', key: 'date', width: 15 },
+      { header: 'Уровень', key: 'type', width: 15 },
+      { header: 'Мероприятие', key: 'title', width: 30 },
+      { header: 'Бойцов от ЛСО', key: 'count', width: 15 },
+      { header: 'Описание деятельности', key: 'description', width: 60 }
+    ];
+
+    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF4D39' } }; // Оранжевый акцент
+    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+    brigadeEvents.forEach((e, idx) => {
+      worksheet.addRow({
+        index: idx + 1,
+        date: new Date(e.date).toLocaleDateString('ru-RU'),
+        type: e.type === 'REGIONAL' ? 'Региональное' : 'Локальное',
+        title: e.title,
+        count: e.brigadeParticipantsCount,
+        description: e.description || 'Нет описания'
+      });
+    });
+
+    const cleanBrigadeName = brigade.name.replace(/[^a-zA-Z0-9а-яА-ЯёЁ ]/g, '').trim();
+    const fileName = `Events_Quarter_${cleanBrigadeName}.xlsx`;
+
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.error('Ошибка выгрузки Комиссара:', error);
+    res.status(500).json({ message: "Ошибка генерации отчета" });
+  }
+});
+
 
 // ==========================================
 // GOOGLE OAUTH: Инициация входа / Привязки

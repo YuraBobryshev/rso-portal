@@ -654,23 +654,26 @@ app.get('/api/admin/rating-stats', authMiddleware, checkRole(['REG_HQ']), async 
 
 
 // ==========================================
-// 1. Инициация входа: редирект юзера в Google
+// GOOGLE OAUTH: Инициация входа / Привязки
 // ==========================================
 app.get('/api/auth/google', (req, res) => {
-  // Ссылка, куда Google вернет пользователя с кодом. 
-  // Caddy поймает /api/... и отдаст этот запрос твоему Node.js
+  const { link_token } = req.query; // Ловим токен привязки от фронтенда
   const redirectUri = `${DOMAIN_URL}/api/auth/google/callback`;
   
-  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email%20profile`;
+  // Упаковываем link_token в OAuth параметр state
+  const stateObj = { link_token: link_token || null };
+  const stateString = Buffer.from(JSON.stringify(stateObj)).toString('base64');
+  
+  const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${process.env.GOOGLE_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=email%20profile&state=${stateString}`;
   
   res.redirect(googleAuthUrl);
 });
 
 // ==========================================
-// 2. Callback: Google возвращает code сюда
+// GOOGLE OAUTH: Callback
 // ==========================================
 app.get('/api/auth/google/callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, state } = req.query;
   const redirectUri = `${DOMAIN_URL}/api/auth/google/callback`;
 
   if (!code) {
@@ -678,7 +681,18 @@ app.get('/api/auth/google/callback', async (req, res) => {
   }
 
   try {
-    // 2.1 Обмениваем code на access_token напрямую через сервера Google
+    // Распаковываем state и извлекаем токен привязки
+    let link_token = null;
+    if (state) {
+      try {
+        const decodedState = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
+        link_token = decodedState.link_token;
+      } catch (e) {
+        console.error("Ошибка парсинга state Google:", e);
+      }
+    }
+
+    // Обмениваем code на access_token
     const tokenResponse = await axios.post('https://oauth2.googleapis.com/token', {
       client_id: process.env.GOOGLE_CLIENT_ID,
       client_secret: process.env.GOOGLE_CLIENT_SECRET,
@@ -689,39 +703,64 @@ app.get('/api/auth/google/callback', async (req, res) => {
 
     const { access_token } = tokenResponse.data;
 
-    // 2.2 Используя access_token, запрашиваем данные профиля (email, имя, аватарку)
+    // Запрашиваем данные профиля
     const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { 
-        'Authorization': `Bearer ${access_token}` 
-      }
+      headers: { 'Authorization': `Bearer ${access_token}` }
     });
-
+    
     const { id: googleId, email, given_name, family_name, picture } = userResponse.data;
+    const googleIdStr = String(googleId);
 
     if (!googleId) {
-        console.error("Не удалось получить googleId. Ответ:", userResponse.data);
         return res.redirect(`${DOMAIN_URL}/login?error=no_google_id`);
     }
-    // 2.3 Ищем пользователя по googleId
-    let user = await prisma.user.findUnique({ where: { googleId } });
+
+    // ==========================================
+    // СЦЕНАРИЙ А: ПРИВЯЗКА К СУЩЕСТВУЮЩЕМУ АККАУНТУ
+    // ==========================================
+    if (link_token) {
+      try {
+        const decoded = jwt.verify(link_token, process.env.JWT_SECRET);
+        
+        // Проверяем, не занят ли этот Google аккаунт кем-то другим
+        const existingGoogleUser = await prisma.user.findUnique({ where: { googleId: googleIdStr } });
+        if (existingGoogleUser && existingGoogleUser.id !== decoded.userId) {
+          return res.redirect(`${DOMAIN_URL}/profile?error=google_already_taken`);
+        }
+
+        // Привязываем ТОЛЬКО googleId (личные данные профиля НЕ МЕНЯЮТСЯ)
+        await prisma.user.update({
+          where: { id: decoded.userId },
+          data: { googleId: googleIdStr }
+        });
+
+        return res.redirect(`${DOMAIN_URL}/profile?success=google_linked`);
+      } catch (err) {
+        return res.redirect(`${DOMAIN_URL}/profile?error=link_failed`);
+      }
+    }
+
+    // ==========================================
+    // СЦЕНАРИЙ Б: ОБЫЧНАЯ АВТОРИЗАЦИЯ / РЕГИСТРАЦИЯ
+    // ==========================================
+    let user = await prisma.user.findUnique({ where: { googleId: googleIdStr } });
 
     if (!user) {
-      // Если по googleId не нашли, проверяем, нет ли пользователя с таким email
       if (email) {
         user = await prisma.user.findUnique({ where: { email } });
       }
 
       if (user) {
-        // Если пользователь с такой почтой уже есть, привязываем к нему GoogleId
+        // Если нашли по почте, просто связываем аккаунты
         user = await prisma.user.update({
           where: { id: user.id },
-          data: { googleId, avatarUrl: user.avatarUrl || picture }
+          data: { googleId: googleIdStr }
         });
       } else {
-        // Если вообще нет такого пользователя — создаем новую учетку бойца
+        // Если юзера нет — регистрируем с нуля
         user = await prisma.user.create({
           data: {
-            googleId,
+            googleId: googleIdStr,
             email,
             firstName: given_name || 'Боец',
             lastName: family_name || 'РСО',
@@ -731,15 +770,7 @@ app.get('/api/auth/google/callback', async (req, res) => {
       }
     }
 
-    // 2.4 Генерируем твой стандартный системный JWT-токен СевРО для авторизации
-    const sysToken = jwt.sign(
-          { userId: user.id, role: user.role }, 
-          process.env.JWT_SECRET, 
-          { expiresIn: '7d' }
-        );
-
-    // 2.5 Редиректим пользователя обратно на страницу входа фронтенда, 
-    // передавая наш сгенерированный JWT-токен в параметрах URL
+    const sysToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
 
   } catch (error) {
@@ -749,21 +780,26 @@ app.get('/api/auth/google/callback', async (req, res) => {
 });
 
 // ==========================================
-// YANDEX OAUTH: Инициация входа
+// YANDEX OAUTH: Инициация входа / Привязки
 // ==========================================
 app.get('/api/auth/yandex', (req, res) => {
+  const { link_token } = req.query;
   const redirectUri = `${DOMAIN_URL}/api/auth/yandex/callback`;
   
-  const yandexAuthUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${process.env.YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}`;
+  // Упаковываем link_token в параметр state
+  const stateObj = { link_token: link_token || null };
+  const stateString = Buffer.from(JSON.stringify(stateObj)).toString('base64');
+  
+  const yandexAuthUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${process.env.YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${stateString}`;
   
   res.redirect(yandexAuthUrl);
 });
 
 // ==========================================
-// YANDEX OAUTH: Callback (обработка ответа от Яндекса)
+// YANDEX OAUTH: Callback
 // ==========================================
 app.get('/api/auth/yandex/callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, state } = req.query;
   const redirectUri = `${DOMAIN_URL}/api/auth/yandex/callback`;
 
   if (!code) {
@@ -771,8 +807,18 @@ app.get('/api/auth/yandex/callback', async (req, res) => {
   }
 
   try {
-    // 1. Обмениваем временный code на access_token
-    // Яндекс строго требует передачу параметров в формате x-www-form-urlencoded
+    // Извлекаем токен из state
+    let link_token = null;
+    if (state) {
+      try {
+        const decodedState = JSON.parse(Buffer.from(state, 'base64').toString('utf8'));
+        link_token = decodedState.link_token;
+      } catch (e) {
+        console.error("Ошибка парсинга state Yandex:", e);
+      }
+    }
+
+    // Обмениваем code на access_token
     const tokenResponse = await axios.post('https://oauth.yandex.ru/token', 
       new URLSearchParams({
         grant_type: 'authorization_code',
@@ -786,36 +832,58 @@ app.get('/api/auth/yandex/callback', async (req, res) => {
 
     const { access_token } = tokenResponse.data;
 
-    // 2. Используя access_token, запрашиваем данные профиля пользователя
+    // Запрашиваем данные профиля Яндекс
     const userResponse = await axios.get('https://login.yandex.ru/info', {
       headers: { Authorization: `OAuth ${access_token}` }
     });
 
     const { id: yandexId, default_email: email, first_name, last_name, default_avatar_id } = userResponse.data;
-    
-    // Если у пользователя есть аватарка, Яндекс возвращает её ID, собираем полноценную ссылку
+    const yandexIdStr = String(yandexId);
     const avatarUrl = default_avatar_id ? `https://avatars.yandex.net/get-yapic/${default_avatar_id}/islands-200` : null;
 
-    // 3. Ищем пользователя в БД по yandexId
-    let user = await prisma.user.findUnique({ where: { yandexId } });
+    // ==========================================
+    // СЦЕНАРИЙ А: ПРИВЯЗКА К СУЩЕСТВУЮЩЕМУ АККАУНТУ
+    // ==========================================
+    if (link_token) {
+      try {
+        const decoded = jwt.verify(link_token, process.env.JWT_SECRET);
+        
+        const existingYandexUser = await prisma.user.findUnique({ where: { yandexId: yandexIdStr } });
+        if (existingYandexUser && existingYandexUser.id !== decoded.userId) {
+          return res.redirect(`${DOMAIN_URL}/profile?error=yandex_already_taken`);
+        }
+
+        // Привязываем ТОЛЬКО yandexId (данные профиля НЕ меняются)
+        await prisma.user.update({
+          where: { id: decoded.userId },
+          data: { yandexId: yandexIdStr }
+        });
+
+        return res.redirect(`${DOMAIN_URL}/profile?success=yandex_linked`);
+      } catch (err) {
+        return res.redirect(`${DOMAIN_URL}/profile?error=link_failed`);
+      }
+    }
+
+    // ==========================================
+    // СЦЕНАРИЙ Б: ОБЫЧНАЯ АВТОРИЗАЦИЯ / РЕГИСТРАЦИЯ
+    // ==========================================
+    let user = await prisma.user.findUnique({ where: { yandexId: yandexIdStr } });
 
     if (!user) {
-      // Если по yandexId не нашли, проверяем совпадение по email
       if (email) {
         user = await prisma.user.findUnique({ where: { email } });
       }
 
       if (user) {
-        // Если аккаунт с такой почтой уже есть, привязываем к нему yandexId
         user = await prisma.user.update({
           where: { id: user.id },
-          data: { yandexId, avatarUrl: user.avatarUrl || avatarUrl }
+          data: { yandexId: yandexIdStr }
         });
       } else {
-        // Если пользователя нет — создаем новую учетную запись бойца
         user = await prisma.user.create({
           data: {
-            yandexId,
+            yandexId: yandexIdStr,
             email,
             firstName: first_name || 'Боец',
             lastName: last_name || 'РСО',
@@ -825,14 +893,7 @@ app.get('/api/auth/yandex/callback', async (req, res) => {
       }
     }
 
-    // 4. Генерируем наш системный JWT-токен СевРО (используем строго userId)
-    const sysToken = jwt.sign(
-      { userId: user.id, role: user.role }, 
-      process.env.JWT_SECRET, 
-      { expiresIn: '7d' }
-    );
-
-    // 5. Перенаправляем пользователя на фронтенд, передавая токен в URL
+    const sysToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
 
   } catch (error) {
@@ -841,36 +902,23 @@ app.get('/api/auth/yandex/callback', async (req, res) => {
   }
 });
 
-// ==========================================
-// YANDEX OAUTH: Инициация входа
-// ==========================================
-app.get('/api/auth/yandex', (req, res) => {
-  const redirectUri = `${DOMAIN_URL}/api/auth/yandex/callback`;
-  
-  const yandexAuthUrl = `https://oauth.yandex.ru/authorize?response_type=code&client_id=${process.env.YANDEX_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUri)}`;
-  
-  res.redirect(yandexAuthUrl);
-});
-
-
 
 // ==========================================
-// VK ID OAUTH 2.1: Инициация входа
+// VK ID OAUTH 2.1: Инициация входа / Привязки
 // ==========================================
 app.get('/api/auth/vk', (req, res) => {
+  const { link_token } = req.query; // Ловим токен привязки
   const vkClientId = '54608627'; 
   const vkRedirectUri = 'https://xn--b1af2ahcd.xn--p1ai/api/auth/vk/callback';
 
-  // 1. Генерируем только ключи PKCE и State (device_id тут больше не нужен)
   const codeVerifier = base64URLEncode(crypto.randomBytes(32));
   const codeChallenge = base64URLEncode(crypto.createHash('sha256').update(codeVerifier).digest());
   const state = crypto.randomBytes(16).toString('hex');
 
-  // 2. Сохраняем ключи во временную cookie
-  const cookieData = JSON.stringify({ codeVerifier, state });
+  // Упаковываем верификаторы и link_token во временную сессионную куку куку vk_auth
+  const cookieData = JSON.stringify({ codeVerifier, state, link_token: link_token || null });
   res.setHeader('Set-Cookie', `vk_auth=${encodeURIComponent(cookieData)}; Path=/; HttpOnly; Max-Age=300; SameSite=Lax`);
 
-  // 3. Формируем ссылку
   const authUrl = new URL('https://id.vk.ru/authorize');
   authUrl.searchParams.append('response_type', 'code');
   authUrl.searchParams.append('client_id', vkClientId);
@@ -887,7 +935,6 @@ app.get('/api/auth/vk', (req, res) => {
 // VK ID OAUTH 2.1: Callback
 // ==========================================
 app.get('/api/auth/vk/callback', async (req, res) => {
-  // ВОТ ОН, СЕКРЕТ! Ловим device_id прямо из URL, который прислал ВК:
   const { code, state, device_id } = req.query; 
 
   const vkRedirectUri = 'https://xn--b1af2ahcd.xn--p1ai/api/auth/vk/callback';
@@ -909,7 +956,7 @@ app.get('/api/auth/vk/callback', async (req, res) => {
   if (state !== sessionData.state) return res.redirect(`${DOMAIN_URL}/login?error=invalid_state`);
 
   try {
-    // 2. Идем за токеном
+    // Запрашиваем токен у ВК
     const tokenParams = new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: vkClientId,
@@ -917,7 +964,7 @@ app.get('/api/auth/vk/callback', async (req, res) => {
       code: code,
       code_verifier: sessionData.codeVerifier,
       redirect_uri: vkRedirectUri,
-      device_id: device_id // ОТДАЕМ ВК ЕГО ЖЕ DEVICE_ID
+      device_id: device_id
     });
 
     const tokenResponse = await axios.post('https://id.vk.ru/oauth2/auth', tokenParams.toString(), {
@@ -927,7 +974,7 @@ app.get('/api/auth/vk/callback', async (req, res) => {
     const finalToken = tokenResponse.data.access_token || tokenResponse.data.id_token;
     if (!finalToken) return res.redirect(`${DOMAIN_URL}/login?error=no_token_received`);
 
-    // 3. Запрашиваем информацию профиля
+    // Запрашиваем информацию профиля
     const userResponse = await axios.post('https://id.vk.ru/oauth2/user_info', 
       new URLSearchParams({
         client_id: vkClientId,
@@ -940,7 +987,35 @@ app.get('/api/auth/vk/callback', async (req, res) => {
     const vkIdString = String(vkUser.id || vkUser.user_id || 'unknown');
     const email = vkUser.email || null;
 
-    // 4. Ищем или создаем юзера
+    // ==========================================
+    // СЦЕНАРИЙ А: ПРИВЯЗКА К СУЩЕСТВУЮЩЕМУ АККАУНТУ
+    // ==========================================
+    if (sessionData.link_token) {
+      try {
+        const decoded = jwt.verify(sessionData.link_token, process.env.JWT_SECRET);
+        
+        // Проверяем, не привязан ли этот ВК к кому-то другому
+        const existingVkUser = await prisma.user.findUnique({ where: { vkId: vkIdString } });
+        if (existingVkUser && existingVkUser.id !== decoded.userId) {
+          return res.redirect(`${DOMAIN_URL}/profile?error=vk_already_taken`);
+        }
+
+        // Привязываем ТОЛЬКО vkId (личные данные профиля НЕ МЕНЯЮТСЯ)
+        await prisma.user.update({
+          where: { id: decoded.userId },
+          data: { vkId: vkIdString }
+        });
+
+        res.setHeader('Set-Cookie', `vk_auth=; Path=/; HttpOnly; Max-Age=0`);
+        return res.redirect(`${DOMAIN_URL}/profile?success=vk_linked`);
+      } catch (err) {
+        return res.redirect(`${DOMAIN_URL}/profile?error=link_failed`);
+      }
+    }
+
+    // ==========================================
+    // СЦЕНАРИЙ Б: ОБЫЧНАЯ АВТОРИЗАЦИЯ / РЕГИСТРАЦИЯ
+    // ==========================================
     let user = await prisma.user.findUnique({ where: { vkId: vkIdString } });
     if (!user && email) user = await prisma.user.findUnique({ where: { email } });
 
@@ -957,7 +1032,6 @@ app.get('/api/auth/vk/callback', async (req, res) => {
         });
     }
 
-    // 5. Редирект
     const sysToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.setHeader('Set-Cookie', `vk_auth=; Path=/; HttpOnly; Max-Age=0`);
     res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);

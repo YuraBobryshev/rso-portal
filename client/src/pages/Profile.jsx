@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import logoUrl from '../assets/logo.svg';
 import Header from '../components/Header';
+import EventCalendar from '../components/EventCalendar';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -547,6 +548,8 @@ export default function Profile() {
       )}
                         
         </div>
+        
+            <EventCalendar userRole={user.role} />
 
       </main>
 

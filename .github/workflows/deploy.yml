@@ -17,7 +17,7 @@ jobs:
           username: root
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           port: 22
-          script: |
+          sscript: |
             echo "--- Переходим в директорию проекта ---"
             cd ~/rso-portal
             
@@ -33,10 +33,7 @@ jobs:
             echo "--- Автоматически применяем новую структуру БД (Prisma Push) ---"
             docker compose exec -T app npx prisma db push --accept-data-loss
             
-            echo "--- Автоматически генерируем 60 тестовых аккаунтов (Prisma Seed) ---"
-            docker compose exec -T app npx prisma db seed
-            
             echo "--- Очищаем неиспользуемые старые образы Docker ---"
             docker image prune -f
             
-            echo "🚀 Автодеплой, синхронизация БД и сидинг успешно завершены!"
+            echo "🚀 Автодеплой и синхронизация БД успешно завершены!"

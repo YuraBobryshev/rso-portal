@@ -779,16 +779,12 @@ app.get('/api/auth/vk', (req, res) => {
 });
 
 // ==========================================
-// VK ID OAUTH 2.1: Callback (Обмен кода на токен)
+// VK ID OAUTH 2.1: Callback
 // ==========================================
 app.get('/api/auth/vk/callback', async (req, res) => {
-  const deviceId = 'test_device_12345'; 
-  res.setHeader('Set-Cookie', `vk_auth=${encodeURIComponent(JSON.stringify({ codeVerifier, state, deviceId }))}; Path=/; HttpOnly; Max-Age=300; SameSite=Lax`);
-  const { code, state } = req.query;
+  const { code, state } = req.query; // Здесь state берется из URL
   const vkRedirectUri = 'https://xn--b1af2ahcd.xn--p1ai/api/auth/vk/callback';
   const vkClientId = '54608627';
-  
-  // ВНИМАНИЕ: Сюда нужно вставить "Защищенный ключ" из нового кабинета VK ID!
   const vkClientSecret = '9fYVPkQyX5IGZ0IIR2R5'; 
 
   if (!code) {
@@ -798,13 +794,12 @@ app.get('/api/auth/vk/callback', async (req, res) => {
   // 1. Достаем наши ключи-верификаторы из куки
   const cookies = parseCookies(req);
   if (!cookies.vk_auth) {
-    console.error('Сессия устарела (нет куки vk_auth)');
     return res.redirect(`${DOMAIN_URL}/login?error=session_expired`);
   }
 
   let sessionData;
   try {
-    sessionData = JSON.parse(cookies.vk_auth);
+    sessionData = JSON.parse(decodeURIComponent(cookies.vk_auth));
   } catch (e) {
     return res.redirect(`${DOMAIN_URL}/login?error=session_invalid`);
   }
@@ -814,7 +809,7 @@ app.get('/api/auth/vk/callback', async (req, res) => {
   }
 
   try {
-    // 2. Идем на новые сервера VK ID за токеном
+    // 2. Идем за токеном
     const tokenParams = new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: vkClientId,
@@ -822,102 +817,64 @@ app.get('/api/auth/vk/callback', async (req, res) => {
       code: code,
       code_verifier: sessionData.codeVerifier,
       redirect_uri: vkRedirectUri,
-      device_id: sessionData.deviceId,
-      state: state
+      device_id: sessionData.deviceId || 'test_device_12345'
     });
 
     const tokenResponse = await axios.post('https://id.vk.ru/oauth2/auth', tokenParams.toString(), {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
 
-    console.log('--- ПОЛНЫЙ ОТВЕТ ОТ ВК ---', JSON.stringify(tokenResponse.data, null, 2));
+    const { access_token, id_token } = tokenResponse.data;
+    const finalToken = access_token || id_token;
 
-    const access_token = tokenResponse.data.access_token || tokenResponse.data.id_token;
-    const user_id = tokenResponse.data.user_id || tokenResponse.data.uid;
-
-    if (!access_token) {
+    if (!finalToken) {
         return res.redirect(`${DOMAIN_URL}/login?error=no_token_received`);
     }
 
-    // 3. Запрашиваем информацию профиля из новой API-ручки
+    // 3. Запрашиваем информацию профиля
     const userResponse = await axios.post('https://id.vk.ru/oauth2/user_info', 
       new URLSearchParams({
         client_id: vkClientId,
-        access_token: access_token // Передаем токен в теле запроса, как того требует VK ID
+        access_token: finalToken
       }).toString(),
-      { 
-        headers: { 
-            'Content-Type': 'application/x-www-form-urlencoded' 
-        } 
-      }
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
-    // Новое API отдает данные чуть в другом формате
-    const vkData = userResponse.data;
-    
-    // В VK ID данные часто лежат внутри объекта user или прямо в корне
     const vkUser = userResponse.data.user || userResponse.data;
-
-    // Пытаемся вытащить ID из всех возможных полей, которые дает ВК
-    const rawId = vkUser.id || vkUser.user_id || user_id;
-    const vkIdString = rawId ? String(rawId) : null;
-    
+    const vkIdString = String(vkUser.id || vkUser.user_id || 'unknown');
     const email = vkUser.email || null;
 
-    if (!vkIdString) {
-        console.error("Не удалось получить ID от ВК. Данные от API:", vkData);
-        return res.redirect(`${DOMAIN_URL}/login?error=auth_failed_no_id`);
-    }
-
-    // 4. Ищем или создаем бойца в базе
-    let user = await prisma.user.findUnique({ 
-    where: { vkId: vkIdString } 
-});
-
-if (!user) {
-    // Если по vkId не нашли, пробуем по email
-    if (email) {
-        user = await prisma.user.findUnique({ where: { email: email } });
+    // 4. Ищем или создаем юзера
+    let user = await prisma.user.findUnique({ where: { vkId: vkIdString } });
+    if (!user && email) {
+        user = await prisma.user.findUnique({ where: { email } });
     }
 
     if (user) {
-        // Если юзер есть (по email), привязываем ему vkId
         user = await prisma.user.update({
             where: { id: user.id },
             data: { vkId: vkIdString }
         });
     } else {
-        // Создаем нового
         user = await prisma.user.create({
             data: {
                 vkId: vkIdString,
                 email: email || `vk_${vkIdString}@sevro.ru`,
                 firstName: vkUser.first_name || 'Боец',
-                lastName: vkUser.last_name || 'РСО',
-                avatarUrl: vkUser.avatar || null,
+                lastName: vkUser.last_name || 'РСО'
             }
         });
     }
-}
-    // 5. Выдаем наш системный токен СевРО
-    const sysToken = jwt.sign(
-      { userId: user.id, role: user.role }, 
-      process.env.JWT_SECRET, 
-      { expiresIn: '7d' }
-    );
-    
-    // Подметаем за собой: удаляем временную куку
+
+    // 5. Редирект
+    const sysToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.setHeader('Set-Cookie', `vk_auth=; Path=/; HttpOnly; Max-Age=0`);
-    
-    // Редирект в профиль
     res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
 
   } catch (error) {
     console.error('Ошибка VK ID OAuth:', error.response?.data || error.message);
     res.redirect(`${DOMAIN_URL}/login?error=auth_failed`);
   }
-
-  const deviceId = sessionData.deviceId || 'test_device_12345';
 });
 
 const PORT = process.env.PORT || 5000;

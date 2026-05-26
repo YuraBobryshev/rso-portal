@@ -514,6 +514,9 @@ app.patch('/api/events/attendance', authMiddleware, checkRole(['MASTER', 'COMMAN
 app.get('/api/commander/export-members', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    if (!user || !user.brigadeId) {
+      return res.status(400).json({ message: "Отряд не найден" });
+    }
     
     // Получаем всех бойцов отряда
     const members = await prisma.user.findMany({ 
@@ -522,6 +525,7 @@ app.get('/api/commander/export-members', authMiddleware, checkRole(['COMMANDER']
     });
 
     const brigade = await prisma.brigade.findUnique({ where: { id: user.brigadeId } });
+    const brigadeName = brigade ? brigade.name : 'Отряд';
 
     // Создаем новую книгу Excel
     const workbook = new ExcelJS.Workbook();
@@ -537,26 +541,31 @@ app.get('/api/commander/export-members', authMiddleware, checkRole(['COMMANDER']
       { header: 'Email', key: 'email', width: 30 }
     ];
 
-    // Красиво стилизуем заголовок таблицы (Синий фон, белый текст)
+    // Стилизация заголовка
     worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
     worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0052FF' } };
     worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
 
-    // Заполняем данными
+    // Заполнение данными
     members.forEach((member, index) => {
       worksheet.addRow({
         index: index + 1,
-        lastName: member.lastName,
-        firstName: member.firstName,
-        role: member.role,
-        email: member.email
+        lastName: member.lastName || '',
+        firstName: member.firstName || '',
+        role: member.role || '',
+        email: member.email || ''
       });
     });
 
-    const safeFileName = encodeURIComponent(`Sostav_${brigadeName || 'Brigade'}.xlsx`);
-    // Настраиваем HTTP-заголовки для скачивания файла
+    // Безопасное формирование имени файла
+    // Убираем спецсимволы, чтобы не было ошибки ERR_INVALID_CHAR
+    const cleanBrigadeName = brigadeName.replace(/[^a-zA-Z0-9а-яА-ЯёЁ ]/g, '').trim();
+    const fileName = `Sostav_${cleanBrigadeName}.xlsx`;
+
+    // Настраиваем HTTP-заголовки
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${safeFileName}`);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`);
+
     // Отправляем файл
     await workbook.xlsx.write(res);
     res.end();

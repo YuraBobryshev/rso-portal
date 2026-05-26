@@ -217,11 +217,17 @@ export default function Profile() {
         <div className="w-full bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6 mb-6">
           <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
             <div className="relative group cursor-pointer">
-              <img 
-                src={user.avatarUrl || 'https://www.svgrepo.com/show/501227/user-profile.svg'} 
-                alt="Аватар" 
-                className="w-24 h-24 rounded-2xl object-cover border border-gray-100 bg-gray-50"
-              />
+                {user.avatarUrl ? (
+                  <img 
+                    src={user.avatarUrl} 
+                    alt="Аватар" 
+                    className="w-24 h-24 rounded-2xl object-cover border border-gray-100 bg-gray-50"
+                  />
+                ) : (
+                  <div className="w-24 h-24 rounded-2xl flex items-center justify-center bg-rso-blue text-white text-4xl font-black border border-gray-100">
+                    {user.firstName[0].toUpperCase()}
+                  </div>
+                )}
               <label className="absolute inset-0 bg-black/40 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[10px] text-white uppercase font-bold tracking-wider cursor-pointer">
                 Изменить
                 <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" />

@@ -782,6 +782,10 @@ app.get('/api/auth/vk', (req, res) => {
 // VK ID OAUTH 2.1: Callback (Обмен кода на токен)
 // ==========================================
 app.get('/api/auth/vk/callback', async (req, res) => {
+  const deviceId = 'test_device_12345'; 
+  const state = crypto.randomBytes(16).toString('hex');
+// ... сохраняем это в куки, чтобыcallback увидел:
+  res.setHeader('Set-Cookie', `vk_auth=${encodeURIComponent(JSON.stringify({ codeVerifier, state, deviceId }))}; Path=/; HttpOnly; Max-Age=300; SameSite=Lax`);
   const { code, state } = req.query;
   const vkRedirectUri = 'https://xn--b1af2ahcd.xn--p1ai/api/auth/vk/callback';
   const vkClientId = '54608627';
@@ -914,6 +918,8 @@ if (!user) {
     console.error('Ошибка VK ID OAuth:', error.response?.data || error.message);
     res.redirect(`${DOMAIN_URL}/login?error=auth_failed`);
   }
+
+  const deviceId = sessionData.deviceId || 'test_device_12345';
 });
 
 const PORT = process.env.PORT || 5000;

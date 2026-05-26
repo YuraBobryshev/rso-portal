@@ -41,7 +41,30 @@ export default function Profile() {
     }
   };
 
+  // === НОВЫЙ БЛОК: ПЕРЕХВАТЧИК ОТВЕТОВ ОТ БЭКЕНДА ===
   useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const successMsg = urlParams.get('success');
+    const errorMsg = urlParams.get('error');
+
+    if (successMsg) {
+      setMessage({ text: 'Аккаунт соцсети успешно привязан!', type: 'success' });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
+    if (errorMsg) {
+      let errText = "Неизвестная ошибка";
+      if (errorMsg.includes('already_taken')) {
+        errText = "Этот аккаунт соцсети уже привязан к другому профилю РСО.";
+      } else if (errorMsg === 'link_failed') {
+        errText = "Сессия устарела или токен поврежден. Попробуйте перезайти в систему.";
+      } else {
+        errText = errorMsg;
+      }
+      setMessage({ text: `Ошибка привязки: ${errText}`, type: 'error' });
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+
     fetchProfile();
   }, [navigate]);
 
@@ -109,6 +132,20 @@ export default function Profile() {
     navigate('/login');
   };
 
+  // === ЗАЩИТА ОТ БЕЛОГО ЭКРАНА СМЕРТИ (ОШИБКИ 502) ===
+  if (!loading && !user) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50/30 selection:bg-rso-blue selection:text-white px-6">
+        <div className="text-xs font-bold uppercase tracking-wider text-red-500 mb-6 text-center">
+          Потеряна связь с ядром системы (Ошибка 502). Бэкенд перезагружается.
+        </div>
+        <button onClick={() => navigate('/login')} className="text-[10px] font-bold text-white uppercase tracking-wider bg-gray-900 px-8 py-4 rounded-xl hover:bg-black transition-all shadow-md">
+          Вернуться на страницу входа
+        </button>
+      </div>
+    );
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50/30">
@@ -120,15 +157,11 @@ export default function Profile() {
   const isPassLengthValid = passwordForm.password.length >= 6;
   const isPassMatch = passwordForm.password.length > 0 && passwordForm.password === passwordForm.confirmPassword;
   const latestApp = user.applications && user.applications.length > 0 ? user.applications[0] : null;
-
-  // ДОСТАЕМ ТОКЕН ДЛЯ ПРИВЯЗКИ
   const currentToken = localStorage.getItem('token');
 
   return (
-    // Добавлен pb-24 для мобилок, чтобы контент не перекрывался нижним меню
     <div className="min-h-screen bg-gray-50/30 text-black font-sans pb-24 md:pb-12 selection:bg-rso-blue selection:text-white">
       
-      {/* ДЕСКТОПНЫЙ ХЕДЕР */}
       <header className="w-full max-w-[1500px] mx-auto h-16 px-6 flex justify-between items-center bg-transparent">
         <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
           <img src={logoUrl} alt="РСО" className="h-8 object-contain" />
@@ -186,7 +219,6 @@ export default function Profile() {
           
           <div className="lg:col-span-2 space-y-6">
             
-            {/* ФИО */}
             <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xs">
               <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">Персональные данные</h3>
               <form onSubmit={handleUpdateProfile} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -222,7 +254,6 @@ export default function Profile() {
               </form>
             </div>
 
-            {/* ПАРОЛЬ С ВАЛИДАЦИЕЙ */}
             {!user.hasPassword && (
               <div className="bg-amber-50/40 border border-amber-100 rounded-3xl p-6 md:p-8 shadow-xs">
                 <div className="mb-4">
@@ -285,7 +316,6 @@ export default function Profile() {
               </div>
             )}
 
-            {/* БЛОК ОТРЯДА / СТАТУС ЗАЯВКИ */}
             {user.role === 'USER' || !user.brigade ? (
               
               latestApp ? (
@@ -374,13 +404,12 @@ export default function Profile() {
                 {/* ВКОНТАКТЕ */}
                 <div className="flex items-center justify-between p-3.5 border border-gray-100 rounded-xl bg-gray-50/50">
                   <div className="flex items-center gap-3">
-                    <img src="https://www.svgrepo.com/show/475689/vk-color.svg" alt="VK" className="h-5 w-5" />
+                    <img src="https://cdn.simpleicons.org/vk/0077FF" alt="VK" className="h-5 w-5" />
                     <span className="text-xs font-bold text-gray-700">ВКонтакте ID</span>
                   </div>
                   {user.hasVk ? (
                     <span className="text-[9px] font-black uppercase tracking-wider text-green-600 bg-green-50 border border-green-100 px-2 py-1 rounded-md">Подключено</span>
                   ) : (
-                    // ПЕРЕДАЕМ ТОКЕН В URL
                     <a href={`https://xn--b1af2ahcd.xn--p1ai/api/auth/vk?link_token=${currentToken}`} className="text-[9px] font-black uppercase tracking-wider text-[#0077FF] bg-[#0077FF]/10 border border-[#0077FF]/20 px-3 py-1.5 rounded-md hover:bg-[#0077FF]/20 transition-colors">
                       Привязать
                     </a>
@@ -390,7 +419,7 @@ export default function Profile() {
                 {/* GOOGLE */}
                 <div className="flex items-center justify-between p-3.5 border border-gray-100 rounded-xl bg-gray-50/50">
                   <div className="flex items-center gap-3">
-                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" alt="Google" className="h-5 w-5" />
+                    <img src="https://cdn.simpleicons.org/google" alt="Google" className="h-5 w-5" />
                     <span className="text-xs font-bold text-gray-700">Google Account</span>
                   </div>
                   {user.hasGoogle ? (
@@ -405,7 +434,7 @@ export default function Profile() {
                 {/* ЯНДЕКС */}
                 <div className="flex items-center justify-between p-3.5 border border-gray-100 rounded-xl bg-gray-50/50">
                   <div className="flex items-center gap-3">
-                    <img src="https://www.svgrepo.com/show/349575/yandex.svg" alt="Yandex" className="h-5 w-5" />
+                    <img src="https://cdn.simpleicons.org/yandex/FC3F1D" alt="Yandex" className="h-5 w-5" />
                     <span className="text-xs font-bold text-gray-700">Яндекс ID</span>
                   </div>
                   {user.hasYandex ? (
@@ -425,7 +454,7 @@ export default function Profile() {
 
       </main>
 
-      {/* МОБИЛЬНОЕ МЕНЮ (НИЖНИЙ ТАБ-БАР) */}
+      {/* МОБИЛЬНОЕ МЕНЮ */}
       <nav className="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-gray-100 px-6 py-3 flex justify-between items-center z-50 shadow-[0_-4px_20px_rgba(0,0,0,0.02)]">
         <Link to="/" className={`flex flex-col items-center gap-1 ${location.pathname === '/' ? 'text-rso-blue' : 'text-gray-400'}`}>
           <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>

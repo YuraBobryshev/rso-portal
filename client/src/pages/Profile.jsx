@@ -409,27 +409,29 @@ export default function Profile() {
               )
               
             ) : (
-              <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xs">
-                <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Состав моего отряда ({user.brigade.name})</h3>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Всего: {brigadeMembers.length} бойцов</span>
+              <div className="flex flex-wrap justify-between items-center mb-6 gap-4">
+                  <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">
+                    Состав моего отряда ({user.brigade.name})
+                  </h3>
+                  
+                  <div className="flex items-center gap-4">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      Всего: {brigadeMembers.length} бойцов
+                    </span>
+                    
+                    {/* КНОПКА ТОЛЬКО ДЛЯ РОЛИ COMMANDER */}
+                    {user.role === 'COMMANDER' && (
+                      <button 
+                        onClick={handleDownloadReport}
+                        disabled={actionLoading}
+                        className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors shadow-sm shadow-green-500/20 disabled:opacity-50"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M8 13h2"/><path d="M8 17h2"/><path d="M14 13h2"/><path d="M14 17h2"/></svg>
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Excel</span>
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-2">
-                  {brigadeMembers.map((member) => (
-                    <div key={member.id} className="flex items-center gap-3 p-3 bg-gray-50/70 border border-gray-100 rounded-xl">
-                      <img 
-                        src={member.avatarUrl || 'https://www.svgrepo.com/show/501227/user-profile.svg'} 
-                        alt="" 
-                        className="w-10 h-10 rounded-lg object-cover bg-gray-200"
-                      />
-                      <div className="truncate">
-                        <span className="block text-xs font-black text-black truncate">{member.lastName} {member.firstName}</span>
-                        <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 block mt-0.5">{member.role}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             )}
 
           </div>

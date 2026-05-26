@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import logoUrl from '../assets/logo.svg';
+import Header from '../components/Header';
 
 export default function Profile() {
   const [user, setUser] = useState(null);
@@ -214,14 +215,7 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-gray-50/30 text-black font-sans pb-24 md:pb-12 selection:bg-rso-blue selection:text-white">
       
-      <header className="w-full max-w-[1500px] mx-auto h-16 px-6 flex justify-between items-center bg-transparent">
-        <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
-          <img src={logoUrl} alt="РСО" className="h-8 object-contain" />
-        </Link>
-        <button onClick={handleLogout} className="hidden md:block text-xs font-bold text-red-500 hover:text-red-600 uppercase tracking-wider transition-colors">
-          Выйти из системы
-        </button>
-      </header>
+      <Header />
 
       <main className="w-full max-w-[1500px] mx-auto px-4 md:px-6 mt-4 md:mt-6">
         
@@ -459,11 +453,13 @@ export default function Profile() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-2">
                   {brigadeMembers.map((member) => (
                     <div key={member.id} className="flex items-center gap-3 p-3 bg-gray-50/70 border border-gray-100 rounded-xl">
-                      <img 
-                        src={member.avatarUrl || 'https://www.svgrepo.com/show/501227/user-profile.svg'} 
-                        alt="" 
-                        className="w-10 h-10 rounded-lg object-cover bg-gray-200"
-                      />
+                          {member.avatarUrl ? (
+                            <img src={member.avatarUrl} className="w-full h-full object-cover" alt="" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center font-black text-xs text-rso-blue bg-blue-50/40 uppercase">
+                              {member.firstName?.charAt(0)}
+                            </div>
+                          )}
                       <div className="truncate">
                         <span className="block text-xs font-black text-black truncate">{member.lastName} {member.firstName}</span>
                         <span className="text-[9px] font-bold uppercase tracking-wider text-gray-400 block mt-0.5">{member.role}</span>

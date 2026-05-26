@@ -834,11 +834,15 @@ app.get('/api/auth/vk/callback', async (req, res) => {
     const userResponse = await axios.post('https://id.vk.ru/oauth2/user_info', 
       new URLSearchParams({
         client_id: vkClientId,
-        access_token: access_token
+        access_token: access_token // Передаем токен в теле запроса, как того требует VK ID
       }).toString(),
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+      { 
+        headers: { 
+            'Content-Type': 'application/x-www-form-urlencoded' 
+        } 
+      }
     );
-
+    
     // Новое API отдает данные чуть в другом формате
     const vkData = userResponse.data;
     

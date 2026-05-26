@@ -132,6 +132,44 @@ export default function Profile() {
     navigate('/login');
   };
 
+  // === НОВАЯ ФУНКЦИЯ ДЛЯ ВЫГРУЗКИ EXCEL ===
+  const handleDownloadReport = async () => {
+    try {
+      setActionLoading(true);
+      setMessage({ text: 'Генерируем отчет...', type: 'success' }); // Временное сообщение
+
+      // Важно: responseType: 'blob' нужен для корректного скачивания бинарных файлов
+      const res = await api.get('/commander/export-members', {
+        responseType: 'blob' 
+      });
+      
+      // Создаем временную ссылку в памяти браузера
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Пытаемся вытащить имя файла из заголовков бэкенда (Content-Disposition)
+      const contentDisposition = res.headers['content-disposition'];
+      let fileName = 'Sostav.xlsx';
+      if (contentDisposition) {
+        const fileNameMatch = contentDisposition.match(/filename="(.+)"/);
+        if (fileNameMatch && fileNameMatch.length === 2) fileName = fileNameMatch[1];
+      }
+      
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click(); // Эмулируем клик для скачивания
+      link.parentNode.removeChild(link); // Удаляем ссылку
+      
+      setMessage({ text: 'Отчет успешно скачан!', type: 'success' });
+    } catch (error) {
+      console.error('Ошибка скачивания:', error);
+      setMessage({ text: 'Ошибка при выгрузке отчета. Проверьте права доступа.', type: 'error' });
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   // === ЗАЩИТА ОТ БЕЛОГО ЭКРАНА СМЕРТИ (ОШИБКИ 502) ===
   if (!loading && !user) {
     return (

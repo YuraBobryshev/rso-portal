@@ -510,6 +510,62 @@ app.patch('/api/events/attendance', authMiddleware, checkRole(['MASTER', 'COMMAN
 // 🛡️ БЛОК 5: ПАНЕЛЬ КОМАНДИРА И ЛЕНТА ПОСТОВ
 // =============================================================================
 
+app.get('/api/commander/export-members', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+    
+    // Получаем всех бойцов отряда
+    const members = await prisma.user.findMany({ 
+      where: { brigadeId: user.brigadeId },
+      orderBy: { role: 'desc' }
+    });
+
+    const brigade = await prisma.brigade.findUnique({ where: { id: user.brigadeId } });
+
+    // Создаем новую книгу Excel
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'СевРО РСО';
+    const worksheet = workbook.addWorksheet('Состав отряда');
+
+    // Настраиваем колонки
+    worksheet.columns = [
+      { header: '№', key: 'index', width: 5 },
+      { header: 'Фамилия', key: 'lastName', width: 20 },
+      { header: 'Имя', key: 'firstName', width: 20 },
+      { header: 'Роль', key: 'role', width: 20 },
+      { header: 'Email', key: 'email', width: 30 }
+    ];
+
+    // Красиво стилизуем заголовок таблицы
+    worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+    worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF0052FF' } };
+    worksheet.getRow(1).alignment = { vertical: 'middle', horizontal: 'center' };
+
+    // Заполняем данными
+    members.forEach((member, index) => {
+      worksheet.addRow({
+        index: index + 1,
+        lastName: member.lastName,
+        firstName: member.firstName,
+        role: member.role,
+        email: member.email
+      });
+    });
+
+    // Настраиваем HTTP-заголовки для скачивания файла
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    res.setHeader('Content-Disposition', `attachment; filename="Sostav_${brigade.name}.xlsx"`);
+
+    // Отправляем файл
+    await workbook.xlsx.write(res);
+    res.end();
+
+  } catch (error) {
+    console.error('Ошибка выгрузки Excel:', error);
+    res.status(500).json({ message: "Ошибка генерации отчета" });
+  }
+});
+
 app.get('/api/commander/dashboard', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });

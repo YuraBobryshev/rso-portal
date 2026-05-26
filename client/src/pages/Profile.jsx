@@ -11,24 +11,20 @@ export default function Profile() {
   const [message, setMessage] = useState({ text: '', type: '' });
 
   // Формы
-  const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '', vkUrl: '', tgUrl: '' });
+  const [profileForm, setProfileForm] = useState({ firstName: '', lastName: '' });
   const [passwordForm, setPasswordForm] = useState({ password: '', confirmPassword: '' });
 
   const navigate = useNavigate();
 
-  // Загрузка профиля
   const fetchProfile = async () => {
     try {
       const res = await api.get('/auth/me');
       setUser(res.data);
       setProfileForm({
         firstName: res.data.firstName || '',
-        lastName: res.data.lastName || '',
-        vkUrl: res.data.vkUrl || '',
-        tgUrl: res.data.tgUrl || ''
+        lastName: res.data.lastName || ''
       });
 
-      // Если боец состоит в отряде, подтягиваем сокомандников
       if (res.data.brigade && res.data.brigade.id) {
         const brigadeRes = await api.get(`/brigades/${res.data.brigade.id}`);
         setBrigadeMembers(brigadeRes.data.users || []);
@@ -49,7 +45,6 @@ export default function Profile() {
     fetchProfile();
   }, [navigate]);
 
-  // Хендлер изменения аватарки
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -73,7 +68,6 @@ export default function Profile() {
     }
   };
 
-  // Хендлер обновления профиля (ФИО, соцсети)
   const handleUpdateProfile = async (e) => {
     e.preventDefault();
     setActionLoading(true);
@@ -90,12 +84,10 @@ export default function Profile() {
     }
   };
 
-  // Хендлер установки пароля
   const handleSetPassword = async (e) => {
     e.preventDefault();
-    if (passwordForm.password !== passwordForm.confirmPassword) {
-      return setMessage({ text: 'Пароли не совпадают', type: 'error' });
-    }
+    if (passwordForm.password.length < 6) return setMessage({ text: 'Пароль слишком короткий', type: 'error' });
+    if (passwordForm.password !== passwordForm.confirmPassword) return setMessage({ text: 'Пароли не совпадают', type: 'error' });
 
     setActionLoading(true);
     setMessage({ text: '', type: '' });
@@ -125,9 +117,14 @@ export default function Profile() {
     );
   }
 
+  // --- ВЫЧИСЛЯЕМЫЕ ПЕРЕМЕННЫЕ ДЛЯ UI ---
+  const isPassLengthValid = passwordForm.password.length >= 6;
+  const isPassMatch = passwordForm.password.length > 0 && passwordForm.password === passwordForm.confirmPassword;
+  
+  const latestApp = user.applications && user.applications.length > 0 ? user.applications[0] : null;
+
   return (
     <div className="min-h-screen bg-gray-50/30 text-black font-sans pb-12 selection:bg-rso-blue selection:text-white">
-      {/* НАВИГАЦИЯ */}
       <header className="w-full max-w-[1500px] mx-auto h-16 px-6 flex justify-between items-center bg-transparent">
         <Link to="/" className="flex items-center hover:opacity-90 transition-opacity">
           <img src={logoUrl} alt="РСО" className="h-8 object-contain" />
@@ -139,7 +136,6 @@ export default function Profile() {
 
       <main className="w-full max-w-[1500px] mx-auto px-6 mt-6">
         
-        {/* УВЕДОМЛЕНИЯ СИСТЕМЫ */}
         {message.text && (
           <div className={`mb-6 border rounded-xl p-4 text-xs font-semibold text-center transition-all shadow-xs ${
             message.type === 'success' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'
@@ -148,7 +144,6 @@ export default function Profile() {
           </div>
         )}
 
-        {/* ХЕДЕР ПРОФИЛЯ (ОСНОВНОЙ BENTO БЛОК) */}
         <div className="w-full bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6 mb-6">
           <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
             <div className="relative group cursor-pointer">
@@ -183,13 +178,11 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* ГЛАВНЫЙ СЕТОЧНЫЙ GRID (BENTO) */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           
-          {/* СТОЛБЕЦ 1 И 2: УПРАВЛЕНИЕ И ДАННЫЕ */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* КАРТОЧКА РЕДАКТИРОВАНИЯ */}
+            {/* ФИО */}
             <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xs">
               <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">Персональные данные</h3>
               <form onSubmit={handleUpdateProfile} className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -213,26 +206,6 @@ export default function Profile() {
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Ссылка на ВКонтакте (профиль)</label>
-                  <input
-                    type="text"
-                    value={profileForm.vkUrl}
-                    onChange={(e) => setProfileForm({ ...profileForm, vkUrl: e.target.value })}
-                    placeholder="https://vk.com/id..."
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none transition-all focus:border-rso-blue focus:bg-white"
-                  />
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Ссылка на Telegram</label>
-                  <input
-                    type="text"
-                    value={profileForm.tgUrl}
-                    onChange={(e) => setProfileForm({ ...profileForm, tgUrl: e.target.value })}
-                    placeholder="https://t.me/username"
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none transition-all focus:border-rso-blue focus:bg-white"
-                  />
-                </div>
                 <div className="md:col-span-2 pt-2">
                   <button
                     type="submit"
@@ -245,43 +218,61 @@ export default function Profile() {
               </form>
             </div>
 
-            {/* УМНАЯ СИСТЕМА УСТАНОВКИ ПАРОЛЯ */}
+            {/* ПАРОЛЬ С ВАЛИДАЦИЕЙ */}
             {!user.hasPassword && (
               <div className="bg-amber-50/40 border border-amber-100 rounded-3xl p-6 md:p-8 shadow-xs">
                 <div className="mb-4">
                   <h3 className="text-xs font-black uppercase tracking-widest text-amber-800">Защита аккаунта</h3>
                   <p className="text-xs text-amber-600 mt-1">
-                    Вы вошли через социальную сеть. Установите пароль, чтобы иметь возможность авторизоваться традиционным способом по Email.
+                    Установите пароль, чтобы иметь возможность авторизоваться традиционным способом по Email.
                   </p>
                 </div>
                 <form onSubmit={handleSetPassword} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1.5">Новый пароль</label>
+                    <label className="block text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1.5 flex justify-between">
+                      Новый пароль
+                      <span className={isPassLengthValid ? 'text-green-600' : 'text-amber-500/70'}>
+                        {isPassLengthValid ? '✓ Надежный' : 'Мин. 6 символов'}
+                      </span>
+                    </label>
                     <input
                       type="password"
                       value={passwordForm.password}
                       onChange={(e) => setPasswordForm({ ...passwordForm, password: e.target.value })}
-                      placeholder="Минимум 6 символов"
-                      className="w-full bg-white border border-amber-200 rounded-xl px-4 py-2.5 text-sm outline-none transition-all focus:border-amber-500"
+                      className={`w-full bg-white border rounded-xl px-4 py-2.5 text-sm outline-none transition-all ${
+                        passwordForm.password.length > 0 
+                          ? (isPassLengthValid ? 'border-green-400 focus:border-green-500' : 'border-red-400 focus:border-red-500') 
+                          : 'border-amber-200 focus:border-amber-500'
+                      }`}
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1.5">Повторите пароль</label>
+                    <label className="block text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1.5 flex justify-between">
+                      Повторите пароль
+                      {passwordForm.confirmPassword.length > 0 && (
+                        <span className={isPassMatch ? 'text-green-600' : 'text-red-500'}>
+                          {isPassMatch ? '✓ Совпадают' : 'Не совпадают'}
+                        </span>
+                      )}
+                    </label>
                     <input
                       type="password"
                       value={passwordForm.confirmPassword}
                       onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
-                      placeholder="Повторите ввод"
-                      className="w-full bg-white border border-amber-200 rounded-xl px-4 py-2.5 text-sm outline-none transition-all focus:border-amber-500"
+                      className={`w-full bg-white border rounded-xl px-4 py-2.5 text-sm outline-none transition-all ${
+                        passwordForm.confirmPassword.length > 0 
+                          ? (isPassMatch ? 'border-green-400 focus:border-green-500' : 'border-red-400 focus:border-red-500') 
+                          : 'border-amber-200 focus:border-amber-500'
+                      }`}
                       required
                     />
                   </div>
                   <div className="md:col-span-2">
                     <button
                       type="submit"
-                      disabled={actionLoading}
-                      className="w-full font-bold uppercase text-[10px] tracking-wider py-3.5 bg-amber-600 text-white rounded-xl transition-all hover:bg-amber-700"
+                      disabled={actionLoading || !isPassLengthValid || !isPassMatch}
+                      className="w-full font-bold uppercase text-[10px] tracking-wider py-3.5 bg-amber-600 text-white rounded-xl transition-all hover:bg-amber-700 disabled:bg-amber-300 disabled:cursor-not-allowed"
                     >
                       Установить пароль
                     </button>
@@ -290,25 +281,65 @@ export default function Profile() {
               </div>
             )}
 
-            {/* КОНТЕНТ ПО РОЛЯМ: ОТРЯДНЫЙ БЛОК */}
+            {/* БЛОК ОТРЯДА / СТАТУС ЗАЯВКИ */}
             {user.role === 'USER' || !user.brigade ? (
-              /* КАРТОЧКА ДЛЯ ОБЫЧНОГО ЮЗЕРАБЕЗ ОТРЯДА */
-              <div className="bg-rso-blue/5 border border-rso-blue/10 rounded-3xl p-8 text-center relative overflow-hidden shadow-xs">
-                <div className="relative z-10 max-w-md mx-auto">
-                  <h3 className="text-xl font-black uppercase tracking-tight text-black">Вступи в ряды Студенческих Отрядов!</h3>
-                  <p className="text-xs text-gray-500 font-medium mt-2 leading-relaxed">
-                    Ты еще не привязан ни к одному линейному студенческому отряду. Стань частью лучшего движения страны, найди верных друзей и проведи свое лучшее трудовое лето!
-                  </p>
-                  <Link 
-                    to="/brigades" 
-                    className="inline-block mt-5 font-bold uppercase text-[10px] tracking-wider px-6 py-3.5 bg-rso-blue text-white rounded-xl transition-all hover:bg-blue-600 shadow-md shadow-blue-500/10"
-                  >
-                    Выбрать свой отряд
-                  </Link>
+              
+              latestApp ? (
+                // ЕСЛИ ЕСТЬ ЗАЯВКА
+                <div className={`border rounded-3xl p-8 text-center relative overflow-hidden shadow-xs ${
+                  latestApp.status === 'PENDING' ? 'bg-amber-50/50 border-amber-100' :
+                  latestApp.status === 'REJECTED' ? 'bg-red-50/50 border-red-100' :
+                  'bg-gray-50/50 border-gray-100'
+                }`}>
+                  <div className="relative z-10 max-w-md mx-auto">
+                    <h3 className="text-xl font-black uppercase tracking-tight text-black mb-2">
+                      {latestApp.status === 'PENDING' ? 'Заявка на рассмотрении' :
+                       latestApp.status === 'REJECTED' ? 'Заявка отклонена' :
+                       'Статус заявки'}
+                    </h3>
+                    
+                    {latestApp.status === 'PENDING' && (
+                      <p className="text-xs text-amber-700 font-medium leading-relaxed">
+                        Твоя анкета на вступление в отряд <strong>{latestApp.brigade?.name}</strong> находится на проверке у комсостава. Ожидай изменения статуса.
+                      </p>
+                    )}
+
+                    {latestApp.status === 'REJECTED' && (
+                      <>
+                        <p className="text-xs text-red-600 font-medium leading-relaxed mb-4">
+                          К сожалению, твоя заявка в отряд <strong>{latestApp.brigade?.name}</strong> была отклонена.
+                          {latestApp.comment && <span className="block mt-2 italic">Причина: {latestApp.comment}</span>}
+                        </p>
+                        <Link 
+                          to="/brigades" 
+                          className="inline-block font-bold uppercase text-[10px] tracking-wider px-6 py-3.5 bg-gray-900 text-white rounded-xl transition-all hover:bg-black"
+                        >
+                          Выбрать другой отряд
+                        </Link>
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                // ЕСЛИ ЗАЯВОК НЕТ
+                <div className="bg-rso-blue/5 border border-rso-blue/10 rounded-3xl p-8 text-center relative overflow-hidden shadow-xs">
+                  <div className="relative z-10 max-w-md mx-auto">
+                    <h3 className="text-xl font-black uppercase tracking-tight text-black">Вступи в ряды Студенческих Отрядов!</h3>
+                    <p className="text-xs text-gray-500 font-medium mt-2 leading-relaxed">
+                      Ты еще не привязан ни к одному линейному студенческому отряду. Стань частью лучшего движения страны!
+                    </p>
+                    <Link 
+                      to="/brigades" 
+                      className="inline-block mt-5 font-bold uppercase text-[10px] tracking-wider px-6 py-3.5 bg-rso-blue text-white rounded-xl transition-all hover:bg-blue-600 shadow-md shadow-blue-500/10"
+                    >
+                      Выбрать свой отряд
+                    </Link>
+                  </div>
+                </div>
+              )
+              
             ) : (
-              /* КАРТОЧКА СПИСКА ОТРЯДА ДЛЯ НАСТОЯЩИХ БОЙЦОВКОМАНДИРОВ */
+              // ЕСЛИ УЖЕ В ОТРЯДЕ
               <div className="bg-white border border-gray-100 rounded-3xl p-6 md:p-8 shadow-xs">
                 <div className="flex justify-between items-center mb-6">
                   <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Состав моего отряда ({user.brigade.name})</h3>
@@ -334,7 +365,6 @@ export default function Profile() {
 
           </div>
 
-          {/* СТОЛБЕЦ 3: СТАТУС ПРИВЯЗОК (СИД БАР) */}
           <div className="space-y-6">
             <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-xs">
               <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 mb-6">Связанные аккаунты</h3>
@@ -349,7 +379,9 @@ export default function Profile() {
                   {user.hasVk ? (
                     <span className="text-[9px] font-black uppercase tracking-wider text-green-600 bg-green-50 border border-green-100 px-2 py-1 rounded-md">Подключено</span>
                   ) : (
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 bg-gray-100 px-2 py-1 rounded-md">Не привязан</span>
+                    <a href="https://xn--b1af2ahcd.xn--p1ai/api/auth/vk" className="text-[9px] font-black uppercase tracking-wider text-[#0077FF] bg-[#0077FF]/10 border border-[#0077FF]/20 px-3 py-1.5 rounded-md hover:bg-[#0077FF]/20 transition-colors">
+                      Привязать
+                    </a>
                   )}
                 </div>
 
@@ -362,7 +394,9 @@ export default function Profile() {
                   {user.hasGoogle ? (
                     <span className="text-[9px] font-black uppercase tracking-wider text-green-600 bg-green-50 border border-green-100 px-2 py-1 rounded-md">Подключено</span>
                   ) : (
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 bg-gray-100 px-2 py-1 rounded-md">Не привязан</span>
+                    <a href="https://xn--b1af2ahcd.xn--p1ai/api/auth/google" className="text-[9px] font-black uppercase tracking-wider text-gray-600 bg-gray-100 border border-gray-200 px-3 py-1.5 rounded-md hover:bg-gray-200 transition-colors">
+                      Привязать
+                    </a>
                   )}
                 </div>
 
@@ -375,16 +409,13 @@ export default function Profile() {
                   {user.hasYandex ? (
                     <span className="text-[9px] font-black uppercase tracking-wider text-green-600 bg-green-50 border border-green-100 px-2 py-1 rounded-md">Подключено</span>
                   ) : (
-                    <span className="text-[9px] font-black uppercase tracking-wider text-gray-400 bg-gray-100 px-2 py-1 rounded-md">Не привязан</span>
+                    <a href="https://xn--b1af2ahcd.xn--p1ai/api/auth/yandex" className="text-[9px] font-black uppercase tracking-wider text-red-600 bg-red-50 border border-red-100 px-3 py-1.5 rounded-md hover:bg-red-100 transition-colors">
+                      Привязать
+                    </a>
                   )}
                 </div>
               </div>
 
-              <div className="mt-6 border-t border-gray-100 pt-4">
-                <p className="text-[10px] text-gray-400 font-medium leading-relaxed">
-                  Привязка аккаунтов выполняется автоматически при первом входе через соответствующий сервис. Разъединение аккаунтов временно недоступно из соображений безопасности.
-                </p>
-              </div>
             </div>
           </div>
 

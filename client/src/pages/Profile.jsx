@@ -6,6 +6,7 @@ import logoUrl from '../assets/logo.svg';
 export default function Profile() {
   const [user, setUser] = useState(null);
   const [brigadeMembers, setBrigadeMembers] = useState([]);
+  const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
@@ -28,6 +29,10 @@ export default function Profile() {
       if (res.data.brigade && res.data.brigade.id) {
         const brigadeRes = await api.get(`/brigades/${res.data.brigade.id}`);
         setBrigadeMembers(brigadeRes.data.users || []);
+        if (res.data.role === 'COMMANDER') {
+          const appsRes = await api.get('/commander/applications');
+          setApplications(appsRes.data);
+              }
       }
     } catch (err) {
       console.error(err);
@@ -191,6 +196,16 @@ export default function Profile() {
   const isPassMatch = passwordForm.password.length > 0 && passwordForm.password === passwordForm.confirmPassword;
   const latestApp = user.applications && user.applications.length > 0 ? user.applications[0] : null;
   const currentToken = localStorage.getItem('token');
+
+  const processApplication = async (appId, status) => {
+  try {
+    await api.post('/commander/process-application', { appId, status });
+    setApplications(prev => prev.filter(app => app.id !== appId));
+    setMessage({ text: 'Статус заявки обновлен!', type: 'success' });
+  } catch (err) {
+    setMessage({ text: 'Ошибка при обработке заявки', type: 'error' });
+  }
+};
 
   return (
     <div className="min-h-screen bg-gray-50/30 text-black font-sans pb-24 md:pb-12 selection:bg-rso-blue selection:text-white">
@@ -511,6 +526,24 @@ export default function Profile() {
             </div>
           </div>
 
+                {user?.role === 'COMMANDER' && applications.length > 0 && (
+        <div className="bg-white border border-gray-100 rounded-3xl p-8 mt-6">
+          <h3 className="text-xs font-black uppercase text-gray-400 mb-6">Заявки в отряд ({applications.length})</h3>
+          {applications.map(app => (
+            <div key={app.id} className="flex justify-between items-center py-4 border-b">
+              <div>
+                <span className="block font-bold text-sm">{app.user.lastName} {app.user.firstName}</span>
+                <span className="text-[10px] text-gray-400 uppercase">{app.user.email}</span>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={() => processApplication(app.id, 'APPROVED')} className="text-green-600 text-[10px] font-bold uppercase">Принять</button>
+                <button onClick={() => processApplication(app.id, 'REJECTED')} className="text-red-500 text-[10px] font-bold uppercase">Отклонить</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+                        
         </div>
 
       </main>

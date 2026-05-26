@@ -553,10 +553,10 @@ app.get('/api/commander/export-members', authMiddleware, checkRole(['COMMANDER']
       });
     });
 
+    const safeFileName = encodeURIComponent(`Sostav_${brigadeName || 'Brigade'}.xlsx`);
     // Настраиваем HTTP-заголовки для скачивания файла
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    res.setHeader('Content-Disposition', `attachment; filename="Sostav_${brigade.name}.xlsx"`);
-
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${safeFileName}`);
     // Отправляем файл
     await workbook.xlsx.write(res);
     res.end();

@@ -856,29 +856,35 @@ const vkData = userResponse.data;
     }
 
     // 4. Ищем или создаем бойца в базе
-    let user = await prisma.user.findUnique({ where: { vkId: vkIdString } });
+    let user = await prisma.user.findUnique({ 
+    where: { vkId: vkIdString } 
+});
 
-    if (!user) {
-      if (email) user = await prisma.user.findUnique({ where: { email } });
-
-      if (user) {
-        user = await prisma.user.update({
-          where: { id: user.id },
-          data: { vkId: vkIdString, avatarUrl: user.avatarUrl || vkUser.avatar }
-        });
-      } else {
-        user = await prisma.user.create({
-          data: {
-            vkId: vkIdString,
-            email: email,
-            firstName: vkUser.first_name || 'Боец',
-            lastName: vkUser.last_name || 'РСО',
-            avatarUrl: vkUser.avatar || null,
-          }
-        });
-      }
+if (!user) {
+    // Если по vkId не нашли, пробуем по email
+    if (email) {
+        user = await prisma.user.findUnique({ where: { email: email } });
     }
 
+    if (user) {
+        // Если юзер есть (по email), привязываем ему vkId
+        user = await prisma.user.update({
+            where: { id: user.id },
+            data: { vkId: vkIdString }
+        });
+    } else {
+        // Создаем нового
+        user = await prisma.user.create({
+            data: {
+                vkId: vkIdString,
+                email: email || `vk_${vkIdString}@sevro.ru`,
+                firstName: vkUser.first_name || 'Боец',
+                lastName: vkUser.last_name || 'РСО',
+                avatarUrl: vkUser.avatar || null,
+            }
+        });
+    }
+}
     // 5. Выдаем наш системный токен СевРО
     const sysToken = jwt.sign(
       { userId: user.id, role: user.role }, 

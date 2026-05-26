@@ -244,18 +244,29 @@ app.get('/api/admin/users', authMiddleware, checkRole(['REG_HQ']), async (req, r
   try {
     const users = await prisma.user.findMany({
       select: { 
-        id: true, 
-        email: true, 
-        firstName: true, 
-        lastName: true, 
-        role: true, 
-        brigadeId: true, 
-        avatarUrl: true,
+        id: true, email: true, firstName: true, lastName: true, role: true, brigadeId: true, avatarUrl: true,
+        vkId: true, googleId: true, yandexId: true, // <-- ДОБАВИЛИ ЭТИ ПОЛЯ
         brigade: { select: { name: true } } 
       }
     });
     res.json(users);
   } catch (e) { res.status(500).json({ message: "Ошибка" }); }
+});
+
+app.patch('/api/admin/unlink-account', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
+  try {
+    const { userId, provider } = req.body;
+    const data = {};
+    
+    if (provider === 'vk') data.vkId = null;
+    if (provider === 'google') data.googleId = null;
+    if (provider === 'yandex') data.yandexId = null;
+
+    await prisma.user.update({ where: { id: userId }, data });
+    res.json({ message: 'Аккаунт успешно отвязан' });
+  } catch (e) { 
+    res.status(500).json({ message: "Ошибка отвязки аккаунта" }); 
+  }
 });
 
 app.patch('/api/admin/update-role', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {

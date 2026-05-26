@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import api from '../api/axiosConfig'
+import api from '../api/axiosConfig'; // Используем только правильный API
 import { useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import CreateEventModal from '../components/CreateEventModal';
@@ -34,18 +34,14 @@ export default function Admin() {
   const [expandedEventId, setExpandedEventId] = useState(null); 
 
   const navigate = useNavigate();
-  const token = localStorage.getItem('token');
-  const API_URL = '/api'
 
   const fetchData = async () => {
-    if (!token) { navigate('/login'); return; }
-    const headers = { Authorization: `Bearer ${token}` };
     setLoading(true);
     try {
-      const usersRes = await api.get(`/admin/users`, { headers });
+      const usersRes = await api.get(`/admin/users`);
       setUsers(usersRes.data);
 
-      const brigadesRes = await api.get(`/brigades`, { headers });
+      const brigadesRes = await api.get(`/brigades`);
       setBrigades(brigadesRes.data);
     } catch (err) {
       console.error("Ошибка доступа к админ-панели", err);
@@ -58,11 +54,9 @@ export default function Admin() {
   };
 
   const fetchAdminEvents = async () => {
-    if (!token) return;
-    const headers = { Authorization: `Bearer ${token}` };
     setEventsLoading(true);
     try {
-      const res = await api.get(`/admin/events`, { headers });
+      const res = await api.get(`/admin/events`);
       setEvents(res.data);
     } catch (err) {
       console.error("Ошибка загрузки мероприятий штаба", err);
@@ -72,11 +66,9 @@ export default function Admin() {
   };
 
   const fetchRatingDashboard = async () => {
-    if (!token) return;
-    const headers = { Authorization: `Bearer ${token}` };
     setDashboardLoading(true);
     try {
-      const res = await api.get(`/admin/rating-stats`, { headers });
+      const res = await api.get(`/admin/rating-stats`);
       setDashboardData(res.data);
     } catch (err) {
       console.error("Ошибка загрузки рейтингов", err);
@@ -94,11 +86,10 @@ export default function Admin() {
     if (activeTab === 'dashboard') fetchRatingDashboard();
   }, [activeTab]);
 
+  // === ИСПРАВЛЕНО: Теперь используем api.patch вместо axios.patch ===
   const handleRoleChange = async (userId, newRole) => {
-    if (!token) return;
-    const headers = { Authorization: `Bearer ${token}` };
     try {
-      await axios.patch(`${API_URL}/api/admin/update-role`, { userId, newRole }, { headers });
+      await api.patch(`/admin/update-role`, { userId, newRole });
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
     } catch (err) {
       alert("Не удалось обновить системную роль");
@@ -106,10 +97,8 @@ export default function Admin() {
   };
 
   const handleBrigadeChange = async (userId, brigadeId) => {
-    if (!token) return;
-    const headers = { Authorization: `Bearer ${token}` };
     try {
-      await axios.patch(`${API_URL}/api/admin/update-user-brigade`, { userId, brigadeId }, { headers });
+      await api.patch(`/admin/update-user-brigade`, { userId, brigadeId });
       const targetBrigade = brigades.find(b => b.id === brigadeId) || null;
       setUsers(users.map(u => u.id === userId ? { 
         ...u, 
@@ -118,6 +107,27 @@ export default function Admin() {
       } : u));
     } catch (err) {
       alert("Не удалось перераспределить бойца");
+    }
+  };
+
+  // === НОВАЯ ЛОГИКА ОТВЯЗКИ АККАУНТОВ ===
+  const handleUnlinkAccount = async (userId, provider) => {
+    if (!window.confirm(`Вы уверены, что хотите отвязать ${provider.toUpperCase()} от этого пользователя?`)) return;
+    
+    try {
+      await api.patch('/admin/unlink-account', { userId, provider });
+      setUsers(users.map(u => {
+        if (u.id === userId) {
+          const updated = { ...u };
+          if (provider === 'vk') updated.vkId = null;
+          if (provider === 'google') updated.googleId = null;
+          if (provider === 'yandex') updated.yandexId = null;
+          return updated;
+        }
+        return u;
+      }));
+    } catch (err) {
+      alert('Ошибка при отвязке аккаунта');
     }
   };
 
@@ -134,7 +144,7 @@ export default function Admin() {
 
     try {
       await api.post(`/admin/create-brigade`, formData, {
-        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
       setFormSuccess('Линейный отряд успешно сформирован и внесен в реестр!');
       setNewBrigade({ name: '', description: '', type: 'СПО', colorScheme: '#0052FF' });
@@ -193,7 +203,7 @@ export default function Admin() {
 
         <div className="border border-gray-100 rounded-2xl p-4 sm:p-6 md:p-8 bg-white min-h-[450px] shadow-sm">
           
-          {/* ================= ТАБ 0: ДАШБОРД АНАЛИТИКИ РЕЙТИНГА ================= */}
+          {/* ТАБ 0: ДАШБОРД */}
           {activeTab === 'dashboard' && (
             <div className="space-y-6 animate-in fade-in duration-200">
               {dashboardLoading || !dashboardData ? (
@@ -285,7 +295,7 @@ export default function Admin() {
             </div>
           )}
 
-          {/* ================= ТАБ 1: РЕЕСТР БОЙЦОВ ================= */}
+          {/* ТАБ 1: РЕЕСТР БОЙЦОВ */}
           {activeTab === 'users' && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <div className="flex justify-between items-center mb-2">
@@ -295,12 +305,12 @@ export default function Admin() {
               </div>
               
               <div className="border border-gray-100 rounded-xl overflow-hidden overflow-x-auto shadow-inner bg-gray-50/10">
-                <table className="w-full text-left border-collapse min-w-[700px]">
+                <table className="w-full text-left border-collapse min-w-[900px]">
                   <thead>
                     <tr className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider border-b border-gray-100">
                       <th className="p-4 w-16">Фото</th>
                       <th className="p-4">ФИО бойца</th>
-                      <th className="p-4">Электронная почта</th>
+                      <th className="p-4">Связи</th>
                       <th className="p-4">Системная роль</th>
                       <th className="p-4">Линейный отряд (Распределение)</th>
                     </tr>
@@ -319,8 +329,38 @@ export default function Admin() {
                             )}
                           </div>
                         </td>
-                        <td className="p-4 text-black font-extrabold">{u.lastName} {u.firstName}</td>
-                        <td className="p-4 text-gray-500 lowercase font-medium">{u.email}</td>
+                        <td className="p-4 text-black font-extrabold">
+                          {u.lastName} {u.firstName}
+                          <span className="block text-[9px] text-gray-400 font-medium lowercase mt-0.5">{u.email}</span>
+                        </td>
+                        
+                        {/* === НОВАЯ КОЛОНКА СОЦСЕТЕЙ === */}
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            {u.vkId && (
+                              <button onClick={() => handleUnlinkAccount(u.id, 'vk')} title="Отвязать VK" className="group relative w-7 h-7 rounded-md bg-[#0077FF]/10 flex items-center justify-center hover:bg-red-50 hover:border hover:border-red-200 transition-all">
+                                <img src="https://cdn.simpleicons.org/vk/0077FF" className="w-4 h-4 group-hover:opacity-0 transition-opacity" alt="VK" />
+                                <span className="absolute inset-0 flex items-center justify-center text-red-500 opacity-0 group-hover:opacity-100 font-bold text-sm">×</span>
+                              </button>
+                            )}
+                            {u.googleId && (
+                              <button onClick={() => handleUnlinkAccount(u.id, 'google')} title="Отвязать Google" className="group relative w-7 h-7 rounded-md bg-gray-100 flex items-center justify-center hover:bg-red-50 hover:border hover:border-red-200 transition-all">
+                                <img src="https://cdn.simpleicons.org/google" className="w-3.5 h-3.5 group-hover:opacity-0 transition-opacity" alt="Google" />
+                                <span className="absolute inset-0 flex items-center justify-center text-red-500 opacity-0 group-hover:opacity-100 font-bold text-sm">×</span>
+                              </button>
+                            )}
+                            {u.yandexId && (
+                              <button onClick={() => handleUnlinkAccount(u.id, 'yandex')} title="Отвязать Yandex" className="group relative w-7 h-7 rounded-md bg-red-50 flex items-center justify-center hover:bg-red-100 hover:border hover:border-red-200 transition-all">
+                                <svg className="h-3.5 w-3.5 group-hover:opacity-0 transition-opacity" viewBox="0 0 24 24" fill="#FC3F1D" xmlns="http://www.w3.org/2000/svg"><path d="M13.682 23.003h2.38V1.002h-3.66c-4.4 0-7.382 2.704-7.382 6.81 0 3.037 1.558 5.253 3.996 6.31-2.193 1.1-3.606 2.946-3.606 5.342 0 2.502 1.542 4.095 3.738 4.095h3.332v-3.414H10.15c-1.12 0-1.76-.704-1.76-1.874 0-1.34 1.026-2.175 2.625-2.175h2.668v6.906zm0-9.87h-1.635c-2.342 0-4.004-1.464-4.004-3.784 0-2.22 1.63-3.834 4.032-3.834h1.608v7.618z"/></svg>
+                                <span className="absolute inset-0 flex items-center justify-center text-red-600 opacity-0 group-hover:opacity-100 font-bold text-sm">×</span>
+                              </button>
+                            )}
+                            {!u.vkId && !u.googleId && !u.yandexId && (
+                              <span className="text-[9px] font-bold text-gray-300 uppercase tracking-wider">Пусто</span>
+                            )}
+                          </div>
+                        </td>
+
                         <td className="p-4">
                           <select 
                             value={u.role} 
@@ -361,7 +401,7 @@ export default function Admin() {
             </div>
           )}
 
-          {/* ================= ТАБ 2: СПИСОК ОТРЯДОВ ================= */}
+          {/* ТАБ 2: СПИСОК ОТРЯДОВ */}
           {activeTab === 'brigades' && (
             <div className="space-y-4 animate-in fade-in duration-200">
               <span className="text-xs font-bold text-rso-blue uppercase tracking-wider block mb-2">
@@ -395,7 +435,7 @@ export default function Admin() {
             </div>
           )}
 
-          {/* ================= ТАБ 3: СФОРМИРОВАТЬ ОТРЯД ================= */}
+          {/* ТАБ 3: СФОРМИРОВАТЬ ОТРЯД */}
           {activeTab === 'create' && (
             <div className="max-w-2xl mx-auto animate-in fade-in duration-200">
               <div className="text-center mb-6">
@@ -445,7 +485,7 @@ export default function Admin() {
             </div>
           )}
 
-          {/* ================= ТАБ 4: УПРАВЛЕНИЕ МЕРОПРИЯТИЯМИ ================= */}
+          {/* ТАБ 4: УПРАВЛЕНИЕ МЕРОПРИЯТИЯМИ */}
           {activeTab === 'events' && (
             <div className="space-y-6 animate-in fade-in duration-200">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-gray-50">
@@ -491,7 +531,6 @@ export default function Admin() {
                           </div>
                         </div>
                         
-                        {/* Вывезенный из каши полноценный блок участников */}
                         {isExpanded && event.participants && (
                           <div className="pt-3 border-t border-gray-50 animate-in fade-in duration-150">
                             <div className="bg-gray-50/50 rounded-xl border border-gray-100 p-3 overflow-x-auto">

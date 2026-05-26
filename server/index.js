@@ -753,10 +753,12 @@ app.get('/api/auth/yandex', (req, res) => {
 });
 
 
+
 // ==========================================
 // VK ID OAUTH 2.1: Инициация входа
 // ==========================================
 app.get('/api/auth/vk', (req, res) => {
+  console.log('\n=== [VK AUTH] ШАГ 1: Инициация входа ===');
   const vkClientId = '54608627'; 
   const vkRedirectUri = 'https://xn--b1af2ahcd.xn--p1ai/api/auth/vk/callback';
 
@@ -766,11 +768,14 @@ app.get('/api/auth/vk', (req, res) => {
   const state = crypto.randomBytes(16).toString('hex');
   const deviceId = crypto.randomBytes(16).toString('hex');
 
-  // 2. Сохраняем ключи во временную cookie (чтобы не потерять их при редиректе)
+  console.log('[VK AUTH] Сгенерирован device_id:', deviceId);
+  console.log('[VK AUTH] Сгенерирован state:', state);
+
+  // 2. Сохраняем ключи во временную cookie 
   const cookieData = JSON.stringify({ codeVerifier, state, deviceId });
   res.setHeader('Set-Cookie', `vk_auth=${encodeURIComponent(cookieData)}; Path=/; HttpOnly; Max-Age=300; SameSite=Lax`);
 
-  // 3. Формируем новую ссылку на id.vk.ru (Вместо старого oauth.vk.com)
+  // 3. Формируем новую ссылку на id.vk.ru
   const authUrl = new URL('https://id.vk.ru/authorize');
   authUrl.searchParams.append('response_type', 'code');
   authUrl.searchParams.append('client_id', vkClientId);
@@ -778,8 +783,9 @@ app.get('/api/auth/vk', (req, res) => {
   authUrl.searchParams.append('state', state);
   authUrl.searchParams.append('code_challenge', codeChallenge);
   authUrl.searchParams.append('code_challenge_method', 's256');
-  authUrl.searchParams.append('scope', 'vkid.personal_info'); // Права профиля для VK ID
+  authUrl.searchParams.append('scope', 'vkid.personal_info'); 
 
+  console.log('[VK AUTH] Отправляем юзера на:', authUrl.toString());
   res.redirect(authUrl.toString());
 });
 
@@ -787,17 +793,26 @@ app.get('/api/auth/vk', (req, res) => {
 // VK ID OAUTH 2.1: Callback
 // ==========================================
 app.get('/api/auth/vk/callback', async (req, res) => {
-  const { code, state } = req.query; // Здесь state берется из URL
+  console.log('\n=== [VK CALLBACK] ШАГ 2: Ответ от ВК получен ===');
+  const { code, state } = req.query; 
+  console.log('[VK CALLBACK] Query параметры:', { 
+    code: code ? 'ПОЛУЧЕН' : 'ПУСТО', 
+    state 
+  });
+
   const vkRedirectUri = 'https://xn--b1af2ahcd.xn--p1ai/api/auth/vk/callback';
   const vkClientId = '54608627';
   const vkClientSecret = '9fYVPkQyX5IGZ0IIR2R5'; 
 
   if (!code) {
+    console.error('[VK CALLBACK] ОШИБКА: Код от ВК не пришел');
     return res.redirect(`${DOMAIN_URL}/login?error=no_code`);
   }
 
-  // 1. Достаем наши ключи-верификаторы из куки
+  // 1. Достаем ключи-верификаторы из куки
   const cookies = parseCookies(req);
+  console.log('[VK CALLBACK] Кука vk_auth:', cookies.vk_auth ? 'НАЙДЕНА' : 'ПУСТО');
+  
   if (!cookies.vk_auth) {
     return res.redirect(`${DOMAIN_URL}/login?error=session_expired`);
   }
@@ -805,16 +820,19 @@ app.get('/api/auth/vk/callback', async (req, res) => {
   let sessionData;
   try {
     sessionData = JSON.parse(decodeURIComponent(cookies.vk_auth));
+    console.log('[VK CALLBACK] Данные сессии:', { deviceId: sessionData.deviceId, state: sessionData.state });
   } catch (e) {
+    console.error('[VK CALLBACK] ОШИБКА парсинга сессии:', e.message);
     return res.redirect(`${DOMAIN_URL}/login?error=session_invalid`);
   }
 
   if (state !== sessionData.state) {
+    console.error('[VK CALLBACK] ОШИБКА: State не совпадает!');
     return res.redirect(`${DOMAIN_URL}/login?error=invalid_state`);
   }
 
   try {
-    // 2. Идем за токеном
+    console.log('[VK CALLBACK] ШАГ 3: Запрашиваем токен у /oauth2/auth ...');
     const tokenParams = new URLSearchParams({
       grant_type: 'authorization_code',
       client_id: vkClientId,
@@ -829,14 +847,17 @@ app.get('/api/auth/vk/callback', async (req, res) => {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
     });
 
+    console.log('[VK CALLBACK] ОТВЕТ С ТОКЕНОМ ОТ ВК:', JSON.stringify(tokenResponse.data, null, 2));
+
     const { access_token, id_token } = tokenResponse.data;
     const finalToken = access_token || id_token;
 
     if (!finalToken) {
+        console.error('[VK CALLBACK] ОШИБКА: Токен не найден в ответе');
         return res.redirect(`${DOMAIN_URL}/login?error=no_token_received`);
     }
 
-    // 3. Запрашиваем информацию профиля
+    console.log('[VK CALLBACK] ШАГ 4: Запрашиваем профиль у /oauth2/user_info ...');
     const userResponse = await axios.post('https://id.vk.ru/oauth2/user_info', 
       new URLSearchParams({
         client_id: vkClientId,
@@ -845,9 +866,13 @@ app.get('/api/auth/vk/callback', async (req, res) => {
       { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
+    console.log('[VK CALLBACK] ОТВЕТ С ПРОФИЛЕМ ОТ ВК:', JSON.stringify(userResponse.data, null, 2));
+
     const vkUser = userResponse.data.user || userResponse.data;
     const vkIdString = String(vkUser.id || vkUser.user_id || 'unknown');
     const email = vkUser.email || null;
+
+    console.log('[VK CALLBACK] ШАГ 5: Обработка данных для БД ->', { vkIdString, email });
 
     // 4. Ищем или создаем юзера
     let user = await prisma.user.findUnique({ where: { vkId: vkIdString } });
@@ -856,11 +881,13 @@ app.get('/api/auth/vk/callback', async (req, res) => {
     }
 
     if (user) {
+        console.log('[VK CALLBACK] Юзер найден, обновляем vkId');
         user = await prisma.user.update({
             where: { id: user.id },
             data: { vkId: vkIdString }
         });
     } else {
+        console.log('[VK CALLBACK] Юзер НЕ найден, создаем нового');
         user = await prisma.user.create({
             data: {
                 vkId: vkIdString,
@@ -872,12 +899,18 @@ app.get('/api/auth/vk/callback', async (req, res) => {
     }
 
     // 5. Редирект
+    console.log('[VK CALLBACK] ШАГ 6: Успех, редиректим на сайт');
     const sysToken = jwt.sign({ userId: user.id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
     res.setHeader('Set-Cookie', `vk_auth=; Path=/; HttpOnly; Max-Age=0`);
     res.redirect(`${DOMAIN_URL}/login?token=${sysToken}`);
 
   } catch (error) {
-    console.error('Ошибка VK ID OAuth:', error.response?.data || error.message);
+    console.error('\n=== [VK CALLBACK] КРИТИЧЕСКАЯ ОШИБКА ===');
+    console.error('Сообщение:', error.message);
+    if (error.response) {
+      console.error('Данные от ВК:', JSON.stringify(error.response.data, null, 2));
+      console.error('Статус от ВК:', error.response.status);
+    }
     res.redirect(`${DOMAIN_URL}/login?error=auth_failed`);
   }
 });

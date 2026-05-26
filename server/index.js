@@ -830,6 +830,8 @@ app.get('/api/auth/vk/callback', async (req, res) => {
 
     const { access_token, user_id } = tokenResponse.data;
 
+    console.log('--- ПОЛУЧЕННЫЙ ТОКЕН ---', access_token);
+
     // 3. Запрашиваем информацию профиля из новой API-ручки
     const userResponse = await axios.post('https://id.vk.ru/oauth2/user_info', 
       new URLSearchParams({
@@ -842,7 +844,7 @@ app.get('/api/auth/vk/callback', async (req, res) => {
         } 
       }
     );
-    
+
     // Новое API отдает данные чуть в другом формате
     const vkData = userResponse.data;
     

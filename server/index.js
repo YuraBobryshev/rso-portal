@@ -590,10 +590,11 @@ app.get('/api/auth/google/callback', async (req, res) => {
     const { access_token } = tokenResponse.data;
 
     // 2.2 Используя access_token, запрашиваем данные профиля (email, имя, аватарку)
-    const userResponse = await axios.get('https://www.googleapis.com/oauth2/v2/userinfo', {
-      headers: { Authorization: `Bearer ${access_token}` },
+    const userResponse = await axios.get('https://id.vk.ru/oauth2/user_info', {
+      headers: { 
+        'Authorization': `Bearer ${access_token}` 
+      }
     });
-
     const { id: googleId, email, given_name, family_name, picture } = userResponse.data;
 
     // 2.3 Ищем пользователя по googleId
@@ -839,11 +840,11 @@ app.get('/api/auth/vk/callback', async (req, res) => {
     );
 
     // Новое API отдает данные чуть в другом формате
-const vkData = userResponse.data;
+    const vkData = userResponse.data;
     
     // В VK ID данные часто лежат внутри объекта user или прямо в корне
-    const vkUser = vkData.user || vkData;
-    
+    const vkUser = userResponse.data.user || userResponse.data;
+
     // Пытаемся вытащить ID из всех возможных полей, которые дает ВК
     const rawId = vkUser.id || vkUser.user_id || user_id;
     const vkIdString = rawId ? String(rawId) : null;

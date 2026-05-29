@@ -13,7 +13,6 @@ export default function BrigadeDetail() {
   const [message, setMessage] = useState({ text: '', type: '' });
   const [appForm, setAppForm] = useState({ phone: '', aboutMe: '', skills: '' });
 
-  const API_URL = '/api'
   const token = localStorage.getItem('token');
 
   useEffect(() => {
@@ -31,126 +30,119 @@ export default function BrigadeDetail() {
     fetchBrigade();
   }, [id, navigate]);
 
-const handleApply = async (e) => {
-  e.preventDefault(); // Добавили, так как теперь это форма
-  if (!token) {
-    setMessage({ text: 'Для подачи заявки необходимо авторизоваться в системе', type: 'error' });
-    return;
-  }
-  
-  setApplying(true);
-  setMessage({ text: '', type: '' });
+  const handleApply = async (e) => {
+    e.preventDefault(); 
+    if (!token) {
+      setMessage({ text: 'Для подачи заявки необходимо авторизоваться в системе', type: 'error' });
+      return;
+    }
+    
+    setApplying(true);
+    setMessage({ text: '', type: '' });
 
-  try {
-    const res = await api.post(`/applications/apply`, 
-      { brigadeId: id, ...appForm },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    setMessage({ text: res.data.message || 'Заявка успешно отправлена комсоставу!', type: 'success' });
-    setAppForm({ phone: '', aboutMe: '', skills: '' }); // Очищаем форму
-  } catch (err) {
-    const errorMsg = err.response?.data?.message || 'Ошибка при отправке заявки';
-    setMessage({ text: errorMsg, type: 'error' });
-  } finally {
-    setApplying(false);
-  }
-};
+    try {
+      const res = await api.post(`/applications/apply`, 
+        { brigadeId: id, ...appForm },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setMessage({ text: res.data.message || 'Заявка успешно отправлена комсоставу!', type: 'success' });
+      setAppForm({ phone: '', aboutMe: '', skills: '' }); 
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || 'Ошибка при отправке заявки';
+      setMessage({ text: errorMsg, type: 'error' });
+    } finally {
+      setApplying(false);
+    }
+  };
 
   if (loading) return (
-    <div className="min-h-screen bg-white flex items-center justify-center font-sans text-xs font-black uppercase tracking-widest text-gray-400 animate-pulse">
+    <div className="min-h-screen pt-32 text-center font-stolzl text-xs font-bold uppercase tracking-widest text-gray-400 animate-pulse">
       Синхронизация личного дела отряда...
     </div>
   );
   if (!brigade) return null;
 
-  const mainColor = brigade.colorScheme || '#0052FF';
+  const mainColor = brigade.colorScheme || '#0804FF';
 
   return (
-    <div className="min-h-screen bg-white text-black font-sans antialiased selection:bg-rso-blue selection:text-white">
+    <div className="min-h-screen transition-colors duration-300 pb-24">
       <Header />
 
-      {/* Основной контейнер с адаптивными отступами */}
-      <main className="max-w-[1500px] mx-auto px-4 sm:px-6 pt-24 pb-24 space-y-6">
+      <main className="max-w-[1500px] mx-auto px-4 md:px-6 pt-24 space-y-6">
         
-        {/* ================= КАРТОЧКА 1: БОЛЬШОЙ BENTO-ГЛАВЕНСТВУЮЩИЙ ГЕРОЙ ================= */}
+        {/* ================= КАРТОЧКА 1: БОЛЬШОЙ ГЕРОЙ ================= */}
         <div 
-          className="w-full rounded-[2rem] p-6 sm:p-10 md:p-12 relative flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden shadow-sm border border-gray-100"
-          style={{ backgroundColor: `${mainColor}08` }} // Нежный 8% фоновый оттенок фирменного цвета
+          className="w-full rounded-[2rem] p-6 sm:p-10 md:p-12 relative flex flex-col md:flex-row items-center justify-between gap-6 overflow-hidden shadow-sm border border-rso-gray dark:border-slate-700 bg-white dark:bg-slate-800"
         >
-          {/* Декоративная линия цвета отряда слева */}
-          <div className="absolute top-0 left-0 bottom-0 w-2.5" style={{ backgroundColor: mainColor }} />
+          {/* Декоративная линия цвета отряда */}
+          <div className="absolute top-0 left-0 bottom-0 w-3" style={{ backgroundColor: mainColor }} />
 
-          <div className="flex flex-col md:flex-row items-center gap-5 sm:gap-6 text-center md:text-left">
-            {/* Круглая эмблема ЛСО */}
-            <div className="w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 rounded-full bg-white border-2 border-gray-100 shadow-md overflow-hidden shrink-0 flex items-center justify-center p-1">
+          <div className="flex flex-col md:flex-row items-center gap-6 md:gap-8 text-center md:text-left z-10 w-full pl-2">
+            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-slate-50 dark:bg-slate-900 border-2 border-rso-gray dark:border-slate-600 shadow-md overflow-hidden shrink-0 flex items-center justify-center p-1">
               {brigade.logoUrl ? (
                 <img src={brigade.logoUrl} className="w-full h-full object-cover rounded-full" alt="" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center font-black text-xl text-rso-blue bg-blue-50/50 uppercase rounded-full">
+                <div className="w-full h-full flex items-center justify-center font-stolzl font-bold text-2xl text-gray-400 rounded-full">
                   {brigade.type}
                 </div>
               )}
             </div>
             
-            {/* Название и статусная плашка */}
-            <div className="space-y-1.5">
-              <span className="inline-block px-2.5 py-0.5 rounded-md text-[9px] font-black uppercase tracking-wider text-white" style={{ backgroundColor: mainColor }}>
+            <div className="space-y-2">
+              <span className="inline-block px-3 py-1 rounded-lg font-stolzl text-[10px] font-bold uppercase tracking-wider text-white" style={{ backgroundColor: mainColor }}>
                 Линейный отряд // СевРО
               </span>
-              <h1 className="text-2xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight text-black leading-tight">
+              <h1 className="heading-1">
                 {brigade.name}
               </h1>
             </div>
           </div>
 
-          {/* Технический реестровый ID */}
-          <div className="hidden lg:block font-mono text-[9px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl">
-            ID: {id.substring(0, 8)}
+          <div className="hidden lg:block font-stolzl text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-slate-50 dark:bg-slate-900 border border-rso-gray dark:border-slate-700 px-4 py-2 rounded-xl shrink-0">
+            ID: <span className="font-onest">{id.substring(0, 8)}</span>
           </div>
         </div>
 
-        {/* ================= ГЛОБАЛЬНАЯ АСИММЕТРИЧНАЯ СЕТКА BENTO ================= */}
+        {/* ================= СЕТКА BENTO ================= */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           
-          {/* ЛЕВАЯ СЕКЦИЯ: ИСТОРИЯ И УЧЕТНЫЙ СОСТАВ */}
+          {/* ЛЕВАЯ СЕКЦИЯ */}
           <div className="lg:col-span-8 space-y-6">
             
-            {/* Карточка 2: Летопись ЛСО */}
-            <div className="border border-gray-100 rounded-[2rem] p-5 sm:p-8 bg-white shadow-sm space-y-4">
-              <span className="text-[10px] font-black text-rso-blue uppercase tracking-wider block">
-                ✦ Летопись и деятельность команды
-              </span>
-              <p className="text-xs sm:text-sm text-gray-600 font-medium leading-relaxed whitespace-pre-line">
+            <div className="bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-700 rounded-[2rem] p-6 md:p-10 shadow-sm space-y-5">
+              <h2 className="heading-2">
+                Летопись и деятельность
+              </h2>
+              <p className="font-onest text-sm md:text-base text-gray-600 dark:text-gray-300 leading-relaxed whitespace-pre-line">
                 {brigade.description || "Информация об отряде подготавливается командным составом ЛСО к публикации."}
               </p>
             </div>
 
-            {/* Карточка 3: Реестр действующего состава */}
-            <div className="border border-gray-100 rounded-[2rem] p-5 sm:p-8 bg-white shadow-sm space-y-5">
-              <span className="text-[10px] font-black text-rso-blue uppercase tracking-wider block">
-                ✦ Личный состав отряда ({brigade.users?.length || 0} чел.)
-              </span>
+            <div className="bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-700 rounded-[2rem] p-6 md:p-10 shadow-sm space-y-6">
+              <h2 className="heading-2">
+                Личный состав (<span className="number-display">{brigade.users?.length || 0}</span> чел.)
+              </h2>
               
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {brigade.users && brigade.users.map(member => {
                   const isLeader = ['COMMANDER', 'COMMISSAR', 'MASTER'].includes(member.role);
                   return (
-                    <div key={member.id} className="flex items-center gap-3 p-3 border border-gray-50 rounded-xl bg-gray-50/30 hover:bg-white hover:border-gray-200 transition-all duration-200 group">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-gray-100 border border-gray-100 shrink-0 flex items-center justify-center">
+                    <div key={member.id} className="flex items-center gap-4 p-4 border border-rso-gray dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-900 hover:bg-white dark:hover:bg-slate-800 transition-all duration-200">
+                      <div className="w-12 h-12 rounded-full overflow-hidden bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-600 shrink-0 flex items-center justify-center">
                         {member.avatarUrl ? (
                           <img src={member.avatarUrl} className="w-full h-full object-cover" alt="" />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center font-black text-xs text-rso-blue bg-blue-50/40 uppercase">
+                          <div className="font-actay text-sm text-gray-500 uppercase">
                             {member.firstName?.charAt(0)}
                           </div>
                         )}
                       </div>
                       <div className="truncate">
-                        <div className="font-bold uppercase text-xs sm:text-sm text-black group-hover:text-rso-blue transition-colors truncate">
+                        <div className="font-stolzl font-bold uppercase text-xs md:text-sm text-rso-black dark:text-white truncate mb-1">
                           {member.lastName} {member.firstName}
                         </div>
-                        <span className={`inline-block mt-0.5 text-[8px] font-black uppercase tracking-wide px-1.5 py-0.2 rounded ${
-                          isLeader ? 'text-white' : 'bg-gray-100 text-gray-400'
+                        <span className={`font-stolzl text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-lg ${
+                          isLeader ? 'text-white' : 'bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-600 text-gray-500'
                         }`} style={{ backgroundColor: isLeader ? mainColor : undefined }}>
                           {member.role}
                         </span>
@@ -162,96 +154,92 @@ const handleApply = async (e) => {
             </div>
           </div>
 
-          {/* ПРАВАЯ СЕКЦИЯ: ИНФО-ПАНЕЛЬ И ДЕЙСТВИЕ */}
-          <div className="lg:col-span-4 space-y-6 lg:h-fit lg:sticky lg:top-24">
+          {/* ПРАВАЯ СЕКЦИЯ */}
+          <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-24 h-fit">
              
-             {/* Карточка 4: Фактура/Метрики */}
-             <div className="border border-gray-100 rounded-[2rem] p-6 bg-white shadow-sm space-y-4">
-                <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider block border-b border-gray-50 pb-2">
+             <div className="bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-700 rounded-[2rem] p-8 shadow-sm space-y-5">
+                <span className="font-stolzl text-[10px] font-bold text-gray-400 uppercase tracking-wider block border-b border-rso-gray dark:border-slate-700 pb-3">
                   Паспортные метрики ЛСО
                 </span>
-                <div className="flex justify-between items-center text-xs font-bold uppercase">
-                  <span className="text-gray-400 font-medium">Направление:</span>
-                  <span className="px-2 py-0.5 rounded text-white font-black" style={{ backgroundColor: mainColor }}>
+                <div className="flex justify-between items-center font-stolzl text-xs font-bold uppercase">
+                  <span className="text-gray-500 dark:text-gray-400">Направление:</span>
+                  <span className="px-3 py-1 rounded-lg text-white" style={{ backgroundColor: mainColor }}>
                     {brigade.type}
                   </span>
                 </div>
-                <div className="flex justify-between items-center text-xs font-bold uppercase border-t border-gray-50 pt-3">
-                  <span className="text-gray-400 font-medium">Основан:</span>
-                  <span className="text-black font-black">
-                    {new Date(brigade.createdAt).getFullYear()} год
+                <div className="flex justify-between items-center font-stolzl text-xs font-bold uppercase border-t border-rso-gray dark:border-slate-700 pt-4">
+                  <span className="text-gray-500 dark:text-gray-400">Основан:</span>
+                  <span className="number-display text-lg">
+                    {new Date(brigade.createdAt).getFullYear()}
                   </span>
                 </div>
              </div>
 
-             {/* Карточка 5: Интерактивный узел подачи документов */}
-{/* Карточка 5: Интерактивный узел подачи документов (Расширенная анкета) */}
-<div className="border border-gray-200 rounded-[2rem] p-6 md:p-8 bg-slate-50 shadow-sm space-y-5">
-  <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider block border-b border-gray-200 pb-3">
-    Анкета кандидата
-  </span>
+            <div className="bg-slate-50 dark:bg-slate-800 border border-rso-gray dark:border-slate-700 rounded-[2rem] p-6 md:p-8 shadow-sm space-y-6">
+              <span className="font-stolzl text-[10px] font-bold text-gray-400 uppercase tracking-wider block border-b border-rso-gray dark:border-slate-700 pb-3">
+                Анкета кандидата
+              </span>
 
-  {message.text && (
-    <div className={`p-4 rounded-xl text-xs font-bold text-center transition-all ${
-      message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-    }`}>
-      {message.text}
-    </div>
-  )}
+              {message.text && (
+                <div className={`p-4 rounded-xl text-xs font-bold text-center font-onest transition-all ${
+                  message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>
+                  {message.text}
+                </div>
+              )}
 
-  <form onSubmit={handleApply} className="space-y-4">
-    <div>
-      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Контактный телефон</label>
-      <input 
-        type="tel" 
-        placeholder="+7 (999) 000-00-00" 
-        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-rso-blue transition-all"
-        value={appForm.phone} 
-        onChange={e => setAppForm({...appForm, phone: e.target.value})} 
-        required 
-      />
-    </div>
-    
-    <div>
-      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Почему хочешь к нам?</label>
-      <textarea 
-        placeholder="Твоя мотивация..." 
-        rows="2" 
-        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-xs font-medium outline-none focus:border-rso-blue transition-all resize-none"
-        value={appForm.aboutMe} 
-        onChange={e => setAppForm({...appForm, aboutMe: e.target.value})} 
-        required 
-      />
-    </div>
+              <form onSubmit={handleApply} className="space-y-4">
+                <div>
+                  <label className="font-stolzl block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Контактный телефон</label>
+                  <input 
+                    type="tel" 
+                    placeholder="+7 (999) 000-00-00" 
+                    className="font-onest w-full bg-white dark:bg-slate-900 border border-rso-gray dark:border-slate-600 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white outline-none focus:border-[#0804FF] transition-all"
+                    value={appForm.phone} 
+                    onChange={e => setAppForm({...appForm, phone: e.target.value})} 
+                    required 
+                  />
+                </div>
+                
+                <div>
+                  <label className="font-stolzl block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Почему хочешь к нам?</label>
+                  <textarea 
+                    placeholder="Твоя мотивация..." 
+                    rows="3" 
+                    className="font-onest w-full bg-white dark:bg-slate-900 border border-rso-gray dark:border-slate-600 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white outline-none focus:border-[#0804FF] transition-all resize-none"
+                    value={appForm.aboutMe} 
+                    onChange={e => setAppForm({...appForm, aboutMe: e.target.value})} 
+                    required 
+                  />
+                </div>
 
-    <div>
-      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Что ты умеешь? (Навыки)</label>
-      <textarea 
-        placeholder="Играю на гитаре, монтирую видео, танцую..." 
-        rows="2" 
-        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-xs font-medium outline-none focus:border-rso-blue transition-all resize-none"
-        value={appForm.skills} 
-        onChange={e => setAppForm({...appForm, skills: e.target.value})} 
-      />
-    </div>
+                <div>
+                  <label className="font-stolzl block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2">Что ты умеешь? (Навыки)</label>
+                  <textarea 
+                    placeholder="Играю на гитаре, монтирую видео, танцую..." 
+                    rows="2" 
+                    className="font-onest w-full bg-white dark:bg-slate-900 border border-rso-gray dark:border-slate-600 rounded-xl px-4 py-3 text-sm text-gray-900 dark:text-white outline-none focus:border-[#0804FF] transition-all resize-none"
+                    value={appForm.skills} 
+                    onChange={e => setAppForm({...appForm, skills: e.target.value})} 
+                  />
+                </div>
 
-    <button 
-      type="submit"
-      disabled={applying}
-      className="w-full py-4 text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 hover:bg-black disabled:opacity-50 shadow-sm mt-2"
-      style={{ backgroundColor: mainColor }}
-    >
-      {applying ? 'Рассмотрение...' : 'Отправить анкету →'}
-    </button>
-  </form>
-  
-  <p className="text-[9px] text-center font-bold uppercase tracking-wider text-gray-400 px-2 leading-relaxed">
-    Заполнение анкеты запускает автоматическую верификацию командным составом.
-  </p>
-</div>
+                <button 
+                  type="submit"
+                  disabled={applying}
+                  className="btn-primary w-full mt-4"
+                  style={{ backgroundColor: mainColor }}
+                >
+                  {applying ? 'Рассмотрение...' : 'Отправить анкету'}
+                </button>
+              </form>
+              
+              <p className="font-onest text-[10px] text-center text-gray-500 px-2 leading-relaxed">
+                Заполнение анкеты запускает автоматическую верификацию командным составом.
+              </p>
+            </div>
              
           </div>
-
         </div>
       </main>
     </div>

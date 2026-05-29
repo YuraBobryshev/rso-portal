@@ -449,56 +449,72 @@ app.post('/api/commander/process-application', authMiddleware, checkRole(['COMMA
 // 📅 БЛОК 4: МЕРОПРИЯТИЯ И ПОСЕЩАЕМОСТЬ (Полная синхронизация и защита)
 // =============================================================================
 
-// ИСПРАВЛЕНО: Расширены права создания и добавлена четкая сегментация типов
-app.post('/api/events', authMiddleware, async (req, res) => {
+app.post('/api/events', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'MASTER', 'REG_HQ']), async (req, res) => {
   try {
     const { title, description, date, location, lat, lng, type } = req.body;
     const userId = req.user.userId;
 
-    // 1. Узнаем, кто создает мероприятие (чтобы понять его отряд)
-    const creator = await prisma.user.findUnique({ where: { id: userId } });
+    const user = await prisma.user.findUnique({ where: { id: userId } });
 
-    // 2. Твой код создания мероприятия в БД...
+    let targetBrigadeId = null;
+    let eventType = "LOCAL";
+
+    // Логика определения уровня мероприятия
+    if (user.role === 'REG_HQ') {
+      eventType = type || "REGIONAL";
+      targetBrigadeId = eventType === 'REGIONAL' ? null : req.body.brigadeId;
+    } else {
+      if (!user.brigadeId) return res.status(403).json({ message: "Вы не привязаны к ЛСО" });
+      targetBrigadeId = user.brigadeId;
+    }
+
+    // 1. СОЗДАЕМ СОБЫТИЕ В БАЗЕ (Теперь со всеми полями!)
     const newEvent = await prisma.event.create({
       data: {
-         // ... твои поля
+        title,
+        description: description || "Описание не указано",
+        date: new Date(date),
+        location: location || "Не указано",
+        lat: lat || null,
+        lng: lng || null,
+        type: eventType,
+        brigadeId: targetBrigadeId
       }
     });
 
-    res.json(newEvent); // Сразу отдаем ответ фронту, чтобы модалка закрылась
+    // 2. СРАЗУ отдаем успешный ответ фронтенду, чтобы модалка закрылась без красных ошибок
+    res.status(201).json(newEvent);
 
-// =========================================================
-    // 🤖 МАГИЯ ВК-БОТА: МАССОВАЯ РАССЫЛКА
     // =========================================================
-    console.log(`[VK Bot] Старт рассылки. Тип события: ${type}`);
-    
+    // 🤖 МАГИЯ ВК-БОТА: МАССОВАЯ РАССЫЛКА (Работает в фоне)
+    // =========================================================
+    console.log(`[VK Bot] Старт рассылки. Тип события: ${eventType}`);
+
     let targetUsers = [];
-    if (type === 'REGIONAL') {
+    if (eventType === 'REGIONAL') {
       targetUsers = await prisma.user.findMany({
         where: { vkId: { not: null } }
       });
     } else {
-      console.log(`[VK Bot] ID отряда создателя: ${creator.brigadeId}`);
-      if (creator.brigadeId) {
+      console.log(`[VK Bot] ID отряда создателя: ${targetBrigadeId}`);
+      if (targetBrigadeId) {
         targetUsers = await prisma.user.findMany({
-          where: { 
-            brigadeId: creator.brigadeId,
-            vkId: { not: null } 
+          where: {
+            brigadeId: targetBrigadeId,
+            vkId: { not: null }
           }
         });
-      } else {
-        console.log(`[VK Bot] Отмена: У создателя нет отряда для LOCAL события.`);
       }
     }
 
     console.log(`[VK Bot] Найдено получателей с привязанным ВК: ${targetUsers.length}`);
 
     if (targetUsers.length > 0) {
-      const eventDateStr = new Date(date).toLocaleString('ru-RU', { 
-        day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' 
+      const eventDateStr = new Date(date).toLocaleString('ru-RU', {
+        day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit'
       });
-      
-      const msg = `📢 ${type === 'REGIONAL' ? '🔥 РЕГИОНАЛЬНОЕ СОБЫТИЕ' : '⚡ СБОР ОТРЯДА'}!\n\n` +
+
+      const msg = `📢 ${eventType === 'REGIONAL' ? '🔥 РЕГИОНАЛЬНОЕ СОБЫТИЕ' : '⚡ СБОР ОТРЯДА'}!\n\n` +
                   `Название: ${title}\n` +
                   `📅 Дата: ${eventDateStr}\n` +
                   `📍 Место: ${location}\n\n` +
@@ -507,26 +523,27 @@ app.post('/api/events', authMiddleware, async (req, res) => {
 
       const alertKeyboard = Keyboard.builder()
         .inline()
-        .urlButton({ 
-          label: 'Открыть календарь', 
-          url: 'https://xn--b1af2ahcd.xn--p1ai/profile' 
+        .urlButton({
+          label: 'Открыть календарь',
+          url: 'https://xn--b1af2ahcd.xn--p1ai/profile'
         });
 
       for (const u of targetUsers) {
          await sendSystemAlert(u.vkId, msg, alertKeyboard);
-         await new Promise(resolve => setTimeout(resolve, 50)); 
+         await new Promise(resolve => setTimeout(resolve, 50));
       }
       console.log(`[VK Bot] Рассылка успешно завершена!`);
     }
 
   } catch (error) {
-    console.error(error);
-    // Если фронту еще не ответили (например, ошибка БД), отправляем статус 500
+    console.error("Ошибка при создании события:", error);
+    // Отдаем ошибку только если еще не отправили успешный ответ фронту
     if (!res.headersSent) {
-      res.status(500).json({ message: 'Ошибка при создании мероприятия' });
+      res.status(500).json({ message: "Ошибка создания мероприятия" });
     }
   }
 });
+
 // ИСПРАВЛЕНО: Умная фильтрация ленты. Обычные бойцы видят только СВОЙ отряд + РЕГИОНАЛЬНЫЕ
 // ИСПРАВЛЕННЫЙ РОУТ ЛЕНТЫ СОБЫТИЙ С ПОДГРУЗКОЙ УЧАСТНИКОВ
 app.get('/api/events', authMiddleware, async (req, res) => {

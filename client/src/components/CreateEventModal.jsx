@@ -154,7 +154,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
             </label>
             <div className="w-full h-48 rounded-xl overflow-hidden border border-gray-100 mb-2 relative">
               {/* load: 'package.full' обязателен для работы геокодера без ошибок */}
-              <YMaps query={{ load: 'package.full' }}>
+              <YMaps query={{ apikey: 'e4fd4cca-44a9-4b22-a8b8-63ef14d99aa2', load: 'package.full' }}>
                 <Map 
                   defaultState={{ center: [44.6166, 33.5254], zoom: 11 }} 
                   className="w-full h-full"

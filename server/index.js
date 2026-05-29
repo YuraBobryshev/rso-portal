@@ -652,6 +652,26 @@ app.get('/api/brigades/:id', async (req, res) => {
   } catch (error) { res.status(500).json({ message: "Ошибка" }); }
 });
 
+// Получение конкретной новости (для отдельной SEO-страницы)
+app.get('/api/posts/:id', async (req, res) => {
+  try {
+    const post = await prisma.post.findUnique({
+      where: { id: req.params.id },
+      include: {
+        author: { select: { id: true, firstName: true, lastName: true, avatarUrl: true } },
+        comments: { 
+          include: { author: { select: { firstName: true, lastName: true, avatarUrl: true } } }, 
+          orderBy: { createdAt: 'asc' } 
+        }
+      }
+    });
+    if (!post) return res.status(404).json({ message: "Новость не найдена" });
+    res.json(post);
+  } catch (error) { 
+    res.status(500).json({ message: "Ошибка сервера при загрузке новости" }); 
+  }
+});
+
 // ГЛОБАЛЬНЫЙ АНАЛИТИЧЕСКИЙ ЭНДПОИНТ: ПОДСЧЕТ РЕЙТИНГА И СТАТИСТИКИ ГОРОДА
 app.get('/api/admin/rating-stats', authMiddleware, checkRole(['REG_HQ']), async (req, res) => {
   try {

@@ -467,29 +467,33 @@ app.post('/api/events', authMiddleware, async (req, res) => {
 
     res.json(newEvent); // Сразу отдаем ответ фронту, чтобы модалка закрылась
 
-    // =========================================================
+// =========================================================
     // 🤖 МАГИЯ ВК-БОТА: МАССОВАЯ РАССЫЛКА
     // =========================================================
+    console.log(`[VK Bot] Старт рассылки. Тип события: ${type}`);
     
-    // Ищем целевую аудиторию
     let targetUsers = [];
     if (type === 'REGIONAL') {
-      // Ищем вообще всех пользователей системы, у которых привязан ВК
       targetUsers = await prisma.user.findMany({
         where: { vkId: { not: null } }
       });
     } else {
-      // Ищем только бойцов из отряда создателя (LOCAL)
-      targetUsers = await prisma.user.findMany({
-        where: { 
-          brigadeId: creator.brigadeId,
-          vkId: { not: null } 
-        }
-      });
+      console.log(`[VK Bot] ID отряда создателя: ${creator.brigadeId}`);
+      if (creator.brigadeId) {
+        targetUsers = await prisma.user.findMany({
+          where: { 
+            brigadeId: creator.brigadeId,
+            vkId: { not: null } 
+          }
+        });
+      } else {
+        console.log(`[VK Bot] Отмена: У создателя нет отряда для LOCAL события.`);
+      }
     }
 
+    console.log(`[VK Bot] Найдено получателей с привязанным ВК: ${targetUsers.length}`);
+
     if (targetUsers.length > 0) {
-      // Красиво форматируем дату (например: 15 июля, 18:00)
       const eventDateStr = new Date(date).toLocaleString('ru-RU', { 
         day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' 
       });
@@ -508,13 +512,11 @@ app.post('/api/events', authMiddleware, async (req, res) => {
           url: 'https://xn--b1af2ahcd.xn--p1ai/profile' 
         });
 
-      // Рассылаем через цикл с микро-задержкой
-      // ВАЖНО: ВК банит за спам, если слать больше 20 сообщений в секунду, 
-      // поэтому добавляем таймаут в 50мс между отправками.
       for (const u of targetUsers) {
          await sendSystemAlert(u.vkId, msg, alertKeyboard);
          await new Promise(resolve => setTimeout(resolve, 50)); 
       }
+      console.log(`[VK Bot] Рассылка успешно завершена!`);
     }
 
   } catch (error) {

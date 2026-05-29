@@ -12,6 +12,8 @@ import Register from './pages/Register';
 import Profile from './pages/Profile';
 import AdminPanel from './pages/AdminPanel';
 import NewsDetail from './pages/NewsDetail';
+import Gallery from './pages/Gallery';
+import AlbumDetail from './pages/AlbumDetail';
 
 function App() {
   return (
@@ -27,12 +29,8 @@ function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/admin" element={<AdminPanel />} />
-        
-        <Route path="/gallery" element={
-          <div className="min-h-screen flex items-center justify-center font-black uppercase text-rso-blue">
-            Галерея в разработке
-          </div>
-        } />
+        <Route path="/gallery" element={<Gallery />} />
+        <Route path="/gallery/:id" element={<AlbumDetail />} />
       </Routes>
     </Router>
   );

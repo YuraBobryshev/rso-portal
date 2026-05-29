@@ -31,6 +31,7 @@ model User {
   avatarUrl      String?
   vkUrl          String?            @default("")
   tgUrl          String?            @default("")
+  photos         Photo[]
   
   // НОВОЕ: ID пользователя ВКонтакте для отправки API-уведомлений
   vkId      String?  @unique  // Добавь эту строчку! 
@@ -161,4 +162,28 @@ model Comment {
   author    User     @relation(fields: [authorId], references: [id])
   postId    String
   post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+}
+
+// Модель Альбома
+model Album {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  coverUrl    String?  // Обложка альбома
+  createdAt   DateTime @default(now())
+  photos      Photo[]
+}
+
+// Модель Фотографии
+model Photo {
+  id        String   @id @default(uuid())
+  url       String   // Ссылка на S3
+  albumId   String
+  album     Album    @relation(fields: [albumId], references: [id], onDelete: Cascade)
+  
+  // Кто загрузил фото
+  uploaderId String
+  uploader   User     @relation(fields: [uploaderId], references: [id])
+  
+  createdAt  DateTime @default(now())
 }

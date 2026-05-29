@@ -1286,5 +1286,87 @@ app.get('/api/auth/vk/callback', async (req, res) => {
   }
 });
 
+// =============================================================================
+// 📸 БЛОК: ГАЛЕРЕЯ И S3
+// =============================================================================
+
+// Получить все альбомы
+app.get('/api/albums', async (req, res) => {
+  try {
+    const albums = await prisma.album.findMany({
+      include: {
+        _count: { select: { photos: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json(albums);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка загрузки альбомов' });
+  }
+});
+
+// Создать новый альбом (Только для Комсостава, Медиа и Штаба)
+app.post('/api/albums', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'MEDIA', 'REG_HQ']), upload.single('cover'), async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    const coverUrl = req.file ? req.file.location : null;
+
+    const album = await prisma.album.create({
+      data: { title, description, coverUrl }
+    });
+    res.status(201).json(album);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка создания альбома' });
+  }
+});
+
+// Получить конкретный альбом с фотографиями
+app.get('/api/albums/:id', async (req, res) => {
+  try {
+    const album = await prisma.album.findUnique({
+      where: { id: req.params.id },
+      include: {
+        photos: {
+          include: { uploader: { select: { firstName: true, lastName: true } } },
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+    if (!album) return res.status(404).json({ message: 'Альбом не найден' });
+    res.json(album);
+  } catch (error) {
+    res.status(500).json({ message: 'Ошибка загрузки альбома' });
+  }
+});
+
+// Загрузить пачку фото в альбом (до 10 штук за раз)
+app.post('/api/albums/:id/photos', authMiddleware, upload.array('photos', 10), async (req, res) => {
+  try {
+    const albumId = req.params.id;
+    const uploaderId = req.user.userId;
+
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ message: 'Файлы не найдены' });
+    }
+
+    // Сохраняем ссылки на загруженные в S3 файлы в БД
+    const photoPromises = req.files.map(file => 
+      prisma.photo.create({
+        data: {
+          url: file.location,
+          albumId,
+          uploaderId
+        }
+      })
+    );
+
+    await Promise.all(photoPromises);
+    res.json({ message: 'Фотографии успешно загружены' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Ошибка загрузки фотографий' });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

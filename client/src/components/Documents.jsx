@@ -8,18 +8,15 @@ export default function Documents() {
     setDownloading(true);
     try {
       const token = localStorage.getItem('token');
-      // ВАЖНО: responseType: 'blob' нужен, чтобы axios правильно принял бинарный файл, а не текст
       const res = await api.get(`/documents/generate/${docType}`, {
         headers: { Authorization: `Bearer ${token}` },
         responseType: 'blob', 
       });
 
-      // Хак для форсированного скачивания файла браузером
       const url = window.URL.createObjectURL(new Blob([res.data]));
       const link = document.createElement('a');
       link.href = url;
       
-      // Вытаскиваем красивое имя файла из заголовков бэкенда
       const disposition = res.headers['content-disposition'];
       let fileName = 'Документ.docx';
       if (disposition && disposition.indexOf('filename*=UTF-8') !== -1) {
@@ -33,7 +30,7 @@ export default function Documents() {
       link.parentNode.removeChild(link);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error("Ошибка скачивания:", error);
+      console.error(error);
       alert('Не удалось сгенерировать документ');
     } finally {
       setDownloading(false);
@@ -41,26 +38,26 @@ export default function Documents() {
   };
 
   return (
-    <div className="bg-white border border-gray-100 rounded-[2rem] p-8 shadow-sm">
-      <h2 className="text-xl font-black uppercase tracking-tight text-black mb-6">База знаний</h2>
+    <div className="bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-700 rounded-[2rem] p-6 md:p-10 shadow-sm">
+      <h2 className="heading-2 mb-6">База знаний</h2>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Карточка авто-документа */}
-        <div className="border border-gray-100 rounded-2xl p-6 hover:border-rso-blue transition-colors group flex flex-col justify-between bg-slate-50">
+        <div className="border border-rso-gray dark:border-slate-700 rounded-2xl p-6 md:p-8 hover:border-[#0804FF] dark:hover:border-blue-400 transition-colors group flex flex-col justify-between bg-slate-50 dark:bg-slate-900 shadow-sm">
           <div>
-            <div className="text-4xl mb-4">📝</div>
-            <h3 className="text-sm font-black uppercase tracking-wider mb-2">Заявление в отряд</h3>
-            <p className="text-xs text-gray-500 font-medium leading-relaxed">
-              Официальный бланк вступления. Твои ФИО и название отряда будут заполнены автоматически.
+            <div className="text-4xl mb-6">📝</div>
+            <h3 className="heading-3 mb-2 group-hover:text-[#0804FF] dark:group-hover:text-blue-400 transition-colors">Заявление в отряд</h3>
+            <p className="font-onest text-xs sm:text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+              Официальный бланк вступления. Твои ФИО и название отряда будут заполнены автоматически на основе профиля.
             </p>
           </div>
           
           <button 
             onClick={() => handleDownload('statement')}
             disabled={downloading}
-            className="mt-6 w-full py-4 bg-white border border-gray-200 text-rso-blue text-[10px] font-black uppercase tracking-widest rounded-xl group-hover:bg-rso-blue group-hover:text-white group-hover:border-rso-blue transition-all disabled:opacity-50"
+            className="btn-primary w-full mt-8 py-3.5"
           >
-            {downloading ? 'Генерация...' : 'Скачать авто-шаблон ↓'}
+            {downloading ? 'Генерация...' : 'Скачать DOCX'}
           </button>
         </div>
       </div>

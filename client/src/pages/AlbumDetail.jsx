@@ -8,7 +8,7 @@ export default function AlbumDetail() {
   const [album, setAlbum] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null); // Для Lightbox
+  const [selectedImage, setSelectedImage] = useState(null);
 
   const token = localStorage.getItem('token');
 
@@ -46,7 +46,7 @@ export default function AlbumDetail() {
       await api.post(`/albums/${id}/photos`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      fetchAlbum(); // Обновляем альбом после загрузки
+      fetchAlbum();
     } catch (e) {
       alert("Ошибка при загрузке фотографий");
     } finally {
@@ -55,47 +55,52 @@ export default function AlbumDetail() {
   };
 
   if (loading) return (
-    <div className="min-h-screen bg-slate-50 pt-32 text-center text-xs font-bold uppercase tracking-widest text-gray-400 animate-pulse">
+    <div className="min-h-screen pt-32 text-center font-stolzl text-xs font-bold uppercase tracking-widest text-gray-400 animate-pulse">
       Загрузка фотографий...
     </div>
   );
 
   if (!album) return (
-    <div className="min-h-screen bg-slate-50 pt-32 text-center text-xs font-bold uppercase tracking-widest text-red-500">
+    <div className="min-h-screen pt-32 text-center font-stolzl text-xs font-bold uppercase tracking-widest text-red-500">
       Альбом не найден
     </div>
   );
 
   return (
-    <div className="min-h-screen bg-slate-50 text-black font-sans antialiased pb-24">
+    <div className="min-h-screen transition-colors duration-300 pb-24">
       <Header />
       
       <main className="max-w-[1500px] mx-auto px-4 md:px-6 pt-24">
         
-        <Link to="/gallery" className="inline-block mb-6 text-[10px] font-black uppercase tracking-wider text-gray-400 hover:text-black transition-colors">
+        <Link to="/gallery" className="font-stolzl inline-block mb-6 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-rso-black dark:hover:text-white transition-colors">
           ← Назад в архив
         </Link>
 
         {/* ШАПКА АЛЬБОМА */}
-        <div className="bg-white border border-gray-200 rounded-[2rem] p-6 md:p-10 shadow-sm mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-700 rounded-[2rem] p-6 md:p-10 shadow-sm mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div>
-            <h1 className="text-2xl md:text-4xl font-black uppercase tracking-tight text-black mb-2">
+            <h1 className="heading-1 mb-2">
               {album.title}
             </h1>
             {album.description && (
-              <p className="text-sm text-gray-500 font-medium max-w-2xl">
+              <p className="font-onest text-sm md:text-base text-gray-500 dark:text-gray-400 font-medium max-w-2xl">
                 {album.description}
               </p>
             )}
-            <span className="inline-block mt-4 text-[9px] font-black text-gray-400 uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-lg">
-              {new Date(album.createdAt).toLocaleDateString('ru-RU')} • Фотографий: {album.photos?.length || 0}
-            </span>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <span className="inline-block font-stolzl text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest bg-slate-50 dark:bg-slate-900 border border-rso-gray dark:border-slate-700 px-3 py-1.5 rounded-lg">
+                <span className="number-display">{new Date(album.createdAt).toLocaleDateString('ru-RU')}</span>
+              </span>
+              <span className="inline-block font-stolzl text-[10px] font-bold text-gray-500 dark:text-gray-300 uppercase tracking-widest bg-slate-50 dark:bg-slate-900 border border-rso-gray dark:border-slate-700 px-3 py-1.5 rounded-lg">
+                Фотографий: <span className="number-display">{album.photos?.length || 0}</span>
+              </span>
+            </div>
           </div>
 
           {/* Загрузка фото (только для авторизованных) */}
           {token && (
-            <label className={`cursor-pointer shrink-0 bg-rso-blue text-white px-6 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-blue-700 transition-all shadow-sm ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
-              <span>{isUploading ? 'Загрузка в S3...' : '+ Добавить фото'}</span>
+            <label className={`cursor-pointer shrink-0 btn-primary ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
+              <span>{isUploading ? 'Загрузка...' : '+ Добавить фото'}</span>
               <input type="file" multiple accept="image/*" onChange={handlePhotoUpload} className="hidden" />
             </label>
           )}
@@ -108,13 +113,13 @@ export default function AlbumDetail() {
               <div 
                 key={photo.id} 
                 onClick={() => setSelectedImage(photo.url)}
-                className="group relative aspect-square bg-slate-200 rounded-2xl overflow-hidden cursor-zoom-in border border-gray-200 shadow-sm"
+                className="group relative aspect-square bg-slate-100 dark:bg-slate-800 rounded-[1.5rem] overflow-hidden cursor-zoom-in border border-rso-gray dark:border-slate-700 shadow-sm"
               >
                 <img src={photo.url} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                 
                 {/* Инфо при наведении */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
-                  <span className="text-[8px] font-black uppercase text-white tracking-wider">
+                  <span className="font-stolzl text-[8px] font-bold uppercase text-white tracking-wider">
                     От: {photo.uploader?.firstName} {photo.uploader?.lastName}
                   </span>
                 </div>
@@ -122,7 +127,7 @@ export default function AlbumDetail() {
             ))}
           </div>
         ) : (
-          <div className="py-20 text-center text-xs font-bold uppercase tracking-wider text-gray-400 border border-dashed border-gray-200 rounded-3xl bg-white">
+          <div className="py-20 text-center font-stolzl text-xs font-bold uppercase tracking-wider text-gray-400 border border-dashed border-rso-gray dark:border-slate-700 rounded-[2rem] bg-white dark:bg-slate-800">
             В этом альбоме пока нет фотографий
           </div>
         )}

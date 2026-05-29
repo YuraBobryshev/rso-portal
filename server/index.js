@@ -450,39 +450,81 @@ app.post('/api/commander/process-application', authMiddleware, checkRole(['COMMA
 // =============================================================================
 
 // ИСПРАВЛЕНО: Расширены права создания и добавлена четкая сегментация типов
-app.post('/api/events', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'MASTER', 'REG_HQ']), async (req, res) => {
+app.post('/api/events', authMiddleware, async (req, res) => {
   try {
-    // Добавили lat и lng в деструктуризацию
     const { title, description, date, location, lat, lng, type } = req.body;
-    const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
-    
-    let targetBrigadeId = null;
-    let eventType = "LOCAL";
+    const userId = req.user.userId;
 
-    if (user.role === 'REG_HQ') {
-      eventType = type || "REGIONAL";
-      targetBrigadeId = eventType === 'REGIONAL' ? null : req.body.brigadeId;
-    } else {
-      if (!user.brigadeId) return res.status(403).json({ message: "Вы не привязаны к ЛСО" });
-      targetBrigadeId = user.brigadeId;
-    }
+    // 1. Узнаем, кто создает мероприятие (чтобы понять его отряд)
+    const creator = await prisma.user.findUnique({ where: { id: userId } });
 
-    const event = await prisma.event.create({
-      data: { 
-        title, 
-        description: description || "Описание не указано", 
-        date: new Date(date), 
-        location: location || "Не указано",
-        lat: lat || null,  // Сохраняем широту
-        lng: lng || null,  // Сохраняем долготу
-        type: eventType, 
-        brigadeId: targetBrigadeId 
+    // 2. Твой код создания мероприятия в БД...
+    const newEvent = await prisma.event.create({
+      data: {
+         // ... твои поля
       }
     });
-    res.status(201).json(event);
-  } catch (error) { res.status(500).json({ message: "Ошибка создания мероприятия" }); }
-});
 
+    res.json(newEvent); // Сразу отдаем ответ фронту, чтобы модалка закрылась
+
+    // =========================================================
+    // 🤖 МАГИЯ ВК-БОТА: МАССОВАЯ РАССЫЛКА
+    // =========================================================
+    
+    // Ищем целевую аудиторию
+    let targetUsers = [];
+    if (type === 'REGIONAL') {
+      // Ищем вообще всех пользователей системы, у которых привязан ВК
+      targetUsers = await prisma.user.findMany({
+        where: { vkId: { not: null } }
+      });
+    } else {
+      // Ищем только бойцов из отряда создателя (LOCAL)
+      targetUsers = await prisma.user.findMany({
+        where: { 
+          brigadeId: creator.brigadeId,
+          vkId: { not: null } 
+        }
+      });
+    }
+
+    if (targetUsers.length > 0) {
+      // Красиво форматируем дату (например: 15 июля, 18:00)
+      const eventDateStr = new Date(date).toLocaleString('ru-RU', { 
+        day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' 
+      });
+      
+      const msg = `📢 ${type === 'REGIONAL' ? '🔥 РЕГИОНАЛЬНОЕ СОБЫТИЕ' : '⚡ СБОР ОТРЯДА'}!\n\n` +
+                  `Название: ${title}\n` +
+                  `📅 Дата: ${eventDateStr}\n` +
+                  `📍 Место: ${location}\n\n` +
+                  `${description ? `📝 Инфо: ${description}\n\n` : ''}` +
+                  `Зайди в систему, чтобы посмотреть детали и подтвердить участие!`;
+
+      const alertKeyboard = Keyboard.builder()
+        .inline()
+        .urlButton({ 
+          label: 'Открыть календарь', 
+          url: 'https://xn--b1af2ahcd.xn--p1ai/profile' 
+        });
+
+      // Рассылаем через цикл с микро-задержкой
+      // ВАЖНО: ВК банит за спам, если слать больше 20 сообщений в секунду, 
+      // поэтому добавляем таймаут в 50мс между отправками.
+      for (const u of targetUsers) {
+         await sendSystemAlert(u.vkId, msg, alertKeyboard);
+         await new Promise(resolve => setTimeout(resolve, 50)); 
+      }
+    }
+
+  } catch (error) {
+    console.error(error);
+    // Если фронту еще не ответили (например, ошибка БД), отправляем статус 500
+    if (!res.headersSent) {
+      res.status(500).json({ message: 'Ошибка при создании мероприятия' });
+    }
+  }
+});
 // ИСПРАВЛЕНО: Умная фильтрация ленты. Обычные бойцы видят только СВОЙ отряд + РЕГИОНАЛЬНЫЕ
 // ИСПРАВЛЕННЫЙ РОУТ ЛЕНТЫ СОБЫТИЙ С ПОДГРУЗКОЙ УЧАСТНИКОВ
 app.get('/api/events', authMiddleware, async (req, res) => {

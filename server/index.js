@@ -11,10 +11,12 @@ const prisma = new PrismaClient();
 const DOMAIN_URL = 'https://xn--b1af2ahcd.xn--p1ai';
 const crypto = require('crypto');
 const ExcelJS = require('exceljs');
-
+const { startBot } = require('./vkBot');
+const { sendSystemAlert, Keyboard } = require('./vkBot');
 
 app.use(cors());
 app.use(express.json());
+startBot();
 
 const checkRole = (allowedRoles) => async (req, res, next) => {
   try {
@@ -370,30 +372,57 @@ app.post('/api/applications/apply', authMiddleware, async (req, res) => {
   try {
     const { brigadeId, phone, aboutMe, skills } = req.body;
     const userId = req.user.userId;
-    
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (user.brigadeId) return res.status(400).json({ message: 'Вы уже состоите в отряде' });
 
-    const existingPending = await prisma.application.findFirst({
-      where: { userId, status: 'PENDING' }
-    });
-    if (existingPending) {
-      return res.status(400).json({ message: 'У вас уже есть активная заявка на рассмотрении' });
-    }
-
-    await prisma.application.create({ 
+    // 1. Создаем заявку в базе (у тебя уже есть похожая логика)
+    const newApplication = await prisma.application.create({
       data: { 
         userId, 
-        brigadeId,
-        phone: phone || null,
-        aboutMe: aboutMe || null,
-        skills: skills || null
-      } 
+        brigadeId, 
+        status: 'PENDING',
+        phone,       // Если эти поля уже добавлены в схему
+        aboutMe,
+        skills
+      }
     });
-    res.json({ message: 'Ваша анкета успешно отправлена комсоставу!' });
-  } catch (e) { 
-    console.error(e);
-    res.status(500).json({ message: 'Ошибка сервера при отправке заявки' }); 
+
+    // Получаем данные кандидата и отряда для текста сообщения
+    const candidate = await prisma.user.findUnique({ where: { id: userId } });
+    const brigade = await prisma.brigade.findUnique({ where: { id: brigadeId } });
+
+    // Отправляем успешный ответ клиенту сразу, не заставляя его ждать отправку ВК
+    res.json({ message: 'Заявка успешно отправлена!' });
+
+    // =========================================================
+    // 🤖 МАГИЯ ВК-БОТА: ОПОВЕЩАЕМ КОМАНДИРА
+    // =========================================================
+    const commander = await prisma.user.findFirst({
+      where: { brigadeId: brigadeId, role: 'COMMANDER' }
+    });
+
+    // Важно: ВК разрешает боту писать юзеру только если юзер сам написал боту первым (кнопка "Начать")
+    if (commander && commander.vkId) {
+      // Собираем красивую клавиатуру
+      const alertKeyboard = Keyboard.builder()
+        .inline()
+        .urlButton({ 
+          label: 'Перейти в систему', 
+          url: 'https://xn--b1af2ahcd.xn--p1ai/profile' // Ссылка на твой прод
+        });
+
+      // Формируем текст
+      const msg = `🔥 Новая заявка в отряд «${brigade.name}»!\n\n` +
+                  `Кандидат: ${candidate.lastName} ${candidate.firstName}\n` +
+                  `О себе: ${aboutMe || 'Не указано'}\n` +
+                  `Навыки: ${skills || 'Не указаны'}\n\n` +
+                  `Зайди в цифровой профиль штаба, чтобы рассмотреть анкету.`;
+
+      // Отправляем
+      await sendSystemAlert(commander.vkId, msg, alertKeyboard);
+    }
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Ошибка при подаче заявки' });
   }
 });
 

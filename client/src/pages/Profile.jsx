@@ -20,6 +20,16 @@ export default function Profile() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
+
+  // Строгие иконки для меню
+const IconUser = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;
+const IconSettings = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>;
+const IconCalendar = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>;
+const IconTrophy = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M8 21h8M12 17v4M7 4h10v3a5 5 0 0 1-10 0V4z"></path><path d="M7 4H5a2 2 0 0 0-2 2v1a5 5 0 0 0 5 5h2M17 4h2a2 2 0 0 1 2 2v1a5 5 0 0 1-5 5h-2"></path></svg>;
+const IconInbox = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>;
+const IconUsers = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>;
+const IconBarChart = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><line x1="12" y1="20" x2="12" y2="10"></line><line x1="18" y1="20" x2="18" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>;
+const IconClipboard = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>;
   
   // Активный таб центрального блока
   const [activeTab, setActiveTab] = useState('profile');
@@ -256,7 +266,7 @@ export default function Profile() {
           >
             {/* Абстрактный геометрический паттерн на фоне */}
             <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-            <h1 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tight text-center px-4 drop-shadow-md z-10">
+            <h1 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tight text-center px-4 drop-shadow-md">
               {user.lastName} {user.firstName}
             </h1>
           </div>
@@ -288,41 +298,41 @@ export default function Profile() {
           {/* 1. ЛЕВАЯ КОЛОНКА: СИСТЕМА УПРАВЛЕНИЯ ТАБАМИ (НАВИГАЦИЯ) */}
           <div className="lg:col-span-3 space-y-6">
             <div className={bentoCardClass + " !p-3 flex flex-col gap-1"}>
-              <button onClick={() => setActiveTab('profile')} className={getTabClass('profile')}>👤 Профиль</button>
-              <button onClick={() => setActiveTab('settings')} className={getTabClass('settings')}>⚙️ Настройки</button>
-              <button onClick={() => setActiveTab('events')} className={getTabClass('events')}>📅 Мероприятия</button>
-              <button onClick={() => setActiveTab('achievements')} className={getTabClass('achievements')}>🏆 Достижения</button>
+              <button onClick={() => setActiveTab('profile')} className={getTabClass('profile')}><IconUser /> Профиль</button>
+<button onClick={() => setActiveTab('settings')} className={getTabClass('settings')}><IconSettings /> Настройки</button>
+<button onClick={() => setActiveTab('events')} className={getTabClass('events')}><IconCalendar /> Мероприятия</button>
+<button onClick={() => setActiveTab('achievements')} className={getTabClass('achievements')}><IconTrophy /> Достижения</button>
 
-              {/* ДИНАМИЧЕСКИЙ БЛОК ДЛЯ КОМСОСТАВА ОТРЯДА */}
-              {['COMMANDER', 'COMMISSAR', 'MASTER', 'REG_HQ'].includes(user.role) && (
-                <>
-                  <div className="mt-4 mb-2 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest select-none">
-                    // Управление ЛСО
-                  </div>
-                  
-                  {['COMMANDER', 'REG_HQ'].includes(user.role) && (
-                    <>
-                      <button onClick={() => setActiveTab('commander_apps')} className={getTabClass('commander_apps')}>
-                        <div className="flex items-center justify-between w-full">
-                          <span>📥 Заявки в отряд</span>
-                          {applications.length > 0 && (
-                            <span className="bg-blue-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md animate-pulse">{applications.length}</span>
-                          )}
-                        </div>
-                      </button>
-                      <button onClick={() => setActiveTab('commander_members')} className={getTabClass('commander_members')}>👥 Состав отряда</button>
-                    </>
-                  )}
+{/* ДИНАМИЧЕСКИЙ БЛОК ДЛЯ КОМСОСТАВА ОТРЯДА */}
+{['COMMANDER', 'COMMISSAR', 'MASTER', 'REG_HQ'].includes(user.role) && (
+  <>
+    <div className="mt-4 mb-2 px-4 text-[9px] font-black text-gray-400 uppercase tracking-widest select-none">
+      // Управление ЛСО
+    </div>
+    
+    {['COMMANDER', 'REG_HQ'].includes(user.role) && (
+      <>
+        <button onClick={() => setActiveTab('commander_apps')} className={getTabClass('commander_apps')}>
+          <div className="flex items-center justify-between w-full">
+            <span className="flex items-center gap-3"><IconInbox /> Заявки в отряд</span>
+            {applications.length > 0 && (
+              <span className="bg-blue-500 text-white text-[9px] font-black px-2 py-0.5 rounded-md animate-pulse">{applications.length}</span>
+            )}
+          </div>
+        </button>
+        <button onClick={() => setActiveTab('commander_members')} className={getTabClass('commander_members')}><IconUsers /> Состав отряда</button>
+      </>
+    )}
 
-                  {['COMMISSAR', 'REG_HQ'].includes(user.role) && (
-                    <button onClick={() => setActiveTab('commissar_reports')} className={getTabClass('commissar_reports')}>📊 Отчет по движу</button>
-                  )}
+    {['COMMISSAR', 'REG_HQ'].includes(user.role) && (
+      <button onClick={() => setActiveTab('commissar_reports')} className={getTabClass('commissar_reports')}><IconBarChart /> Отчет по движу</button>
+    )}
 
-                  {['MASTER', 'REG_HQ'].includes(user.role) && (
-                    <button onClick={() => setActiveTab('master_attendance')} className={getTabClass('master_attendance')}>📝 Посещаемость</button>
-                  )}
-                </>
-              )}
+    {['MASTER', 'REG_HQ'].includes(user.role) && (
+      <button onClick={() => setActiveTab('master_attendance')} className={getTabClass('master_attendance')}><IconClipboard /> Посещаемость</button>
+    )}
+  </>
+)}
             </div>
 
             {/* Мягкий вспомогательный bento-блок статистики слева */}

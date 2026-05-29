@@ -11,6 +11,8 @@ import smoLogo from '../assets/icons/smo.svg';
 import sservoLogo from '../assets/icons/sservo.svg';
 import photoMain from '../assets/PhotoMain.jpg';
 
+
+
 export default function Home() {
   const [latestNews, setLatestNews] = useState([]);
   const [loadingNews, setLoadingNews] = useState(true);

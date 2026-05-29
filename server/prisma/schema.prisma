@@ -117,6 +117,8 @@ model Event {
   brigade        Brigade?           @relation(fields: [brigadeId], references: [id])
   createdAt      DateTime           @default(now())
   participations EventParticipant[]
+  lat            Float?             
+  lng            Float?
 }
 
 // ОБНОВЛЕНО: Расширена модель достижений для системы грамот

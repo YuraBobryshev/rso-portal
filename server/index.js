@@ -423,7 +423,8 @@ app.post('/api/commander/process-application', authMiddleware, checkRole(['COMMA
 // ИСПРАВЛЕНО: Расширены права создания и добавлена четкая сегментация типов
 app.post('/api/events', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'MASTER', 'REG_HQ']), async (req, res) => {
   try {
-    const { title, description, date, location, type } = req.body;
+    // Добавили lat и lng в деструктуризацию
+    const { title, description, date, location, lat, lng, type } = req.body;
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
     
     let targetBrigadeId = null;
@@ -443,6 +444,8 @@ app.post('/api/events', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'MA
         description: description || "Описание не указано", 
         date: new Date(date), 
         location: location || "Не указано",
+        lat: lat || null,  // Сохраняем широту
+        lng: lng || null,  // Сохраняем долготу
         type: eventType, 
         brigadeId: targetBrigadeId 
       }

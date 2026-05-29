@@ -5,3 +5,9 @@
 html {
   scrollbar-gutter: stable;
 }
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-black dark:bg-slate-900 dark:text-white transition-colors duration-300;
+  }
+}

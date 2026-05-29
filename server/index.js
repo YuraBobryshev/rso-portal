@@ -1609,5 +1609,74 @@ app.post('/api/documents/generate/statement', authMiddleware, async (req, res) =
   }
 });
 
+app.get('/sitemap.xml', async (req, res) => {
+  try {
+    const DOMAIN = 'https://xn--b1af2ahcd.xn--p1ai';
+    
+    // Получаем динамические данные
+    const posts = await prisma.post.findMany({ select: { id: true, createdAt: true } });
+    const brigades = await prisma.brigade.findMany({ select: { id: true, createdAt: true } });
+
+    // Статичные страницы
+    let xml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${DOMAIN}/</loc>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>${DOMAIN}/about</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>${DOMAIN}/news</loc>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>${DOMAIN}/brigades</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>
+  <url>
+    <loc>${DOMAIN}/documents</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>`;
+
+    // Добавляем новости
+    posts.forEach(post => {
+      xml += `
+  <url>
+    <loc>${DOMAIN}/news/${post.id}</loc>
+    <lastmod>${post.createdAt.toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+    });
+
+    // Добавляем отряды
+    brigades.forEach(brigade => {
+      xml += `
+  <url>
+    <loc>${DOMAIN}/brigades/${brigade.id}</loc>
+    <lastmod>${brigade.createdAt.toISOString()}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>`;
+    });
+
+    xml += '\n</urlset>';
+
+    res.header('Content-Type', 'application/xml');
+    res.send(xml);
+  } catch (error) {
+    console.error('Ошибка генерации sitemap:', error);
+    res.status(500).end();
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

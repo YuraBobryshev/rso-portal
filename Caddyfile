@@ -5,4 +5,6 @@
 севрсо.рф {
     reverse_proxy /api/* app:5000
     reverse_proxy /* client:80
+    reverse_proxy /sitemap.xml app:5000
 }
+

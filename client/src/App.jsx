@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 
 // Импорты страниц
 import Home from './pages/Home';
-import About from './pages/About';
 import News from './pages/News';
 import Brigades from './pages/Brigades';
 import BrigadeDetail from './pages/BrigadeDetail';
@@ -21,7 +20,6 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Home />} />
-        <Route path="/about" element={<About />} />
         <Route path="/news" element={<News />} />
         <Route path="/brigades" element={<Brigades />} />
         <Route path="/brigades/:id" element={<BrigadeDetail />} />

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api/axiosConfig';
 import { YMaps, Map, Placemark } from '@pbe/react-yandex-maps';
 
@@ -20,45 +20,53 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
   const [suggestions, setSuggestions] = useState([]);       // Список подсказок адресов
   const [showSuggestions, setShowSuggestions] = useState(false);
 
-  if (!isOpen) return null;
-
-  // Функция обработки ввода текста (ищет адреса)
-  const handleLocationInput = (e) => {
-    const value = e.target.value;
-    setLocation(value);
-
+  // === ЭФФЕКТ DEBOUNCE ДЛЯ УМНОГО ПОИСКА ===
+  useEffect(() => {
     // Ищем только если введено больше 2 символов и Яндекс загрузился
-    if (!ymapsInstance || value.length < 3) {
+    if (!ymapsInstance || location.length < 3) {
       setSuggestions([]);
       setShowSuggestions(false);
       return;
     }
 
-    // Ищем адрес (ограничиваем поиск контекстом Севастополя для точности)
-    ymapsInstance.geocode('Севастополь, ' + value, { results: 5 })
-      .then(res => {
-        const found = [];
-        res.geoObjects.each(geoObj => {
-          found.push({
-            address: geoObj.getAddressLine(),
-            coords: geoObj.geometry.getCoordinates()
-          });
-        });
-        setSuggestions(found);
-        setShowSuggestions(true);
-      })
-      .catch(err => console.error("Ошибка геокодера:", err));
+    // Задержка 500мс, чтобы не спамить API при быстром наборе текста
+    const delayDebounceFn = setTimeout(() => {
+      ymapsInstance.suggest('Севастополь, ' + location)
+        .then(res => {
+          setSuggestions(res);
+          setShowSuggestions(true);
+        })
+        .catch(err => console.error("Ошибка suggest API:", err));
+    }, 500);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [location, ymapsInstance]);
+
+  if (!isOpen) return null;
+
+  // Обработка ввода (теперь только обновляет стейт текста)
+  const handleLocationInput = (e) => {
+    setLocation(e.target.value);
   };
 
   // Функция выбора адреса из выпадающего списка
   const handleSuggestionClick = (sug) => {
-    setLocation(sug.address);
-    setCoordinates(sug.coords);
+    const fullAddress = sug.value;
+    setLocation(fullAddress);
     setShowSuggestions(false);
     
-    // Плавно центрируем карту на выбранном адресе
-    if (mapInstance) {
-      mapInstance.setCenter(sug.coords, 16, { duration: 400 });
+    // Получаем точные координаты выбранного адреса для карты и БД
+    if (ymapsInstance) {
+      ymapsInstance.geocode(fullAddress).then(res => {
+        const firstGeoObj = res.geoObjects.get(0);
+        if (firstGeoObj) {
+          const coords = firstGeoObj.geometry.getCoordinates();
+          setCoordinates(coords);
+          if (mapInstance) {
+            mapInstance.setCenter(coords, 16, { duration: 400 });
+          }
+        }
+      });
     }
   };
 
@@ -139,7 +147,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
                       onClick={() => handleSuggestionClick(sug)}
                       className="px-4 py-3 text-xs font-bold text-gray-600 hover:bg-slate-50 cursor-pointer border-b border-gray-50 last:border-0 truncate"
                     >
-                      📍 {sug.address.replace('Россия, Севастополь, ', '')}
+                      📍 {sug.value.replace('Россия, Севастополь, ', '')}
                     </li>
                   ))}
                 </ul>
@@ -153,7 +161,6 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
               Уточните точку на карте
             </label>
             <div className="w-full h-48 rounded-xl overflow-hidden border border-gray-100 mb-2 relative">
-              {/* load: 'package.full' обязателен для работы геокодера без ошибок */}
               <YMaps query={{ apikey: 'e4fd4cca-44a9-4b22-a8b8-63ef14d99aa2', load: 'package.full' }}>
                 <Map 
                   defaultState={{ center: [44.6166, 33.5254], zoom: 11 }} 
@@ -161,7 +168,6 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
                   onLoad={(ymaps) => setYmapsInstance(ymaps)}
                   instanceRef={(ref) => setMapInstance(ref)}
                   onClick={(e) => {
-                    // Обратное геокодирование: Кликнули на карту -> обновили поле текста
                     const coords = e.get('coords');
                     setCoordinates(coords);
                     if (ymapsInstance) {

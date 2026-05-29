@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import api from '../api/axiosConfig'
 import Header from '../components/Header';
 
-// Импортируем 5 SVG логотипов из папки ассетов для плакатов
 import ssoLogo from '../assets/icons/sso.svg';
 import spoLogo from '../assets/icons/spo.svg';
 import sopLogo from '../assets/icons/sop.svg';
@@ -33,14 +32,8 @@ export default function Home() {
     fetchLatestNews();
   }, []);
 
-  const cardVariants = {
-    hidden: { opacity: 0, y: 30 },
-    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
-  };
-
-  // Новая конфигурация направлений (Дизайн фирменных плакатов ЛСО)
   const vectors = [
-    { code: 'ССО', title: 'Строительные отряды', slogan: 'на стройке', accent: '#0052FF', logo: ssoLogo },
+    { code: 'ССО', title: 'Строительные отряды', slogan: 'на стройке', accent: '#0804FF', logo: ssoLogo },
     { code: 'СПО', title: 'Педагогические отряды', slogan: 'в лагере', accent: '#4DA6FF', logo: spoLogo },
     { code: 'СОП', title: 'Отряды проводников', slogan: 'в поезде', accent: '#FF4D39', logo: sopLogo },
     { code: 'СМО', title: 'Медицинские отряды', slogan: 'в медицине', accent: '#00E5FF', logo: smoLogo },
@@ -55,270 +48,114 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 text-black dark:text-white font-sans antialiased selection:bg-rso-blue selection:text-white transition-colors duration-300">
-      <style>{`
-        @keyframes marquee {
-          0% { transform: translateX(0%); }
-          100% { transform: translateX(-50%); }
-        }
-        .animate-marquee {
-          display: flex;
-          width: max-content;
-          animation: marquee 35s linear infinite;
-        }
-      `}</style>
-
+    <div className="min-h-screen bg-white dark:bg-slate-900 text-rso-black dark:text-white transition-colors duration-300">
       <Header />
 
       <main className="pt-24 space-y-24 md:space-y-32">
         
-        {/* ================= 1. HERO СЕКЦИЯ ================= */}
+        {/* HERO СЕКЦИЯ */}
         <section className="w-full max-w-[1400px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          <div className="space-y-8">
-            <div className="flex items-center gap-4 text-[10px] sm:text-xs font-bold tracking-widest text-rso-blue dark:text-blue-400 uppercase">
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 text-xs font-stolzl uppercase tracking-widest text-rso-blue dark:text-blue-400">
               <span>Севастопольское отделение</span>
-              <span className="w-8 h-[2px] bg-rso-blue/30 dark:bg-blue-400/30"></span>
+              <span className="w-8 h-[2px] bg-rso-blue/30"></span>
               <span>МООО РСО</span>
             </div>
             
-            <h1 className="text-5xl sm:text-6xl md:text-[5rem] lg:text-[5.5rem] font-black uppercase tracking-tight leading-[0.9] text-black dark:text-white">
+            {/* Actay Wide Bold: Исключительный заголовок */}
+            <h1 className="font-actay text-5xl sm:text-6xl md:text-[4.5rem] lg:text-[5rem] uppercase tracking-tight leading-[1] text-rso-black dark:text-white">
               СТУДЕНЧЕСКИЕ <br />
-              ОТРЯДЫ <br />
-              <span className="text-rso-blue dark:text-blue-500">СЕВАСТОПОЛЯ</span>
+              <span className="text-rso-blue">ОТРЯДЫ</span>
             </h1>
             
-            <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 font-medium max-w-lg leading-relaxed">
+            {/* Onest Regular: Текстовый блок */}
+            <p className="font-onest text-base text-gray-600 dark:text-gray-300 max-w-lg leading-relaxed">
               Главное молодежное движение Севастополя. Мы строим города, воспитываем детей, спасаем жизни и путешествуем по всей стране. Это твоё лучшее студенчество.
             </p>
           </div>
 
-          <div className="relative w-full aspect-[4/5] sm:aspect-square lg:aspect-[4/5] bg-gray-50 dark:bg-slate-800 rounded-[2rem] overflow-hidden shadow-sm group border border-gray-100/50 dark:border-slate-700/50">
-            <img 
-              src={photoMain} 
-              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-              alt="Студенты РСО" 
-            />
-            <div className="absolute bottom-6 left-6 bg-white dark:bg-slate-900 px-5 py-3 rounded-2xl text-[10px] font-bold uppercase tracking-wider text-black dark:text-white shadow-lg shadow-black/5 dark:shadow-black/20">
-              Трудовой семестр 2026
+          <div className="relative w-full aspect-[4/5] lg:aspect-square bg-rso-gray dark:bg-slate-800 rounded-[2rem] overflow-hidden">
+            <img src={photoMain} className="w-full h-full object-cover" alt="Студенты РСО" />
+            <div className="absolute bottom-6 left-6 bg-white dark:bg-slate-900 px-6 py-4 rounded-2xl shadow-lg">
+              <span className="font-stolzl text-xs uppercase tracking-wider text-rso-black dark:text-white block mb-1">Трудовой семестр</span>
+              {/* Stolzl Light: Только для чисел */}
+              <span className="font-stolzl-light text-3xl text-rso-blue block leading-none">2026</span>
             </div>
           </div>
         </section>
 
-        {/* ================= 2. О ДВИЖЕНИИ ================= */}
+        {/* О ДВИЖЕНИИ */}
         <section className="max-w-[1400px] mx-auto px-6">
-          <div className="flex flex-col lg:flex-row gap-12 lg:gap-16 items-stretch">
-            
-            <div className="lg:w-5/12 lg:sticky top-32 space-y-6 flex flex-col justify-center">
-              <div>
-                <span className="text-[10px] sm:text-xs font-bold text-rso-blue dark:text-blue-400 uppercase tracking-widest">Твои возможности</span>
-                <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tight text-black dark:text-white mt-4 leading-[1.1]">
-                  Больше, чем <br className="hidden lg:block"/> просто работа
-                </h2>
-              </div>
-              <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base font-medium leading-relaxed max-w-md">
-                Российские Студенческие Отряды — это крупнейшая молодежная организация страны. Мы не просто даем работу на лето, мы создаем среду для твоего масштабного роста.
+          <div className="flex flex-col lg:flex-row gap-12 items-stretch">
+            <div className="lg:w-5/12 lg:sticky top-32 flex flex-col justify-center">
+              <span className="font-stolzl text-xs text-rso-blue uppercase tracking-widest">Твои возможности</span>
+              {/* Stolzl: Подзаголовок */}
+              <h2 className="font-stolzl font-bold text-4xl md:text-5xl uppercase tracking-tight mt-4 mb-6 leading-tight">
+                Больше, чем <br/> просто работа
+              </h2>
+              <p className="font-onest text-gray-600 dark:text-gray-400 leading-relaxed">
+                Российские Студенческие Отряды — это крупнейшая молодежная организация страны. Мы не просто даем работу на лето, мы создаем среду для твоего роста.
               </p>
             </div>
             
-            <div className="lg:w-7/12 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6 auto-rows-fr">
-              
-              {/* Карточка 1 */}
-              <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-8 md:p-10 rounded-[2rem] hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-black/30 transition-all duration-300 flex flex-col h-full group">
-                <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center mb-8 border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-300 group-hover:border-gray-400 dark:group-hover:border-gray-500 group-hover:bg-gray-50 dark:group-hover:bg-slate-700 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="20" height="14" x="2" y="7" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+            <div className="lg:w-7/12 grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {[
+                { title: 'Работа летом', desc: 'Официальное трудоустройство, белая зарплата и первая серьезная запись в трудовой.' },
+                { title: 'Обучение', desc: 'Штаб бесплатно обучает новичков. Ты получишь реальную профессию и свидетельство.' },
+                { title: 'Знакомства', desc: 'Слеты по всей стране, фестивали и песни. Найди единомышленников на всю жизнь.' },
+                { title: 'Прояви себя', desc: 'Стань командиром отряда, организуй проекты и развивай лидерские навыки.' }
+              ].map((item, idx) => (
+                <div key={idx} className="bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-700 p-8 rounded-[2rem] hover:shadow-xl transition-all">
+                  <h3 className="font-stolzl font-bold text-xl uppercase mb-3 text-rso-black dark:text-white">{item.title}</h3>
+                  <p className="font-onest text-sm text-gray-600 dark:text-gray-400">{item.desc}</p>
                 </div>
-                <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-black dark:text-white mb-3">Работа летом</h3>
-                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 leading-relaxed font-medium mt-auto">Стабильный заработок на крупнейших объектах страны. Официальное трудоустройство, белая зарплата и первая серьезная запись в твоей трудовой книжке.</p>
-              </div>
-              
-              {/* Карточка 2 */}
-              <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-8 md:p-10 rounded-[2rem] hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-black/30 transition-all duration-300 flex flex-col h-full group">
-                <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center mb-8 border border-gray-200 dark:border-slate-600 text-rso-blue dark:text-blue-400 group-hover:border-blue-200 dark:group-hover:border-blue-700 group-hover:bg-blue-50 dark:group-hover:bg-blue-900/30 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.42 10.922a2 2 0 0 0-.019-3.838L12.83 4.314a2 2 0 0 0-1.66 0L2.6 7.08a2 2 0 0 0 0 3.838l9.36 4.314a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/></svg>
-                </div>
-                <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-black dark:text-white mb-3">Бесплатное обучение</h3>
-                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 leading-relaxed font-medium mt-auto">До начала трудового семестра штаб бесплатно обучает новичков. Ты получишь реальную профессию и свидетельство государственного образца.</p>
-              </div>
-
-              {/* Карточка 3 */}
-              <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-8 md:p-10 rounded-[2rem] hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-black/30 transition-all duration-300 flex flex-col h-full group">
-                <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center mb-8 border border-gray-200 dark:border-slate-600 text-yellow-500 group-hover:border-yellow-200 dark:group-hover:border-yellow-600 group-hover:bg-yellow-50 dark:group-hover:bg-yellow-900/30 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></svg>
-                </div>
-                <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-black dark:text-white mb-3">Новые знакомства</h3>
-                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 leading-relaxed font-medium mt-auto">Слеты от Калининграда до Владивостока, творческие фестивали и песни у костра. Здесь ты найдешь настоящих друзей и единомышленников на всю жизнь.</p>
-              </div>
-
-              {/* Карточка 4 */}
-              <div className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 p-8 md:p-10 rounded-[2rem] hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-black/30 transition-all duration-300 flex flex-col h-full group">
-                <div className="w-12 h-12 bg-white dark:bg-slate-900 rounded-2xl flex items-center justify-center mb-8 border border-gray-200 dark:border-slate-600 text-red-500 group-hover:border-red-200 dark:group-hover:border-red-700 group-hover:bg-red-50 dark:group-hover:bg-red-900/30 transition-colors">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z"/><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/></svg>
-                </div>
-                <h3 className="text-lg md:text-xl font-black uppercase tracking-tight text-black dark:text-white mb-3">Прояви себя</h3>
-                <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 leading-relaxed font-medium mt-auto">Твоя площадка для карьерного роста. Стань командиром отряда, организуй масштабные проекты, участвуй в спорте и развивай лидерские навыки.</p>
-              </div>
-
+              ))}
             </div>
           </div>
         </section>
 
-        {/* ================= 3. НАПРАВЛЕНИЯ (ФИРМЕННЫЕ ПЛАКАТЫ) ================= */}
+        {/* НАПРАВЛЕНИЯ */}
         <section className="max-w-[1400px] mx-auto px-6">
-          <div className="text-center mb-8 sm:mb-12">
-            <span className="text-[10px] sm:text-xs font-bold text-rso-blue dark:text-blue-400 uppercase tracking-widest">Наша Стратегия</span>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-black dark:text-white mt-3 mb-4">Твой Вектор Развития</h2>
-            <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base font-medium max-w-xl mx-auto">Выбирай свое призвание среди 5 ключевых трудовых направлений Севастополя.</p>
+          <div className="text-center mb-12">
+            <span className="font-stolzl text-xs text-rso-blue uppercase tracking-widest">Наша Стратегия</span>
+            <h2 className="font-stolzl font-bold text-4xl md:text-5xl uppercase mt-3 mb-4">Твой Вектор Развития</h2>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-5">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             {vectors.map((item, index) => (
               <Link
                 to={`/brigades#direction-${item.code}`}
                 key={index}
-                className="aspect-square sm:aspect-[4/5] rounded-[1.25rem] sm:rounded-[2rem] p-4 sm:p-5 lg:p-6 flex flex-col relative overflow-hidden shadow-sm group hover:-translate-y-1 hover:shadow-lg transition-all duration-300 cursor-pointer"
+                className="aspect-[4/5] rounded-[2rem] p-6 flex flex-col justify-between overflow-hidden relative group transition-transform hover:-translate-y-2"
                 style={{ backgroundColor: item.accent }}
               >
-                <div className="text-white space-y-0.5 sm:space-y-1 relative z-10">
-                  <div className="text-[11px] sm:text-base lg:text-2xl font-black leading-tight sm:leading-none uppercase tracking-tight">
-                    впереди <br /> лучшее лето
-                  </div>
-                  <div className="text-[9px] sm:text-xs lg:text-sm font-medium opacity-90 pt-0.5 sm:pt-1">
-                    ➔ {item.slogan}
-                  </div>
+                <div className="text-white z-10">
+                  <div className="font-actay text-xl sm:text-2xl uppercase leading-tight">впереди <br /> лучшее лето</div>
+                  <div className="font-stolzl text-xs mt-2 opacity-90">➔ {item.slogan}</div>
                 </div>
-                
-                <div className="mt-auto pt-4 w-full opacity-95 group-hover:scale-105 transition-transform duration-500 relative z-10">
-                  <img 
-                    src={item.logo} 
-                    className="w-[90%] md:w-[85%] h-auto object-contain object-left-bottom drop-shadow-md" 
-                    alt={item.title} 
-                  />
-                </div>
+                <img src={item.logo} className="w-[85%] mt-auto z-10 group-hover:scale-105 transition-transform" alt={item.title} />
               </Link>
             ))}
           </div>
         </section>
 
-
-        {/* ================= 4. ТРУДОВЫЕ ОБЪЕКТЫ ================= */}
-        <section className="max-w-[1400px] mx-auto px-6">
-          <div className="mb-8 sm:mb-12">
-            <span className="text-[10px] sm:text-xs font-bold text-rso-blue dark:text-blue-400 uppercase tracking-widest">География работы</span>
-            <h2 className="text-3xl md:text-5xl font-black tracking-tight text-black dark:text-white mt-3">Наши трудовые объекты</h2>
-          </div>
-
-          <div className="grid grid-cols-1 gap-4">
-            {laborObjects.map((obj, i) => (
-              <div 
-                key={i} 
-                className="p-5 md:p-6 bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-[1.5rem] md:rounded-[2rem] grid grid-cols-1 md:grid-cols-12 gap-4 items-center hover:shadow-lg hover:shadow-gray-200/50 dark:hover:shadow-black/30 transition-all duration-300 group"
-              >
-                <div className="md:col-span-4">
-                  <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 block uppercase tracking-wider mb-1">Проект</span>
-                  <div className="text-sm md:text-base font-black uppercase text-black dark:text-white group-hover:text-rso-blue dark:group-hover:text-blue-400 transition-colors leading-tight">
-                    {obj.name}
-                  </div>
-                </div>
-                <div className="md:col-span-3">
-                  <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 block uppercase tracking-wider mb-1">Локация</span>
-                  <div className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                    {obj.location}
-                  </div>
-                </div>
-                <div className="md:col-span-5">
-                  <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 block uppercase tracking-wider mb-1">Производственная задача</span>
-                  <div className="text-xs md:text-sm text-gray-500 dark:text-gray-400 font-medium leading-relaxed">
-                    {obj.task}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-
-
-        {/* ================= 5. НОВОСТИ ШТАБА ================= */}
-        <section className="max-w-[1400px] mx-auto px-6">
-          <div className="flex justify-between items-end mb-10 border-b border-gray-100 dark:border-slate-800 pb-4">
-            <div>
-              <span className="text-[10px] sm:text-xs font-bold text-rso-blue dark:text-blue-400 uppercase tracking-wider">Информационное поле</span>
-              <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tight text-black dark:text-white mt-1">Новости штаба</h2>
-            </div>
-            <Link to="/news" className="text-[10px] sm:text-xs font-bold uppercase text-gray-400 dark:text-gray-500 hover:text-rso-blue dark:hover:text-blue-400 border-b border-transparent hover:border-rso-blue dark:hover:border-blue-400 pb-0.5 transition-all">
-              Все публикации →
-            </Link>
-          </div>
-
-          {loadingNews ? (
-            <div className="py-20 text-center text-xs font-medium text-gray-400 dark:text-gray-600 uppercase tracking-widest animate-pulse">
-              Синхронизация новостной ленты...
-            </div>
-          ) : latestNews.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {latestNews.map((post) => (
-                <div 
-                  key={post.id} 
-                  className="bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-[2rem] flex flex-col group hover:border-rso-blue/20 dark:hover:border-blue-500/30 hover:shadow-md transition-all duration-300 overflow-hidden shadow-sm h-full"
-                >
-                  <div className="aspect-[16/10] overflow-hidden bg-gray-50 dark:bg-slate-900 relative border-b border-gray-50 dark:border-slate-900">
-                    {post.imageUrl ? (
-                      <img src={post.imageUrl} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt=""/>
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center opacity-10 font-black text-xl text-rso-blue dark:text-white">СевРО</div>
-                    )}
-                  </div>
-                  <div className="p-6 md:p-8 flex flex-col flex-1">
-                    <span className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 block">
-                      {new Date(post.createdAt).toLocaleDateString('ru-RU')}
-                    </span>
-                    <h3 className="text-lg font-black uppercase tracking-tight text-black dark:text-white group-hover:text-rso-blue dark:group-hover:text-blue-400 transition-colors duration-200 mb-3 line-clamp-2 leading-snug">
-                      {post.title}
-                    </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-3 mb-6 leading-relaxed font-medium mt-auto">
-                      {post.content}
-                    </p>
-                    <Link 
-                      to="/news" 
-                      className="mt-auto text-[10px] font-bold text-rso-blue dark:text-blue-400 uppercase tracking-wider border-b border-rso-blue/20 dark:border-blue-400/30 self-start pb-0.5 hover:text-black dark:hover:text-white hover:border-black dark:hover:border-white transition-colors"
-                    >
-                      Подробнее →
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="py-14 text-center text-xs font-bold uppercase opacity-30 tracking-wider dark:text-gray-400">Реестр новостей пуст</div>
-          )}
-        </section>
-
-        {/* ================= 6. ПРИЗЫВ К ДЕЙСТВИЮ ================= */}
+        {/* ПРИЗЫВ К ДЕЙСТВИЮ */}
         {!isLoggedIn && (
           <section className="max-w-[1400px] mx-auto px-6 pb-12">
-            <div className="bg-gray-50 dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-[2rem] md:rounded-[3rem] p-10 md:p-20 text-center shadow-sm flex flex-col items-center justify-center">
-              <h2 className="text-3xl sm:text-4xl md:text-6xl font-black uppercase tracking-tight text-black dark:text-white leading-[1.1] mb-6">
+            <div className="bg-rso-gray dark:bg-slate-800 rounded-[3rem] p-12 md:p-20 text-center">
+              <h2 className="font-actay text-3xl md:text-5xl uppercase mb-6 text-rso-black dark:text-white">
                 Твоё лето начинается здесь
               </h2>
-              <p className="text-sm md:text-base text-gray-500 dark:text-gray-400 max-w-xl mx-auto font-medium leading-relaxed mb-8">
-                Не упусти шанс стать частью масштабной истории Севастопольского регионального отделения РСО. Отряды уже начали набор новичков.
+              <p className="font-onest text-gray-600 dark:text-gray-400 max-w-xl mx-auto mb-8">
+                Не упусти шанс стать частью истории. Отряды уже начали набор новичков.
               </p>
-              <Link 
-                to="/register" 
-                className="inline-block bg-rso-blue text-white font-bold uppercase text-xs sm:text-sm tracking-widest px-12 py-5 rounded-2xl hover:bg-black dark:hover:bg-slate-900 transition-colors shadow-lg shadow-blue-500/20 hover:scale-105 transform"
-              >
-                Вступить в отряд →
+              <Link to="/register" className="btn-primary">
+                Вступить в отряд
               </Link>
             </div>
           </section>
         )}
-
       </main>
-
-      <footer className="border-t border-gray-100 dark:border-slate-800 py-10 mt-12 bg-white dark:bg-slate-900 text-center transition-colors duration-300">
-        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-          Севастопольское региональное отделение // МООО РСО 2026 // Труд Крут
-        </p>
-      </footer>
     </div>
   );
 }

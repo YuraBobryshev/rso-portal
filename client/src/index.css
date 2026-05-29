@@ -1,13 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Onest:wght@400;500;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-html {
-  scrollbar-gutter: stable;
+/* Подключение локальных шрифтов РСО */
+@font-face {
+  font-family: 'Actay Wide';
+  src: url('/fonts/ActayWide-Bold.otf') format('opentype');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'Stolzl';
+  src: url('/fonts/Stolzl-Medium.otf') format('opentype');
+  font-weight: 500;
+}
+
+@font-face {
+  font-family: 'Stolzl Light';
+  src: url('/fonts/Stolzl-Light.otf') format('opentype');
+  font-weight: 300;
 }
 
 @layer base {
   body {
-    @apply bg-slate-50 text-black dark:bg-slate-900 dark:text-white transition-colors duration-300;
+    /* Базовый шрифт для всего сайта теперь Onest */
+    @apply font-onest bg-white text-rso-black dark:bg-slate-900 dark:text-white transition-colors duration-300;
+  }
+}
+
+@layer components {
+  /* Унифицированные компоненты по брендбуку */
+  .btn-primary {
+    @apply inline-flex justify-center items-center bg-rso-blue text-white font-stolzl font-medium uppercase tracking-widest px-8 py-4 rounded-2xl hover:bg-black dark:hover:bg-slate-800 transition-all shadow-lg hover:shadow-rso-blue/30 transform hover:-translate-y-1;
   }
 }

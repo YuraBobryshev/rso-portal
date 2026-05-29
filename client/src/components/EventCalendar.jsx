@@ -3,7 +3,7 @@ import api from '../api/axiosConfig';
 import CreateEventModal from './CreateEventModal';
 import { YMaps, Map, Placemark } from '@pbe/react-yandex-maps';
 
-// --- ИКОНКИ (Замена дешевым эмодзи) ---
+// --- ИКОНКИ ---
 const IconList = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
 );
@@ -106,27 +106,27 @@ export default function EventCalendar({ userRole }) {
   const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 
   return (
-    <div className="bg-white border border-gray-200 rounded-3xl p-6 md:p-8 shadow-sm relative">      
+    <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-3xl p-6 md:p-8 shadow-sm relative transition-colors duration-300">      
       {/* ХЕДЕР БЛОКА С ПЕРЕКЛЮЧАТЕЛЯМИ */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">События и сборы</h3>
-          <p className="text-[10px] font-bold text-gray-400 uppercase mt-1">Твой рабочий график</p>
+          <h3 className="text-xs font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">События и сборы</h3>
+          <p className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase mt-1">Твой рабочий график</p>
         </div>
         
         <div className="flex items-center gap-4 w-full sm:w-auto">
           {/* Переключатель вида (Список / Календарь) */}
-          <div className="flex bg-slate-100 p-1 rounded-xl shrink-0">
+          <div className="flex bg-slate-100 dark:bg-slate-900 p-1 rounded-xl shrink-0 transition-colors duration-300">
             <button 
               onClick={() => setViewMode('list')} 
-              className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-rso-blue' : 'text-gray-400 hover:text-gray-600'}`}
+              className={`p-2 rounded-lg transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-800 shadow-sm text-rso-blue dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
               title="Вид: Список"
             >
               <IconList />
             </button>
             <button 
               onClick={() => setViewMode('calendar')} 
-              className={`p-2 rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-rso-blue' : 'text-gray-400 hover:text-gray-600'}`}
+              className={`p-2 rounded-lg transition-all ${viewMode === 'calendar' ? 'bg-white dark:bg-slate-800 shadow-sm text-rso-blue dark:text-blue-400' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300'}`}
               title="Вид: Календарь"
             >
               <IconCalendar />
@@ -136,7 +136,7 @@ export default function EventCalendar({ userRole }) {
           {isCommandStaff && (
             <button 
               onClick={() => setIsCreateModalOpen(true)}
-              className="w-full sm:w-auto px-5 py-2.5 bg-gray-900 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-black transition-colors shadow-sm"
+              className="w-full sm:w-auto px-5 py-2.5 bg-gray-900 dark:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider rounded-xl hover:bg-black dark:hover:bg-slate-600 transition-colors shadow-sm"
             >
               + Создать сбор
             </button>
@@ -145,11 +145,11 @@ export default function EventCalendar({ userRole }) {
       </div>
 
       {loading ? (
-        <div className="py-16 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest animate-pulse border border-dashed border-gray-200 rounded-2xl">
+        <div className="py-16 text-center text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest animate-pulse border border-dashed border-gray-200 dark:border-slate-700 rounded-2xl">
           Синхронизация графика...
         </div>
       ) : events.length === 0 ? (
-        <div className="py-16 text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest border border-dashed border-gray-200 rounded-2xl bg-slate-50">
+        <div className="py-16 text-center text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest border border-dashed border-gray-200 dark:border-slate-700 rounded-2xl bg-slate-50 dark:bg-slate-900/50 transition-colors duration-300">
           В расписании пока нет событий
         </div>
       ) : (
@@ -166,37 +166,37 @@ export default function EventCalendar({ userRole }) {
                     key={event.id} 
                     onClick={() => setSelectedEvent(event)}
                     className={`cursor-pointer w-full border rounded-2xl p-4 md:p-6 transition-all hover:shadow-md flex flex-col md:flex-row items-start md:items-center justify-between gap-5 md:gap-8 group ${
-                      isRegional ? 'bg-blue-50/20 border-blue-100 hover:border-blue-300' : 'bg-slate-50 border-gray-200 hover:border-gray-300 hover:bg-white'
+                      isRegional ? 'bg-blue-50/20 dark:bg-blue-500/10 border-blue-100 dark:border-blue-500/20 hover:border-blue-300 dark:hover:border-blue-500/40' : 'bg-slate-50 dark:bg-slate-900 border-gray-200 dark:border-slate-700 hover:border-gray-300 dark:hover:border-slate-600 hover:bg-white dark:hover:bg-slate-800'
                     }`}
                   >
                     <div className="flex flex-col md:flex-row md:items-center gap-5 w-full">
                       
                       {/* Дата: крупный календарный листок */}
-                      <div className="shrink-0 text-center bg-white border border-gray-100 rounded-xl p-3 w-20 shadow-sm group-hover:border-gray-200 transition-colors">
-                        <div className="text-2xl font-black text-black leading-none mb-1">{eventDate.getDate()}</div>
-                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{eventDate.toLocaleString('ru-RU', { month: 'short' })}</div>
+                      <div className="shrink-0 text-center bg-white dark:bg-slate-800 border border-gray-100 dark:border-slate-700 rounded-xl p-3 w-20 shadow-sm group-hover:border-gray-200 dark:group-hover:border-slate-600 transition-colors">
+                        <div className="text-2xl font-black text-black dark:text-white leading-none mb-1">{eventDate.getDate()}</div>
+                        <div className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{eventDate.toLocaleString('ru-RU', { month: 'short' })}</div>
                       </div>
 
                       {/* Информация о событии */}
                       <div className="flex-1 space-y-2">
                         <div className="flex items-center gap-2">
                           <span className={`text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-md ${
-                            isRegional ? 'bg-rso-blue text-white shadow-sm' : 'bg-gray-200 text-gray-600'
+                            isRegional ? 'bg-rso-blue text-white shadow-sm dark:bg-blue-600' : 'bg-gray-200 dark:bg-slate-700 text-gray-600 dark:text-gray-300'
                           }`}>
                             {isRegional ? 'Региональное' : 'Локальное'}
                           </span>
                           {event.isJoined && (
-                            <span className="flex items-center gap-1 text-[9px] font-black text-green-600 uppercase tracking-wider bg-green-50 border border-green-200 px-2.5 py-0.5 rounded-md">
+                            <span className="flex items-center gap-1 text-[9px] font-black text-green-600 dark:text-green-400 uppercase tracking-wider bg-green-50 dark:bg-green-500/10 border border-green-200 dark:border-green-500/20 px-2.5 py-0.5 rounded-md">
                               <IconCheck /> Участвую
                             </span>
                           )}
                         </div>
-                        <h4 className="text-lg md:text-xl font-black uppercase text-black line-clamp-1 group-hover:text-rso-blue transition-colors">
+                        <h4 className="text-lg md:text-xl font-black uppercase text-black dark:text-white line-clamp-1 group-hover:text-rso-blue dark:group-hover:text-blue-400 transition-colors">
                           {event.title}
                         </h4>
-                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs font-medium text-gray-500">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-xs font-medium text-gray-500 dark:text-gray-400">
                           <span className="flex items-center gap-1.5"><IconPin /> {event.location || 'Место не указано'}</span>
-                          <span className="hidden sm:inline text-gray-300">•</span>
+                          <span className="hidden sm:inline text-gray-300 dark:text-gray-600">•</span>
                           <span className="flex items-center gap-1.5"><IconClock /> {eventDate.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                       </div>
@@ -204,7 +204,7 @@ export default function EventCalendar({ userRole }) {
 
                     {/* Кнопка действий (стрелка) */}
                     <div className="shrink-0 w-full md:w-auto mt-2 md:mt-0">
-                      <button className="w-full md:w-auto text-[10px] font-black uppercase tracking-wider px-6 py-3.5 rounded-xl border border-gray-200 bg-white hover:bg-slate-50 transition-colors text-gray-600 shadow-sm">
+                      <button className="w-full md:w-auto text-[10px] font-black uppercase tracking-wider px-6 py-3.5 rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors text-gray-600 dark:text-gray-300 shadow-sm">
                         Подробнее →
                       </button>
                     </div>
@@ -216,21 +216,21 @@ export default function EventCalendar({ userRole }) {
 
           {/* ВИД: КАЛЕНДАРЬ */}
           {viewMode === 'calendar' && (
-            <div className="bg-slate-50 border border-gray-200 rounded-2xl p-4 md:p-6 animate-in fade-in duration-300">
+            <div className="bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-4 md:p-6 animate-in fade-in duration-300 transition-colors">
               
               {/* Навигация по месяцам */}
               <div className="flex justify-between items-center mb-6">
-                <button onClick={prevMonth} className="p-2 border border-gray-200 rounded-lg hover:bg-white bg-slate-50 shadow-sm text-gray-600 transition-all">&larr;</button>
-                <span className="font-black uppercase text-sm md:text-base tracking-wider text-black">
+                <button onClick={prevMonth} className="p-2 border border-gray-200 dark:border-slate-700 rounded-lg hover:bg-white dark:hover:bg-slate-700 bg-slate-50 dark:bg-slate-800 shadow-sm text-gray-600 dark:text-gray-400 transition-all">&larr;</button>
+                <span className="font-black uppercase text-sm md:text-base tracking-wider text-black dark:text-white">
                   {monthNames[currentMonth.getMonth()]} {currentMonth.getFullYear()}
                 </span>
-                <button onClick={nextMonth} className="p-2 border border-gray-200 rounded-lg hover:bg-white bg-slate-50 shadow-sm text-gray-600 transition-all">&rarr;</button>
+                <button onClick={nextMonth} className="p-2 border border-gray-200 dark:border-slate-700 rounded-lg hover:bg-white dark:hover:bg-slate-700 bg-slate-50 dark:bg-slate-800 shadow-sm text-gray-600 dark:text-gray-400 transition-all">&rarr;</button>
               </div>
 
               {/* Сетка календаря */}
               <div className="grid grid-cols-7 gap-1 md:gap-2">
                 {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map(d => (
-                  <div key={d} className="text-center text-[10px] font-black uppercase text-gray-400 py-2">{d}</div>
+                  <div key={d} className="text-center text-[10px] font-black uppercase text-gray-400 dark:text-gray-500 py-2">{d}</div>
                 ))}
                 
                 {Array(firstDay).fill(null).map((_, i) => (
@@ -243,15 +243,15 @@ export default function EventCalendar({ userRole }) {
                   const dayEvents = events.filter(e => isSameDay(new Date(e.date), currentCellDate));
                   
                   return (
-                    <div key={day} className="border border-gray-200 bg-white p-1.5 md:p-2 h-20 md:h-28 rounded-xl flex flex-col hover:border-rso-blue/40 hover:shadow-sm transition-all overflow-hidden group">
-                      <span className="text-[10px] font-black text-gray-400 mb-1.5 group-hover:text-rso-blue transition-colors">{day}</span>
+                    <div key={day} className="border border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-1.5 md:p-2 h-20 md:h-28 rounded-xl flex flex-col hover:border-rso-blue/40 dark:hover:border-blue-400/40 hover:shadow-sm transition-all overflow-hidden group">
+                      <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 mb-1.5 group-hover:text-rso-blue dark:group-hover:text-blue-400 transition-colors">{day}</span>
                       <div className="flex flex-col gap-1 overflow-y-auto scrollbar-none">
                         {dayEvents.map(e => (
                           <div 
                             key={e.id} 
                             onClick={() => setSelectedEvent(e)} 
                             className={`text-[8px] md:text-[9px] font-bold uppercase truncate px-1.5 py-1 rounded cursor-pointer transition-transform hover:scale-[1.02] ${
-                              e.type === 'REGIONAL' ? 'bg-rso-blue text-white shadow-sm' : 'bg-slate-100 text-gray-700 border border-gray-200'
+                              e.type === 'REGIONAL' ? 'bg-rso-blue dark:bg-blue-600 text-white shadow-sm' : 'bg-slate-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-slate-600'
                             }`}
                             title={e.title}
                           >
@@ -268,41 +268,41 @@ export default function EventCalendar({ userRole }) {
         </>
       )}
 
-{/* МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ МЕРОПРИЯТИЯ (С новыми иконками и картой) */}
+      {/* МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ МЕРОПРИЯТИЯ */}
       {selectedEvent && (
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md bg-black/40 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl relative border border-gray-100 max-h-[90vh] overflow-y-auto scrollbar-hide">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md bg-black/40 dark:bg-black/60 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-800 w-full max-w-md rounded-3xl p-8 shadow-2xl relative border border-gray-100 dark:border-slate-700 max-h-[90vh] overflow-y-auto scrollbar-hide transition-colors">
             <button 
               onClick={() => setSelectedEvent(null)} 
-              className="absolute top-5 right-5 text-gray-400 hover:text-black font-bold p-2 bg-slate-50 rounded-full hover:bg-gray-100 transition-colors"
+              className="absolute top-5 right-5 text-gray-400 dark:text-gray-500 hover:text-black dark:hover:text-white font-bold p-2 bg-slate-50 dark:bg-slate-700 rounded-full hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors"
             >
               ✕
             </button>
             
             <span className={`inline-block text-[9px] font-black uppercase tracking-wider px-3 py-1 rounded-md mb-4 shadow-sm ${
-              selectedEvent.type === 'REGIONAL' ? 'bg-rso-blue text-white' : 'bg-slate-100 border border-gray-200 text-gray-600'
+              selectedEvent.type === 'REGIONAL' ? 'bg-rso-blue dark:bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 text-gray-600 dark:text-gray-300'
             }`}>
               {selectedEvent.type === 'REGIONAL' ? 'Глобальное событие штаба' : 'Внутренний сбор отряда'}
             </span>
             
-            <h2 className="text-2xl font-black uppercase tracking-tight text-black leading-tight mb-4">
+            <h2 className="text-2xl font-black uppercase tracking-tight text-black dark:text-white leading-tight mb-4">
               {selectedEvent.title}
             </h2>
             
-            {/* ЕДИНЫЙ ИНФОРМАЦИОННЫЙ БЛОК БЕЗ ДУБЛЕЙ */}
-            <div className="bg-slate-50 border border-gray-200 rounded-2xl p-5 mb-5 space-y-3">
-              <div className="flex items-center gap-3 text-xs font-bold text-gray-600">
-                <span className="text-gray-400"><IconClock /></span> 
+            {/* ИНФОРМАЦИОННЫЙ БЛОК */}
+            <div className="bg-slate-50 dark:bg-slate-900 border border-gray-200 dark:border-slate-700 rounded-2xl p-5 mb-5 space-y-3 transition-colors">
+              <div className="flex items-center gap-3 text-xs font-bold text-gray-600 dark:text-gray-300">
+                <span className="text-gray-400 dark:text-gray-500"><IconClock /></span> 
                 {new Date(selectedEvent.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
               </div>
-              <div className="flex items-center gap-3 text-xs font-bold text-gray-600 border-t border-gray-200 pt-3">
-                <span className="text-gray-400"><IconPin /></span> 
+              <div className="flex items-center gap-3 text-xs font-bold text-gray-600 dark:text-gray-300 border-t border-gray-200 dark:border-slate-700 pt-3">
+                <span className="text-gray-400 dark:text-gray-500"><IconPin /></span> 
                 {selectedEvent.location || 'Локация уточняется'}
               </div>
               
-              {/* КАРТА (Показывается только если есть координаты) */}
+              {/* КАРТА */}
               {selectedEvent.lat && selectedEvent.lng && (
-                <div className="mt-4 w-full h-40 rounded-xl overflow-hidden border border-gray-200 shadow-inner">
+                <div className="mt-4 w-full h-40 rounded-xl overflow-hidden border border-gray-200 dark:border-slate-700 shadow-inner">
                   <YMaps>
                     <Map 
                       defaultState={{ center: [selectedEvent.lat, selectedEvent.lng], zoom: 15 }} 
@@ -318,16 +318,16 @@ export default function EventCalendar({ userRole }) {
               )}
             </div>
             
-            <p className="text-sm text-gray-600 font-medium leading-relaxed mb-6 whitespace-pre-line">
+            <p className="text-sm text-gray-600 dark:text-gray-300 font-medium leading-relaxed mb-6 whitespace-pre-line">
               {selectedEvent.description}
             </p>
 
-            <div className="pt-4 border-t border-gray-100">
+            <div className="pt-4 border-t border-gray-100 dark:border-slate-700">
               {selectedEvent.isJoined ? (
                 <button 
                   onClick={() => handleLeave(selectedEvent.id)}
                   disabled={actionLoading}
-                  className="w-full py-4 rounded-xl text-xs font-black uppercase tracking-wider bg-red-50 text-red-500 hover:bg-red-100 transition-colors disabled:opacity-50 shadow-sm border border-red-100"
+                  className="w-full py-4 rounded-xl text-xs font-black uppercase tracking-wider bg-red-50 dark:bg-red-500/10 text-red-500 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-500/20 transition-colors disabled:opacity-50 shadow-sm border border-red-100 dark:border-red-500/20"
                 >
                   {actionLoading ? 'Обработка...' : 'Отказаться от участия'}
                 </button>
@@ -335,7 +335,7 @@ export default function EventCalendar({ userRole }) {
                 <button 
                   onClick={() => handleJoin(selectedEvent.id)}
                   disabled={actionLoading}
-                  className="w-full py-4 rounded-xl text-xs font-black uppercase tracking-wider bg-rso-blue text-white hover:bg-black transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
+                  className="w-full py-4 rounded-xl text-xs font-black uppercase tracking-wider bg-rso-blue text-white hover:bg-black dark:hover:bg-slate-700 transition-all shadow-md shadow-blue-500/20 disabled:opacity-50"
                 >
                   {actionLoading ? 'Обработка...' : 'Присоединиться к событию'}
                 </button>

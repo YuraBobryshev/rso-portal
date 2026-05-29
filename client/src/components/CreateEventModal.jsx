@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import api from '../api/axiosConfig'
+import api from '../api/axiosConfig';
+import { YMaps, Map, Placemark } from '@pbe/react-yandex-maps';
 
 export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole }) {
   const [title, setTitle] = useState('');
@@ -9,6 +10,9 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
   const [type, setType] = useState('LOCAL');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Добавили состояние для хранения координат (по умолчанию Севастополь)
+  const [coordinates, setCoordinates] = useState([44.6166, 33.5254]);
 
   if (!isOpen) return null;
 
@@ -19,12 +23,15 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
 
     try {
       const token = localStorage.getItem('token');
+      // В тело запроса добавлены lat и lng из состояния coordinates
       await api.post('/events', 
         { 
           title, 
           description, 
           date, 
           location, 
+          lat: coordinates[0], 
+          lng: coordinates[1],
           type: userRole === 'REG_HQ' ? type : 'LOCAL' 
         }, 
         { headers: { Authorization: `Bearer ${token}` } }
@@ -35,6 +42,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
       setDescription('');
       setDate('');
       setLocation('');
+      setCoordinates([44.6166, 33.5254]); // Сброс координат
       onSuccess(); // Триггерим обновление родительского списка
       onClose();   // Закрываем модал
     } catch (err) {
@@ -45,8 +53,8 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fadeIn">
-      <div className="bg-white border border-gray-100 rounded-[2rem] w-full max-w-lg p-6 md:p-8 shadow-2xl relative space-y-6">
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 animate-in fade-in duration-200">
+      <div className="bg-white border border-gray-100 rounded-[2rem] w-full max-w-lg max-h-[90vh] overflow-y-auto p-6 md:p-8 shadow-2xl relative space-y-6 scrollbar-hide">
         
         {/* Шапка модала */}
         <div>
@@ -91,7 +99,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
             </div>
 
             <div className="space-y-1">
-              <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Локация / Место</label>
+              <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">Локация / Место (Текст)</label>
               <input 
                 type="text" 
                 required
@@ -102,6 +110,31 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
               />
             </div>
           </div>
+
+          {/* НОВЫЙ БЛОК: Интерактивная Яндекс Карта */}
+          <div>
+            <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
+              Укажите точную точку на карте
+            </label>
+            <div className="w-full h-48 rounded-xl overflow-hidden border border-gray-100 mb-2">
+              <YMaps>
+                <Map 
+                  defaultState={{ center: [44.6166, 33.5254], zoom: 11 }} 
+                  className="w-full h-full"
+                  onClick={(e) => {
+                    const coords = e.get('coords');
+                    setCoordinates(coords);
+                  }}
+                >
+                  <Placemark geometry={coordinates} options={{ preset: 'islands#redDotIcon' }} />
+                </Map>
+              </YMaps>
+            </div>
+            <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
+              Кликните по карте, чтобы зафиксировать геометку для бойцов
+            </p>
+          </div>
+          {/* КОНЕЦ НОВОГО БЛОКА */}
 
           {/* Выбор уровня события (Виден только Региональному штабу) */}
           {userRole === 'REG_HQ' && (

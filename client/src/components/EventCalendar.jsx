@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api/axiosConfig';
 import CreateEventModal from './CreateEventModal';
+import { YMaps, Map, Placemark } from '@pbe/react-yandex-maps';
 
 // --- ИКОНКИ (Замена дешевым эмодзи) ---
 const IconList = () => (
@@ -302,6 +303,34 @@ export default function EventCalendar({ userRole }) {
             <p className="text-sm text-gray-600 font-medium leading-relaxed mb-6 whitespace-pre-line">
               {selectedEvent.description}
             </p>
+
+            <div className="bg-slate-50 border border-gray-200 rounded-2xl p-5 mb-5 space-y-3">
+  <div className="flex items-center gap-3 text-xs font-bold text-gray-600">
+    <span className="text-gray-400"><IconClock /></span> 
+    {new Date(selectedEvent.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+  </div>
+  <div className="flex items-center gap-3 text-xs font-bold text-gray-600 border-t border-gray-200 pt-3">
+    <span className="text-gray-400"><IconPin /></span> 
+    {selectedEvent.location || 'Локация уточняется'}
+  </div>
+  
+  {/* НОВЫЙ БЛОК С ИНТЕРАКТИВНОЙ КАРТОЙ */}
+  {selectedEvent.lat && selectedEvent.lng && (
+    <div className="mt-4 w-full h-48 rounded-xl overflow-hidden border border-gray-200 shadow-inner">
+      <YMaps>
+        <Map 
+          defaultState={{ center: [selectedEvent.lat, selectedEvent.lng], zoom: 15 }} 
+          className="w-full h-full"
+        >
+          <Placemark 
+            geometry={[selectedEvent.lat, selectedEvent.lng]} 
+            options={{ preset: 'islands#blueIcon' }}
+          />
+        </Map>
+      </YMaps>
+    </div>
+  )}
+</div>
 
             <div className="pt-4 border-t border-gray-100">
               {selectedEvent.isJoined ? (

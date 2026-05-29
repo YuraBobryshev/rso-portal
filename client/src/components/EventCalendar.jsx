@@ -268,10 +268,10 @@ export default function EventCalendar({ userRole }) {
         </>
       )}
 
-      {/* МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ МЕРОПРИЯТИЯ (С новыми иконками) */}
+{/* МОДАЛЬНОЕ ОКНО ДЕТАЛЕЙ МЕРОПРИЯТИЯ (С новыми иконками и картой) */}
       {selectedEvent && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md bg-black/40 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl relative border border-gray-100">
+          <div className="bg-white w-full max-w-md rounded-3xl p-8 shadow-2xl relative border border-gray-100 max-h-[90vh] overflow-y-auto scrollbar-hide">
             <button 
               onClick={() => setSelectedEvent(null)} 
               className="absolute top-5 right-5 text-gray-400 hover:text-black font-bold p-2 bg-slate-50 rounded-full hover:bg-gray-100 transition-colors"
@@ -289,6 +289,7 @@ export default function EventCalendar({ userRole }) {
               {selectedEvent.title}
             </h2>
             
+            {/* ЕДИНЫЙ ИНФОРМАЦИОННЫЙ БЛОК БЕЗ ДУБЛЕЙ */}
             <div className="bg-slate-50 border border-gray-200 rounded-2xl p-5 mb-5 space-y-3">
               <div className="flex items-center gap-3 text-xs font-bold text-gray-600">
                 <span className="text-gray-400"><IconClock /></span> 
@@ -298,39 +299,28 @@ export default function EventCalendar({ userRole }) {
                 <span className="text-gray-400"><IconPin /></span> 
                 {selectedEvent.location || 'Локация уточняется'}
               </div>
+              
+              {/* КАРТА (Показывается только если есть координаты) */}
+              {selectedEvent.lat && selectedEvent.lng && (
+                <div className="mt-4 w-full h-40 rounded-xl overflow-hidden border border-gray-200 shadow-inner">
+                  <YMaps>
+                    <Map 
+                      defaultState={{ center: [selectedEvent.lat, selectedEvent.lng], zoom: 15 }} 
+                      className="w-full h-full"
+                    >
+                      <Placemark 
+                        geometry={[selectedEvent.lat, selectedEvent.lng]} 
+                        options={{ preset: 'islands#blueIcon' }}
+                      />
+                    </Map>
+                  </YMaps>
+                </div>
+              )}
             </div>
             
             <p className="text-sm text-gray-600 font-medium leading-relaxed mb-6 whitespace-pre-line">
               {selectedEvent.description}
             </p>
-
-            <div className="bg-slate-50 border border-gray-200 rounded-2xl p-5 mb-5 space-y-3">
-  <div className="flex items-center gap-3 text-xs font-bold text-gray-600">
-    <span className="text-gray-400"><IconClock /></span> 
-    {new Date(selectedEvent.date).toLocaleString('ru-RU', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
-  </div>
-  <div className="flex items-center gap-3 text-xs font-bold text-gray-600 border-t border-gray-200 pt-3">
-    <span className="text-gray-400"><IconPin /></span> 
-    {selectedEvent.location || 'Локация уточняется'}
-  </div>
-  
-  {/* НОВЫЙ БЛОК С ИНТЕРАКТИВНОЙ КАРТОЙ */}
-  {selectedEvent.lat && selectedEvent.lng && (
-    <div className="mt-4 w-full h-48 rounded-xl overflow-hidden border border-gray-200 shadow-inner">
-      <YMaps>
-        <Map 
-          defaultState={{ center: [selectedEvent.lat, selectedEvent.lng], zoom: 15 }} 
-          className="w-full h-full"
-        >
-          <Placemark 
-            geometry={[selectedEvent.lat, selectedEvent.lng]} 
-            options={{ preset: 'islands#blueIcon' }}
-          />
-        </Map>
-      </YMaps>
-    </div>
-  )}
-</div>
 
             <div className="pt-4 border-t border-gray-100">
               {selectedEvent.isJoined ? (

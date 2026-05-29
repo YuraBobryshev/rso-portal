@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import api from '../api/axiosConfig';
-import { YMaps, Map, Placemark } from '@pbe/react-yandex-maps';
+// Оставляем только один правильный импорт со всеми нужными компонентами:
+import { YMaps, Map, Placemark, SearchControl } from '@pbe/react-yandex-maps';
 
 export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole }) {
   const [title, setTitle] = useState('');
@@ -11,7 +12,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
-  // Добавили состояние для хранения координат (по умолчанию Севастополь)
+  // Состояние для хранения координат (по умолчанию Севастополь)
   const [coordinates, setCoordinates] = useState([44.6166, 33.5254]);
 
   if (!isOpen) return null;
@@ -111,13 +112,13 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
             </div>
           </div>
 
-          {/* НОВЫЙ БЛОК: Интерактивная Яндекс Карта */}
+          {/* НОВЫЙ БЛОК: Интерактивная Яндекс Карта с поисковиком */}
           <div>
             <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1.5">
-              Укажите точную точку на карте
+              Найдите и укажите точную точку на карте
             </label>
-            <div className="w-full h-48 rounded-xl overflow-hidden border border-gray-100 mb-2">
-              <YMaps>
+            <div className="w-full h-56 rounded-xl overflow-hidden border border-gray-100 mb-2 relative">
+              <YMaps query={{ apikey: '' }}>
                 <Map 
                   defaultState={{ center: [44.6166, 33.5254], zoom: 11 }} 
                   className="w-full h-full"
@@ -126,12 +127,17 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
                     setCoordinates(coords);
                   }}
                 >
+                  {/* ВОТ ОН - ВИДЖЕТ ПОИСКА */}
+                  <SearchControl options={{ float: 'right' }} />
+                  
+                  {/* Красная метка, которая ставится по клику */}
                   <Placemark geometry={coordinates} options={{ preset: 'islands#redDotIcon' }} />
                 </Map>
               </YMaps>
             </div>
             <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
-              Кликните по карте, чтобы зафиксировать геометку для бойцов
+              1. Воспользуйтесь поиском на карте<br/>
+              2. Кликните мышкой, чтобы поставить красную метку
             </p>
           </div>
           {/* КОНЕЦ НОВОГО БЛОКА */}

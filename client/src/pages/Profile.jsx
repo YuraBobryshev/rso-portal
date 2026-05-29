@@ -474,27 +474,50 @@ const IconClipboard = () => <svg width="16" height="16" fill="none" stroke="curr
             )}
 
             {/* ================= РУКОВОДЯЩИЕ ТАБЫ КОМСОСТАВА ================= */}
-            {activeTab === 'commander_apps' && (
-              <div className={bentoCardClass + " animate-in fade-in duration-300 space-y-4"}>
-                <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Входящие анкеты кандидатов ({applications.length})</h3>
-                {applications.length > 0 ? (
-                  <div className="space-y-3">
-                    {applications.map(app => (
-                      <div key={app.id} className="flex justify-between items-center p-4 bg-slate-50 border border-gray-200 rounded-2xl gap-4 shadow-sm">
-                        <div className="truncate">
-                          <span className="block font-black text-xs text-black uppercase truncate">{app.user.lastName} {app.user.firstName}</span>
-                          <span className="text-[10px] text-gray-500 font-medium block mt-0.5">{app.user.email}</span>
-                        </div>
-                        <div className="flex gap-2 shrink-0">
-                          <button onClick={() => processApplication(app.id, 'APPROVED')} className="px-3 py-1.5 bg-green-50 text-green-700 border border-green-200 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:bg-green-100">Принять</button>
-                          <button onClick={() => processApplication(app.id, 'REJECTED')} className="px-3 py-1.5 bg-red-50 text-red-600 border border-red-200 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all hover:bg-red-100">Отказать</button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : <div className="text-center py-10 text-xs font-bold text-gray-400 uppercase border border-dashed border-gray-200 rounded-2xl">Нет активных заявок</div>}
+{activeTab === 'commander_apps' && (
+  <div className={bentoCardClass + " animate-in fade-in duration-300 space-y-4"}>
+    <h3 className="text-xs font-black uppercase tracking-widest text-gray-400">Входящие анкеты кандидатов ({applications.length})</h3>
+    {applications.length > 0 ? (
+      <div className="space-y-4">
+        {applications.map(app => (
+          <div key={app.id} className="flex flex-col p-5 bg-slate-50 border border-gray-200 rounded-2xl shadow-sm gap-4">
+            
+            {/* Шапка заявки */}
+            <div className="flex justify-between items-center border-b border-gray-200/60 pb-3">
+              <div className="truncate">
+                <span className="block font-black text-sm text-black uppercase truncate">{app.user.lastName} {app.user.firstName}</span>
+                <span className="text-[10px] text-gray-500 font-bold block mt-0.5">{app.user.email} {app.phone ? `• ${app.phone}` : ''}</span>
               </div>
-            )}
+              <span className="text-[9px] font-black text-gray-400 uppercase tracking-widest">{new Date(app.createdAt).toLocaleDateString('ru-RU')}</span>
+            </div>
+            
+            {/* Тело анкеты */}
+            <div className="space-y-3">
+              {app.aboutMe && (
+                <div>
+                  <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">Мотивация</span>
+                  <p className="text-xs text-gray-700 font-medium bg-white p-3 rounded-xl border border-gray-100">{app.aboutMe}</p>
+                </div>
+              )}
+              {app.skills && (
+                <div>
+                  <span className="block text-[9px] font-black text-gray-400 uppercase tracking-wider mb-1">Навыки</span>
+                  <p className="text-xs text-gray-700 font-medium bg-white p-3 rounded-xl border border-gray-100">{app.skills}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Кнопки действий */}
+            <div className="flex gap-3 pt-2">
+              <button onClick={() => processApplication(app.id, 'APPROVED')} className="flex-1 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all hover:bg-green-100">Принять в ЛСО</button>
+              <button onClick={() => processApplication(app.id, 'REJECTED')} className="flex-1 py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all hover:bg-red-100">Отклонить</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : <div className="text-center py-10 text-xs font-bold text-gray-400 uppercase border border-dashed border-gray-200 rounded-2xl">Нет активных заявок</div>}
+  </div>
+)}
 
             {activeTab === 'commander_members' && (
               <div className={bentoCardClass + " animate-in fade-in duration-300 space-y-4"}>

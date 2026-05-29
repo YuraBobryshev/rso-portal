@@ -54,7 +54,6 @@ export default function Header() {
         <nav className="hidden md:flex items-center gap-8">
           <Link to="/news" className={`text-[10px] font-black uppercase tracking-widest hover:text-rso-blue transition-colors ${isActive('/news') ? 'text-rso-blue border-b-2 border-rso-blue' : 'text-black'}`}>Вестник</Link>
           <Link to="/brigades" className={`text-[10px] font-black uppercase tracking-widest hover:text-rso-blue transition-colors ${isActive('/brigades') ? 'text-rso-blue border-b-2 border-rso-blue' : 'text-black'}`}>Отряды</Link>
-          <Link to="/about" className={`text-[10px] font-black uppercase tracking-widest hover:text-rso-blue transition-colors ${isActive('/about') ? 'text-rso-blue border-b-2 border-rso-blue' : 'text-black'}`}>О нас</Link>
           <Link to="/gallery" className={`text-[10px] font-black uppercase tracking-widest hover:text-rso-blue transition-colors ${isActive('/gallery') ? 'text-rso-blue border-b-2 border-rso-blue' : 'text-black'}`}>Галерея</Link>
 
           {isLoggedIn ? (

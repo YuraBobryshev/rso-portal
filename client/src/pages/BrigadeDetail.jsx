@@ -11,6 +11,7 @@ export default function BrigadeDetail() {
   
   const [applying, setApplying] = useState(false);
   const [message, setMessage] = useState({ text: '', type: '' });
+  const [appForm, setAppForm] = useState({ phone: '', aboutMe: '', skills: '' });
 
   const API_URL = '/api'
   const token = localStorage.getItem('token');
@@ -30,28 +31,30 @@ export default function BrigadeDetail() {
     fetchBrigade();
   }, [id, navigate]);
 
-  const handleApply = async () => {
-    if (!token) {
-      setMessage({ text: 'Для подачи заявки необходимо авторизоваться в системе', type: 'error' });
-      return;
-    }
-    
-    setApplying(true);
-    setMessage({ text: '', type: '' });
+const handleApply = async (e) => {
+  e.preventDefault(); // Добавили, так как теперь это форма
+  if (!token) {
+    setMessage({ text: 'Для подачи заявки необходимо авторизоваться в системе', type: 'error' });
+    return;
+  }
+  
+  setApplying(true);
+  setMessage({ text: '', type: '' });
 
-    try {
-      const res = await api.post(`/applications/apply`, 
-        { brigadeId: id },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      setMessage({ text: res.data.message || 'Заявка успешно отправлена комсоставу!', type: 'success' });
-    } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Ошибка при отправке заявки';
-      setMessage({ text: errorMsg, type: 'error' });
-    } finally {
-      setApplying(false);
-    }
-  };
+  try {
+    const res = await api.post(`/applications/apply`, 
+      { brigadeId: id, ...appForm },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setMessage({ text: res.data.message || 'Заявка успешно отправлена комсоставу!', type: 'success' });
+    setAppForm({ phone: '', aboutMe: '', skills: '' }); // Очищаем форму
+  } catch (err) {
+    const errorMsg = err.response?.data?.message || 'Ошибка при отправке заявки';
+    setMessage({ text: errorMsg, type: 'error' });
+  } finally {
+    setApplying(false);
+  }
+};
 
   if (loading) return (
     <div className="min-h-screen bg-white flex items-center justify-center font-sans text-xs font-black uppercase tracking-widest text-gray-400 animate-pulse">
@@ -182,28 +185,70 @@ export default function BrigadeDetail() {
              </div>
 
              {/* Карточка 5: Интерактивный узел подачи документов */}
-             <div className="border border-gray-100 rounded-[2rem] p-6 bg-white shadow-sm space-y-4">
-               {message.text && (
-                 <div className={`p-3 rounded-xl text-[9px] font-black uppercase tracking-wider border text-center transition-all ${
-                   message.type === 'success' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-red-50 text-red-600 border-red-100'
-                 }`}>
-                   {message.type === 'success' ? '✓' : '⚠️'} {message.text}
-                 </div>
-               )}
+{/* Карточка 5: Интерактивный узел подачи документов (Расширенная анкета) */}
+<div className="border border-gray-200 rounded-[2rem] p-6 md:p-8 bg-slate-50 shadow-sm space-y-5">
+  <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider block border-b border-gray-200 pb-3">
+    Анкета кандидата
+  </span>
 
-               <button 
-                 onClick={handleApply}
-                 disabled={applying}
-                 className="w-full py-4 text-white text-xs font-black uppercase tracking-wider rounded-xl transition-all duration-300 hover:bg-black disabled:opacity-50 shadow-md shadow-blue-500/5"
-                 style={{ backgroundColor: mainColor }}
-               >
-                 {applying ? 'Рассмотрение...' : 'Подать заявку в отряд →'}
-               </button>
-               
-               <p className="text-[9px] text-center font-medium uppercase tracking-wider text-gray-400 px-4 leading-relaxed">
-                 Подача документов запускает автоматическую верификацию вашей анкеты командным составом отряда.
-               </p>
-             </div>
+  {message.text && (
+    <div className={`p-4 rounded-xl text-xs font-bold text-center transition-all ${
+      message.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+    }`}>
+      {message.text}
+    </div>
+  )}
+
+  <form onSubmit={handleApply} className="space-y-4">
+    <div>
+      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Контактный телефон</label>
+      <input 
+        type="tel" 
+        placeholder="+7 (999) 000-00-00" 
+        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-xs font-bold outline-none focus:border-rso-blue transition-all"
+        value={appForm.phone} 
+        onChange={e => setAppForm({...appForm, phone: e.target.value})} 
+        required 
+      />
+    </div>
+    
+    <div>
+      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Почему хочешь к нам?</label>
+      <textarea 
+        placeholder="Твоя мотивация..." 
+        rows="2" 
+        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-xs font-medium outline-none focus:border-rso-blue transition-all resize-none"
+        value={appForm.aboutMe} 
+        onChange={e => setAppForm({...appForm, aboutMe: e.target.value})} 
+        required 
+      />
+    </div>
+
+    <div>
+      <label className="block text-[9px] font-black text-gray-500 uppercase tracking-wider mb-1.5">Что ты умеешь? (Навыки)</label>
+      <textarea 
+        placeholder="Играю на гитаре, монтирую видео, танцую..." 
+        rows="2" 
+        className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-xs font-medium outline-none focus:border-rso-blue transition-all resize-none"
+        value={appForm.skills} 
+        onChange={e => setAppForm({...appForm, skills: e.target.value})} 
+      />
+    </div>
+
+    <button 
+      type="submit"
+      disabled={applying}
+      className="w-full py-4 text-white text-[10px] font-black uppercase tracking-wider rounded-xl transition-all duration-300 hover:bg-black disabled:opacity-50 shadow-sm mt-2"
+      style={{ backgroundColor: mainColor }}
+    >
+      {applying ? 'Рассмотрение...' : 'Отправить анкету →'}
+    </button>
+  </form>
+  
+  <p className="text-[9px] text-center font-bold uppercase tracking-wider text-gray-400 px-2 leading-relaxed">
+    Заполнение анкеты запускает автоматическую верификацию командным составом.
+  </p>
+</div>
              
           </div>
 

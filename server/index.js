@@ -365,10 +365,10 @@ app.get('/api/brigades', async (req, res) => {
   }
 });
 
-// ИСПРАВЛЕНО: Добавлена антиспам защита (блокировка дублирования активных заявок)
+// ИСПРАВЛЕНО: Прием расширенной анкеты
 app.post('/api/applications/apply', authMiddleware, async (req, res) => {
   try {
-    const { brigadeId } = req.body;
+    const { brigadeId, phone, aboutMe, skills } = req.body;
     const userId = req.user.userId;
     
     const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -381,9 +381,20 @@ app.post('/api/applications/apply', authMiddleware, async (req, res) => {
       return res.status(400).json({ message: 'У вас уже есть активная заявка на рассмотрении' });
     }
 
-    await prisma.application.create({ data: { userId, brigadeId } });
-    res.json({ message: 'Заявка успешно отправлена' });
-  } catch (e) { res.status(500).json({ message: 'Ошибка сервера' }); }
+    await prisma.application.create({ 
+      data: { 
+        userId, 
+        brigadeId,
+        phone: phone || null,
+        aboutMe: aboutMe || null,
+        skills: skills || null
+      } 
+    });
+    res.json({ message: 'Ваша анкета успешно отправлена комсоставу!' });
+  } catch (e) { 
+    console.error(e);
+    res.status(500).json({ message: 'Ошибка сервера при отправке заявки' }); 
+  }
 });
 
 // ИСПРАВЛЕНО: Теперь сохраняет текстовый комментарий/причину отказа в базу данных

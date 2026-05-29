@@ -88,6 +88,9 @@ model Application {
   status    AppStatus @default(PENDING)
   comment   String?
   createdAt DateTime  @default(now())
+  phone     String?
+  aboutMe   String?   @db.Text
+  skills    String?   @db.Text
 }
 
 // НОВОЕ: Модель Трудовых объектов

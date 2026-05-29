@@ -266,7 +266,7 @@ const IconClipboard = () => <svg width="16" height="16" fill="none" stroke="curr
           >
             {/* Абстрактный геометрический паттерн на фоне */}
             <div className="absolute inset-0 opacity-10 bg-[linear-gradient(to_right,#fff_1px,transparent_1px),linear-gradient(to_bottom,#fff_1px,transparent_1px)] bg-[size:24px_24px]"></div>
-            <h1 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tight text-center px-4 drop-shadow-md">
+            <h1 className="text-3xl md:text-5xl font-black text-white uppercase tracking-tight text-center px-4 drop-shadow-md z-10">
               {user.lastName} {user.firstName}
             </h1>
           </div>

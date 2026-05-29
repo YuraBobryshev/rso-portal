@@ -105,8 +105,7 @@ export default function EventCalendar({ userRole }) {
   const isSameDay = (d1, d2) => d1.getFullYear() === d2.getFullYear() && d1.getMonth() === d2.getMonth() && d1.getDate() === d2.getDate();
 
   return (
-    <div className="bg-white border border-gray-200 rounded-3xl p-6 md:p-8 shadow-sm relative z-10">
-      
+    <div className="bg-white border border-gray-200 rounded-3xl p-6 md:p-8 shadow-sm relative">      
       {/* ХЕДЕР БЛОКА С ПЕРЕКЛЮЧАТЕЛЯМИ */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>

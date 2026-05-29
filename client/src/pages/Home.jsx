@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../api/axiosConfig'
+import api from '../api/axiosConfig';
 import Header from '../components/Header';
 
 import ssoLogo from '../assets/icons/sso.svg';
@@ -48,7 +48,7 @@ export default function Home() {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900 text-rso-black dark:text-white transition-colors duration-300">
+    <div className="min-h-screen">
       <style>{`
         @keyframes marquee {
           0% { transform: translateX(0%); }
@@ -62,7 +62,7 @@ export default function Home() {
       `}</style>
 
       {/* БЕГУЩАЯ СТРОКА */}
-      <div className="bg-rso-blue text-white overflow-hidden py-3 relative z-10 border-b border-blue-800">
+      <div className="bg-[#0804FF] text-white overflow-hidden py-3 relative z-10 border-b border-blue-800">
         <div className="animate-marquee whitespace-nowrap flex items-center gap-8 font-stolzl text-[10px] sm:text-xs uppercase tracking-widest font-bold">
           <span>Севастопольское региональное отделение</span>
           <span className="w-1.5 h-1.5 bg-white rounded-full"></span>
@@ -82,25 +82,26 @@ export default function Home() {
 
       <Header />
 
-      <main className="pt-16 md:pt-24 space-y-24 md:space-y-32">
+      <main className="pt-12 md:pt-20 space-y-24 md:space-y-32">
         
         {/* ================= 1. HERO СЕКЦИЯ ================= */}
-        <section className="w-full max-w-[1400px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          <div className="space-y-6 md:space-y-8">
-            
-            {/* Надзаголовок (Адаптивный для мобилок) */}
-            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs font-stolzl font-bold tracking-widest text-rso-blue dark:text-blue-400 uppercase">
+        {/* Изменили сетку на 12 колонок для точного контроля ширины */}
+        <section className="w-full max-w-[1400px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+          
+          {/* Текст теперь занимает 7 колонок из 12 (больше половины экрана) */}
+          <div className="lg:col-span-7 space-y-6 md:space-y-8">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-xs font-stolzl font-bold tracking-widest text-[#0804FF] dark:text-blue-400 uppercase">
               <span>Севастопольское отделение</span>
-              <span className="hidden sm:block w-8 h-[2px] bg-rso-blue/30"></span>
-              <span className="sm:hidden w-4 h-[2px] bg-rso-blue/30"></span>
+              <span className="hidden sm:block w-8 h-[2px] bg-[#0804FF]/30"></span>
+              <span className="sm:hidden w-4 h-[2px] bg-[#0804FF]/30"></span>
               <span>МООО РСО</span>
             </div>
             
-            {/* РЕЗИНОВЫЙ H1 (Идеально вписывается и на телефоне, и на ПК) */}
-            <h1 className="font-actay text-[clamp(2.2rem,7.5vw,5.5rem)] uppercase tracking-tight leading-[0.95] text-rso-black dark:text-white">
+            {/* Используем наш новый класс из index.css */}
+            <h1 className="heading-hero">
               СТУДЕНЧЕСКИЕ <br />
               ОТРЯДЫ <br />
-              <span className="text-rso-blue">СЕВАСТОПОЛЯ</span>
+              <span className="text-[#0804FF]">СЕВАСТОПОЛЯ</span>
             </h1>
             
             <p className="font-onest text-sm md:text-base text-gray-600 dark:text-gray-300 max-w-lg leading-relaxed">
@@ -108,24 +109,23 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="relative w-full aspect-[4/5] lg:aspect-square bg-rso-gray dark:bg-slate-800 rounded-[2rem] overflow-hidden group">
+          {/* Картинка занимает 5 колонок из 12 */}
+          <div className="lg:col-span-5 relative w-full aspect-[4/5] lg:aspect-square bg-slate-100 dark:bg-slate-800 rounded-[2rem] overflow-hidden group">
             <img src={photoMain} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt="Студенты РСО" />
             
-            {/* ПЛАШКА КАК НА СКРИНШОТЕ (Тёмная с синим текстом) */}
             <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 bg-slate-900/95 backdrop-blur-md px-5 sm:px-6 py-4 rounded-2xl shadow-xl border border-white/10">
               <span className="font-stolzl text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-white block mb-1">Трудовой семестр</span>
-              <span className="font-stolzl-light text-2xl sm:text-3xl text-rso-blue block leading-none">2026</span>
+              <span className="number-display text-2xl sm:text-3xl block">2026</span>
             </div>
           </div>
         </section>
 
-        {/* О ДВИЖЕНИИ */}
+        {/* ================= 2. О ДВИЖЕНИИ ================= */}
         <section className="max-w-[1400px] mx-auto px-6">
-          <div className="flex flex-col lg:flex-row gap-12 items-stretch">
-            <div className="lg:w-5/12 lg:sticky top-32 flex flex-col justify-center">
-              <span className="font-stolzl text-xs text-rso-blue uppercase tracking-widest">Твои возможности</span>
-              {/* РЕЗИНОВЫЙ H2 */}
-              <h2 className="font-stolzl font-bold text-[clamp(1.75rem,5vw,3.5rem)] uppercase tracking-tight mt-4 mb-6 leading-[1.05]">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
+            <div className="lg:col-span-5 lg:sticky top-32 flex flex-col justify-center">
+              <span className="font-stolzl text-xs text-[#0804FF] dark:text-blue-400 uppercase tracking-widest">Твои возможности</span>
+              <h2 className="heading-2 mt-4 mb-6">
                 Больше, чем <br className="hidden lg:block"/> просто работа
               </h2>
               <p className="font-onest text-gray-600 dark:text-gray-400 leading-relaxed text-sm md:text-base">
@@ -133,15 +133,15 @@ export default function Home() {
               </p>
             </div>
             
-            <div className="lg:w-7/12 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+            <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
               {[
                 { title: 'Работа летом', desc: 'Официальное трудоустройство, белая зарплата и первая серьезная запись в трудовой.' },
                 { title: 'Обучение', desc: 'Штаб бесплатно обучает новичков. Ты получишь реальную профессию и свидетельство.' },
                 { title: 'Знакомства', desc: 'Слеты по всей стране, фестивали и песни. Найди единомышленников на всю жизнь.' },
                 { title: 'Прояви себя', desc: 'Стань командиром отряда, организуй проекты и развивай лидерские навыки.' }
               ].map((item, idx) => (
-                <div key={idx} className="bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-700 p-8 rounded-[2rem] hover:shadow-xl transition-all">
-                  <h3 className="font-stolzl font-bold text-lg md:text-xl uppercase mb-3 text-rso-black dark:text-white">{item.title}</h3>
+                <div key={idx} className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 p-8 rounded-[2rem] hover:shadow-xl transition-all">
+                  <h3 className="heading-3">{item.title}</h3>
                   <p className="font-onest text-xs md:text-sm text-gray-600 dark:text-gray-400">{item.desc}</p>
                 </div>
               ))}
@@ -149,11 +149,11 @@ export default function Home() {
           </div>
         </section>
 
-        {/* НАПРАВЛЕНИЯ */}
+        {/* ================= 3. НАПРАВЛЕНИЯ ================= */}
         <section className="max-w-[1400px] mx-auto px-6">
           <div className="text-center mb-8 md:mb-12">
-            <span className="font-stolzl text-[10px] sm:text-xs text-rso-blue uppercase tracking-widest">Наша Стратегия</span>
-            <h2 className="font-stolzl font-bold text-[clamp(1.75rem,5vw,3.5rem)] uppercase tracking-tight mt-3 mb-4 leading-tight">Твой Вектор Развития</h2>
+            <span className="font-stolzl text-[10px] sm:text-xs text-[#0804FF] dark:text-blue-400 uppercase tracking-widest">Наша Стратегия</span>
+            <h2 className="heading-2 mt-3 mb-4">Твой Вектор Развития</h2>
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
@@ -165,7 +165,7 @@ export default function Home() {
                 style={{ backgroundColor: item.accent }}
               >
                 <div className="text-white z-10 space-y-1">
-                  <div className="font-actay text-[clamp(0.7rem,3vw,1.5rem)] uppercase leading-tight">впереди <br /> лучшее лето</div>
+                  <div className="font-actay text-[clamp(0.8rem,2vw,1.3rem)] uppercase leading-tight">впереди <br /> лучшее лето</div>
                   <div className="font-stolzl text-[9px] sm:text-xs opacity-90 uppercase">➔ {item.slogan}</div>
                 </div>
                 <img src={item.logo} className="w-[85%] mt-auto z-10 group-hover:scale-105 transition-transform" alt={item.title} />
@@ -174,22 +174,22 @@ export default function Home() {
           </div>
         </section>
 
-        {/* ТРУДОВЫЕ ОБЪЕКТЫ */}
+        {/* ================= 4. ТРУДОВЫЕ ОБЪЕКТЫ ================= */}
         <section className="max-w-[1400px] mx-auto px-6">
           <div className="mb-8 md:mb-12">
-            <span className="font-stolzl text-[10px] sm:text-xs font-bold text-rso-blue uppercase tracking-widest">География работы</span>
-            <h2 className="font-stolzl font-bold text-[clamp(1.75rem,5vw,3.5rem)] uppercase tracking-tight text-rso-black dark:text-white mt-3 leading-tight">Наши объекты</h2>
+            <span className="font-stolzl text-[10px] sm:text-xs font-bold text-[#0804FF] dark:text-blue-400 uppercase tracking-widest">География работы</span>
+            <h2 className="heading-2 mt-3">Наши объекты</h2>
           </div>
 
           <div className="grid grid-cols-1 gap-4">
             {laborObjects.map((obj, i) => (
               <div 
                 key={i} 
-                className="p-5 md:p-6 bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-700 rounded-[1.5rem] md:rounded-[2rem] grid grid-cols-1 md:grid-cols-12 gap-4 items-center hover:shadow-lg transition-all group"
+                className="p-5 md:p-6 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[1.5rem] md:rounded-[2rem] grid grid-cols-1 md:grid-cols-12 gap-4 items-center hover:shadow-lg transition-all group"
               >
                 <div className="md:col-span-4">
                   <span className="font-stolzl text-[9px] font-bold text-gray-400 dark:text-gray-500 block uppercase tracking-wider mb-1">Проект</span>
-                  <div className="font-stolzl text-sm md:text-base font-bold uppercase text-rso-black dark:text-white group-hover:text-rso-blue transition-colors leading-tight">
+                  <div className="font-stolzl text-sm md:text-base font-bold uppercase text-[#000000] dark:text-white group-hover:text-[#0804FF] transition-colors leading-tight">
                     {obj.name}
                   </div>
                 </div>
@@ -210,14 +210,14 @@ export default function Home() {
           </div>
         </section>
 
-        {/* НОВОСТИ ШТАБА */}
+        {/* ================= 5. НОВОСТИ ШТАБА ================= */}
         <section className="max-w-[1400px] mx-auto px-6">
-          <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-8 sm:mb-10 border-b border-rso-gray dark:border-slate-800 pb-4">
+          <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-4 mb-8 sm:mb-10 border-b border-slate-200 dark:border-slate-800 pb-4">
             <div>
-              <span className="font-stolzl text-[10px] sm:text-xs font-bold text-rso-blue uppercase tracking-wider">Информационное поле</span>
-              <h2 className="font-stolzl font-bold text-[clamp(1.75rem,5vw,3.5rem)] uppercase tracking-tight text-rso-black dark:text-white mt-1 leading-tight">Новости штаба</h2>
+              <span className="font-stolzl text-[10px] sm:text-xs font-bold text-[#0804FF] dark:text-blue-400 uppercase tracking-wider">Информационное поле</span>
+              <h2 className="heading-2 mt-1">Новости штаба</h2>
             </div>
-            <Link to="/news" className="font-stolzl text-[10px] sm:text-xs font-bold uppercase text-gray-400 dark:text-gray-500 hover:text-rso-blue border-b border-transparent hover:border-rso-blue pb-0.5 transition-all self-start sm:self-auto">
+            <Link to="/news" className="font-stolzl text-[10px] sm:text-xs font-bold uppercase text-gray-400 dark:text-gray-500 hover:text-[#0804FF] border-b border-transparent hover:border-[#0804FF] pb-0.5 transition-all self-start sm:self-auto">
               Все публикации →
             </Link>
           </div>
@@ -231,20 +231,20 @@ export default function Home() {
               {latestNews.map((post) => (
                 <div 
                   key={post.id} 
-                  className="bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-700 rounded-[2rem] flex flex-col group hover:border-rso-blue/30 hover:shadow-md transition-all duration-300 overflow-hidden shadow-sm h-full"
+                  className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-[2rem] flex flex-col group hover:border-[#0804FF]/30 hover:shadow-md transition-all duration-300 overflow-hidden shadow-sm h-full"
                 >
-                  <div className="aspect-[16/10] overflow-hidden bg-rso-gray dark:bg-slate-900 relative border-b border-rso-gray dark:border-slate-900">
+                  <div className="aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-slate-900 relative border-b border-slate-100 dark:border-slate-900">
                     {post.imageUrl ? (
                       <img src={post.imageUrl} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" alt=""/>
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center opacity-10 font-actay text-xl text-rso-blue dark:text-white uppercase">СевРО</div>
+                      <div className="w-full h-full flex items-center justify-center opacity-10 font-actay text-xl text-[#0804FF] dark:text-white uppercase">СевРО</div>
                     )}
                   </div>
                   <div className="p-6 md:p-8 flex flex-col flex-1">
-                    <span className="font-stolzl-light text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider mb-2 block">
+                    <span className="number-display text-[10px] font-bold text-gray-400 dark:text-gray-500 tracking-wider mb-2 block">
                       {new Date(post.createdAt).toLocaleDateString('ru-RU')}
                     </span>
-                    <h3 className="font-stolzl text-lg font-bold uppercase tracking-tight text-rso-black dark:text-white group-hover:text-rso-blue transition-colors duration-200 mb-3 line-clamp-2 leading-snug">
+                    <h3 className="heading-3 group-hover:text-[#0804FF] transition-colors duration-200 line-clamp-2 leading-snug">
                       {post.title}
                     </h3>
                     <p className="font-onest text-xs sm:text-sm text-gray-500 dark:text-gray-400 line-clamp-3 mb-6 leading-relaxed mt-auto">
@@ -252,7 +252,7 @@ export default function Home() {
                     </p>
                     <Link 
                       to="/news" 
-                      className="font-stolzl mt-auto text-[10px] font-bold text-rso-blue uppercase tracking-wider border-b border-rso-blue/30 self-start pb-0.5 hover:text-rso-black dark:hover:text-white hover:border-rso-black transition-colors"
+                      className="font-stolzl mt-auto text-[10px] font-bold text-[#0804FF] uppercase tracking-wider border-b border-[#0804FF]/30 self-start pb-0.5 hover:text-[#000000] dark:hover:text-white hover:border-[#000000] transition-colors"
                     >
                       Подробнее →
                     </Link>
@@ -265,17 +265,17 @@ export default function Home() {
           )}
         </section>
 
-        {/* ПРИЗЫВ К ДЕЙСТВИЮ */}
+        {/* ================= 6. ПРИЗЫВ К ДЕЙСТВИЮ ================= */}
         {!isLoggedIn && (
           <section className="max-w-[1400px] mx-auto px-6 pb-12">
-            <div className="bg-rso-gray dark:bg-slate-800 rounded-[2rem] md:rounded-[3rem] p-10 md:p-20 text-center flex flex-col items-center">
-              <h2 className="font-actay text-[clamp(2rem,6vw,4.5rem)] uppercase tracking-tight text-rso-black dark:text-white leading-[1.1] mb-6">
+            <div className="bg-slate-100 dark:bg-slate-800 rounded-[2rem] md:rounded-[3rem] p-10 md:p-20 text-center flex flex-col items-center">
+              <h2 className="heading-1 mb-6">
                 Твоё лето начинается здесь
               </h2>
               <p className="font-onest text-sm md:text-base text-gray-600 dark:text-gray-400 max-w-xl mx-auto mb-8">
                 Не упусти шанс стать частью масштабной истории Севастопольского регионального отделения РСО.
               </p>
-              <Link to="/register" className="btn-primary text-xs sm:text-sm">
+              <Link to="/register" className="btn-primary">
                 Вступить в отряд
               </Link>
             </div>
@@ -284,9 +284,9 @@ export default function Home() {
 
       </main>
 
-      <footer className="border-t border-rso-gray dark:border-slate-800 py-10 mt-12 bg-white dark:bg-slate-900 text-center">
+      <footer className="border-t border-slate-200 dark:border-slate-800 py-10 mt-12 bg-white dark:bg-slate-900 text-center">
         <p className="font-stolzl text-[10px] font-bold uppercase tracking-wider text-gray-400 dark:text-gray-500">
-          Севастопольское региональное отделение // МООО РСО <span className="font-stolzl-light">2026</span> // Труд Крут
+          Севастопольское региональное отделение // МООО РСО <span className="number-display">2026</span> // Труд Крут
         </p>
       </footer>
     </div>

@@ -13,6 +13,10 @@ const crypto = require('crypto');
 const ExcelJS = require('exceljs');
 const { startBot } = require('./vkBot');
 const { sendSystemAlert, Keyboard } = require('./vkBot');
+const fs = require('fs');
+const path = require('path');
+const PizZip = require('pizzip');
+const Docxtemplater = require('docxtemplater');
 
 app.use(cors());
 app.use(express.json());
@@ -1469,6 +1473,64 @@ app.post('/api/albums/:id/photos', authMiddleware, upload.array('photos', 10), a
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: 'Ошибка загрузки фотографий' });
+  }
+});
+
+// ==========================================
+// ГЕНЕРАТОР ДОКУМЕНТОВ (БАЗА ЗНАНИЙ)
+// ==========================================
+app.get('/api/documents/generate/:type', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const documentType = req.params.type; // В нашем случае придет 'statement'
+
+    // 1. Получаем профиль бойца и его отряд (если есть)
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { brigade: true }
+    });
+
+    if (!user) return res.status(404).json({ message: "Пользователь не найден" });
+
+    // 2. Ищем шаблон на сервере
+    const templatePath = path.resolve(__dirname, 'templates', `${documentType}.docx`);
+    if (!fs.existsSync(templatePath)) {
+      return res.status(404).json({ message: "Шаблон документа не найден" });
+    }
+
+    // 3. Читаем .docx архив
+    const content = fs.readFileSync(templatePath, 'binary');
+    const zip = new PizZip(content);
+    
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+    });
+
+    // 4. Подставляем реальные данные вместо тегов
+    doc.render({
+      firstName: user.firstName || 'Имя',
+      lastName: user.lastName || 'Фамилия',
+      brigadeName: user.brigade ? `«${user.brigade.name}»` : '_________________',
+      date: new Date().toLocaleDateString('ru-RU')
+    });
+
+    // 5. Генерируем финальный файл в памяти
+    const buf = doc.getZip().generate({
+      type: 'nodebuffer',
+      compression: 'DEFLATE',
+    });
+
+    // 6. Отдаем файл клиенту на скачивание (исправляем кодировку для кириллицы)
+    const fileName = encodeURIComponent(`Заявление_${user.lastName}.docx`);
+    
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${fileName}`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.send(buf);
+
+  } catch (error) {
+    console.error("Ошибка при генерации документа:", error);
+    res.status(500).json({ message: 'Ошибка генерации документа' });
   }
 });
 

@@ -55,7 +55,15 @@ export default function Header() {
           <Link to="/news" className={`text-[10px] font-black uppercase tracking-widest hover:text-rso-blue transition-colors ${isActive('/news') ? 'text-rso-blue border-b-2 border-rso-blue' : 'text-black'}`}>Вестник</Link>
           <Link to="/brigades" className={`text-[10px] font-black uppercase tracking-widest hover:text-rso-blue transition-colors ${isActive('/brigades') ? 'text-rso-blue border-b-2 border-rso-blue' : 'text-black'}`}>Отряды</Link>
           <Link to="/gallery" className={`text-[10px] font-black uppercase tracking-widest hover:text-rso-blue transition-colors ${isActive('/gallery') ? 'text-rso-blue border-b-2 border-rso-blue' : 'text-black'}`}>Галерея</Link>
-
+        <Link 
+            to="/documents" 
+            className={`flex flex-col items-center justify-center gap-0.5 h-full flex-1 transition-colors ${isActive('/documents') ? 'text-rso-blue' : 'text-gray-400'}`}
+          >
+            <svg className="w-5 h-5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <span className="text-[9px] font-black uppercase tracking-tight block">Документы</span>
+          </Link>
           {isLoggedIn ? (
             <div className="relative">
               <button 

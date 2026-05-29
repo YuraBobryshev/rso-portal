@@ -14,6 +14,7 @@ import AdminPanel from './pages/AdminPanel';
 import NewsDetail from './pages/NewsDetail';
 import Gallery from './pages/Gallery';
 import AlbumDetail from './pages/AlbumDetail';
+import DocumentsPage from './pages/DocumentsPage'; // Импортируем страницу
 
 function App() {
   return (
@@ -31,6 +32,7 @@ function App() {
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/gallery" element={<Gallery />} />
         <Route path="/gallery/:id" element={<AlbumDetail />} />
+        <Route path="/documents" element={<DocumentsPage />} />
       </Routes>
     </Router>
   );

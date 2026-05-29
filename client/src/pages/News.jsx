@@ -27,7 +27,6 @@ export default function News() {
 
   const fetchPosts = async () => {
     try {
-      // ИСПРАВЛЕННЫЙ БАГ: путь теперь '/posts' без лишнего '/api'
       const res = await api.get('/posts');
       setPosts(res.data);
     } catch (e) { 
@@ -46,7 +45,7 @@ export default function News() {
     
     try {
       await api.post('/posts', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' } // Токен axiosConfig подставит сам
+        headers: { 'Content-Type': 'multipart/form-data' } 
       });
       setNewPost({ title: '', content: '' }); 
       setImage(null); 
@@ -58,26 +57,22 @@ export default function News() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-black font-sans antialiased selection:bg-rso-blue selection:text-white pb-24">
+    <div className="min-h-screen transition-colors duration-300 pb-24">
       <Header />
       
       <main className="max-w-[1500px] mx-auto px-4 md:px-6 pt-24">
         
         {/* ШАПКА */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10 pb-4 border-b border-gray-200">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-10 pb-4 border-b border-rso-gray dark:border-slate-800">
           <div>
-            <span className="text-xs font-bold text-rso-blue uppercase tracking-wider block mb-1">События и хроника</span>
-            <h1 className="text-3xl sm:text-5xl font-black uppercase tracking-tight text-black">Инфополе</h1>
+            <span className="font-stolzl text-[10px] sm:text-xs font-bold text-[#0804FF] dark:text-blue-400 uppercase tracking-wider block mb-1">События и хроника</span>
+            <h1 className="heading-1">Инфополе</h1>
           </div>
           
           {(user?.role === 'COMMANDER' || user?.role === 'REG_HQ') && (
             <button 
               onClick={() => setShowForm(!showForm)} 
-              className={`px-6 py-3 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all shadow-sm ${
-                showForm 
-                  ? 'bg-gray-200 text-gray-600 hover:bg-gray-300' 
-                  : 'bg-gray-900 text-white hover:bg-black'
-              }`}
+              className={showForm ? "btn-secondary" : "btn-primary"}
             >
               {showForm ? '✕ Закрыть редактор' : '+ Написать статью'}
             </button>
@@ -86,29 +81,29 @@ export default function News() {
 
         {/* ФОРМА СОЗДАНИЯ */}
         {showForm && (
-          <form onSubmit={handleCreatePost} className="mb-12 bg-white border border-gray-200 rounded-3xl p-6 md:p-8 shadow-sm space-y-5 animate-in fade-in duration-200">
+          <form onSubmit={handleCreatePost} className="mb-12 bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-700 rounded-[2rem] p-6 md:p-8 shadow-sm space-y-5 animate-in fade-in duration-200">
             <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1.5">Заголовок публикации</label>
+              <label className="font-stolzl block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Заголовок публикации</label>
               <input 
                 placeholder="Введите громкий заголовок..." 
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold text-black outline-none focus:border-rso-blue transition-all" 
+                className="font-onest w-full bg-slate-50 dark:bg-slate-900 border border-rso-gray dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-bold text-rso-black dark:text-white outline-none focus:border-[#0804FF] transition-all" 
                 value={newPost.title} onChange={e => setNewPost({...newPost, title: e.target.value})} required 
               />
             </div>
             <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1.5">Текст новости</label>
+              <label className="font-stolzl block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Текст новости</label>
               <textarea 
                 placeholder="Напишите, что произошло в движении..." rows="5" 
-                className="w-full bg-slate-50 border border-gray-200 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 outline-none focus:border-rso-blue transition-all resize-none" 
+                className="font-onest w-full bg-slate-50 dark:bg-slate-900 border border-rso-gray dark:border-slate-700 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 dark:text-gray-300 outline-none focus:border-[#0804FF] transition-all resize-none" 
                 value={newPost.content} onChange={e => setNewPost({...newPost, content: e.target.value})} required 
               />
             </div>
             <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-4">
-              <label className="cursor-pointer text-[10px] font-black uppercase tracking-wider border border-gray-200 bg-white rounded-xl px-5 py-3.5 text-center text-gray-600 hover:bg-slate-50 transition-all shadow-sm truncate max-w-xs">
+              <label className="cursor-pointer font-stolzl text-[10px] font-bold uppercase tracking-wider border border-rso-gray dark:border-slate-700 bg-white dark:bg-slate-800 rounded-xl px-5 py-3 text-center text-gray-600 dark:text-gray-300 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all shadow-sm truncate max-w-xs">
                 <span>{image ? image.name : '📎 Прикрепить обложку'}</span>
                 <input type="file" className="hidden" onChange={e => setImage(e.target.files[0])} accept="image/*" />
               </label>
-              <button type="submit" className="bg-rso-blue text-white px-8 py-3.5 rounded-xl text-[10px] font-black uppercase tracking-wider hover:bg-blue-700 transition-colors shadow-sm">
+              <button type="submit" className="btn-primary py-3">
                 Опубликовать в ленту
               </button>
             </div>
@@ -117,38 +112,37 @@ export default function News() {
 
         {/* СЕТКА НОВОСТЕЙ */}
         {loading ? (
-          <div className="py-20 text-center text-xs font-bold text-gray-400 uppercase tracking-widest animate-pulse border border-dashed border-gray-200 rounded-3xl">
+          <div className="py-20 text-center font-stolzl text-xs font-bold text-gray-400 uppercase tracking-widest animate-pulse border border-dashed border-rso-gray dark:border-slate-700 rounded-[2rem]">
             Синхронизация ленты...
           </div>
         ) : posts.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {posts.map(post => (
-              <div key={post.id} className="bg-white border border-gray-200 rounded-[2rem] flex flex-col group hover:border-rso-blue/40 hover:shadow-md transition-all duration-300 overflow-hidden shadow-sm h-full">
-                <div className="aspect-[16/10] overflow-hidden bg-slate-100 relative">
+              <div key={post.id} className="bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-700 rounded-[2rem] flex flex-col group hover:border-[#0804FF]/40 dark:hover:border-blue-500/40 hover:shadow-md transition-all duration-300 overflow-hidden shadow-sm h-full">
+                <div className="aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-slate-900 relative border-b border-rso-gray dark:border-slate-900">
                   {post.imageUrl ? (
                     <img src={post.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt=""/>
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center font-black text-2xl text-gray-300 uppercase">СевРО РСО</div>
+                    <div className="w-full h-full flex items-center justify-center font-actay text-2xl text-gray-300 dark:text-gray-600 uppercase">СевРО РСО</div>
                   )}
-                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider text-black shadow-sm">
-                    {new Date(post.createdAt).toLocaleDateString('ru-RU')}
+                  <div className="absolute top-4 left-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-sm px-3 py-1 rounded-lg text-[10px] shadow-sm">
+                    <span className="number-display">{new Date(post.createdAt).toLocaleDateString('ru-RU')}</span>
                   </div>
                 </div>
                 
                 <div className="p-6 md:p-8 flex flex-col flex-1">
-                  <h2 className="text-xl font-black uppercase tracking-tight text-black group-hover:text-rso-blue transition-colors duration-200 mb-3 line-clamp-2 leading-snug">
+                  <h2 className="heading-3 group-hover:text-[#0804FF] dark:group-hover:text-blue-400 transition-colors duration-200 line-clamp-2 leading-snug">
                     {post.title}
                   </h2>
-                  <p className="text-xs text-gray-500 line-clamp-3 mb-6 leading-relaxed font-medium mt-auto">
+                  <p className="font-onest text-xs sm:text-sm text-gray-500 dark:text-gray-400 line-clamp-3 mb-6 leading-relaxed mt-auto">
                     {post.content}
                   </p>
                   
-                  <div className="flex items-center justify-between border-t border-gray-100 pt-4 mt-auto">
-                    <div className="flex items-center gap-2 text-[10px] font-bold text-gray-400">
-                      <span className="text-sm">💬</span> {post.comments?.length || 0}
+                  <div className="flex items-center justify-between border-t border-rso-gray dark:border-slate-700 pt-4 mt-auto">
+                    <div className="flex items-center gap-2 font-stolzl text-[10px] font-bold text-gray-400">
+                      <span className="text-sm">💬</span> <span className="number-display text-[12px]">{post.comments?.length || 0}</span>
                     </div>
-                    {/* ПЕРЕХОД НА SEO СТРАНИЦУ */}
-                    <Link to={`/news/${post.id}`} className="text-[10px] font-black text-rso-blue uppercase tracking-wider border-b border-rso-blue/30 hover:text-black hover:border-black transition-colors pb-0.5">
+                    <Link to={`/news/${post.id}`} className="font-stolzl text-[10px] font-bold text-[#0804FF] dark:text-blue-400 uppercase tracking-wider border-b border-[#0804FF]/30 hover:text-rso-black dark:hover:text-white hover:border-rso-black dark:hover:border-white transition-colors pb-0.5">
                       Читать статью →
                     </Link>
                   </div>
@@ -157,7 +151,7 @@ export default function News() {
             ))}
           </div>
         ) : (
-          <div className="py-20 text-center text-xs font-bold uppercase tracking-wider text-gray-400 border border-dashed border-gray-200 rounded-3xl bg-white">
+          <div className="py-20 text-center font-stolzl text-xs font-bold uppercase tracking-wider text-gray-400 border border-dashed border-rso-gray dark:border-slate-700 rounded-[2rem] bg-white dark:bg-slate-800">
             Инфополе пока пустует
           </div>
         )}

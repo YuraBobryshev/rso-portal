@@ -86,7 +86,7 @@ export default function Home() {
         
         {/* ================= 1. HERO СЕКЦИЯ ================= */}
         {/* Изменили сетку на 12 колонок для точного контроля ширины */}
-        <section className="w-full max-w-[1400px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16 items-center">
+        <section className="w-full max-w-[1400px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           
           {/* Текст теперь занимает 7 колонок из 12 (больше половины экрана) */}
           <div className="lg:col-span-7 space-y-6 md:space-y-8">

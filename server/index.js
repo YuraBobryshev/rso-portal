@@ -1534,5 +1534,80 @@ app.get('/api/documents/generate/:type', authMiddleware, async (req, res) => {
   }
 });
 
+// ==========================================
+// ГЕНЕРАТОР ДОКУМЕНТОВ (БАЗА ЗНАНИЙ)
+// ==========================================
+app.post('/api/documents/generate/statement', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    // Ловим данные из модального окна фронтенда
+    const formData = req.body; 
+
+    // 1. Получаем профиль бойца и его отряд из БД
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { brigade: true }
+    });
+
+    if (!user) return res.status(404).json({ message: "Пользователь не найден" });
+
+    // 2. Ищем шаблон на сервере
+    const templatePath = path.resolve(__dirname, 'templates', 'statement.docx');
+    if (!fs.existsSync(templatePath)) {
+      return res.status(404).json({ message: "Шаблон документа не найден" });
+    }
+
+    // 3. Читаем архив
+    const content = fs.readFileSync(templatePath, 'binary');
+    const zip = new PizZip(content);
+    
+    const doc = new Docxtemplater(zip, {
+      paragraphLoop: true,
+      linebreaks: true,
+    });
+
+    // 4. Подставляем реальные данные (Микс из БД и Формы)
+    doc.render({
+      // Из базы:
+      lastName: user.lastName || '',
+      firstName: user.firstName || '',
+      email: user.email || '',
+      phone: formData.phone || '', // Телефон может быть в форме
+      vkUrl: user.vkUrl || '',
+      brigadeName: user.brigade ? user.brigade.name : '_________________',
+      
+      // Из формы модального окна:
+      birthDate: formData.birthDate || '',
+      studyPlace: formData.studyPlace || '',
+      address: formData.address || '',
+      citizenship: formData.citizenship || '',
+      passportSeries: formData.passportSeries || '',
+      passportNumber: formData.passportNumber || '',
+      passportCode: formData.passportCode || '',
+      passportIssueDate: formData.passportIssueDate || '',
+      passportIssuedBy: formData.passportIssuedBy || '',
+      inn: formData.inn || '',
+      snils: formData.snils || '',
+      currentDate: new Date().toLocaleDateString('ru-RU')
+    });
+
+    // 5. Генерируем финальный буфер
+    const buf = doc.getZip().generate({
+      type: 'nodebuffer',
+      compression: 'DEFLATE',
+    });
+
+    // 6. Отправляем файл
+    const fileName = encodeURIComponent(`Заявление_${user.lastName}.docx`);
+    res.setHeader('Content-Disposition', `attachment; filename*=UTF-8''${fileName}`);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.send(buf);
+
+  } catch (error) {
+    console.error("Ошибка при генерации документа:", error);
+    res.status(500).json({ message: 'Ошибка генерации документа' });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

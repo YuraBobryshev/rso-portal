@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
 import api from '../api/axiosConfig';
 import Header from '../components/Header';
+import StatementModal from '../components/StatementModal';
 
 export default function DocumentsPage() {
-  const [downloading, setDownloading] = useState(null); // Храним ID скачиваемого файла
+  const [downloading, setDownloading] = useState(null); // Храним ID скачиваемого файла (для тех файлов, где модалка не нужна)
+  const [isStatementModalOpen, setIsStatementModalOpen] = useState(false); // Состояние для модалки заявления
 
+  // Эта функция остается для других документов (например, "Согласие на ОПД"), которым не нужна модалка
   const handleDownload = async (docType) => {
     setDownloading(docType);
     try {
@@ -39,7 +42,7 @@ export default function DocumentsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-black font-sans antialiased pb-24">
+    <div className="min-h-screen bg-slate-50 text-black font-sans antialiased pb-24 relative">
       <Header />
       
       <main className="max-w-6xl mx-auto px-4 pt-12 space-y-12">
@@ -60,7 +63,7 @@ export default function DocumentsPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             
-            {/* Карточка: Заявление в отряд */}
+            {/* Карточка: Заявление в отряд (ОТКРЫВАЕТ МОДАЛКУ) */}
             <div className="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8 hover:shadow-xl hover:border-rso-blue/20 transition-all group flex flex-col justify-between shadow-sm">
               <div className="space-y-4">
                 <div className="w-12 h-12 bg-blue-50 text-rso-blue rounded-2xl flex items-center justify-center text-xl font-bold">
@@ -77,15 +80,15 @@ export default function DocumentsPage() {
               </div>
               
               <button 
-                onClick={() => handleDownload('statement')}
-                disabled={downloading !== null}
-                className="mt-8 w-full py-4 bg-gray-50 text-rso-blue text-[10px] font-black uppercase tracking-widest rounded-xl group-hover:bg-rso-blue group-hover:text-white transition-all disabled:opacity-50"
+                // ИЗМЕНЕНИЕ 1: Теперь кнопка открывает модалку, а не скачивает файл напрямую
+                onClick={() => setIsStatementModalOpen(true)}
+                className="mt-8 w-full py-4 bg-gray-50 text-rso-blue text-[10px] font-black uppercase tracking-widest rounded-xl group-hover:bg-rso-blue group-hover:text-white transition-all"
               >
-                {downloading === 'statement' ? 'Сборка файла...' : 'Скачать заполненный бланк ↓'}
+                Заполнить анкету и скачать ↓
               </button>
             </div>
 
-            {/* Карточка: Согласие на ОПД */}
+            {/* Карточка: Согласие на ОПД (РАБОТАЕТ БЕЗ МОДАЛКИ) */}
             <div className="bg-white border border-gray-100 rounded-[2rem] p-6 md:p-8 hover:shadow-xl hover:border-rso-blue/20 transition-all group flex flex-col justify-between shadow-sm">
               <div className="space-y-4">
                 <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center text-xl font-bold">
@@ -106,7 +109,7 @@ export default function DocumentsPage() {
                 disabled={downloading !== null}
                 className="mt-8 w-full py-4 bg-gray-50 text-emerald-600 text-[10px] font-black uppercase tracking-widest rounded-xl group-hover:bg-emerald-500 group-hover:text-white transition-all disabled:opacity-50"
               >
-                {downloading === 'consent' ? 'Сборка файла...' : 'Скачать заполненный бланк ↓'}
+                {downloading === 'consent' ? 'Сборка файла...' : 'Скачать бланк ↓'}
               </button>
             </div>
 
@@ -155,6 +158,12 @@ export default function DocumentsPage() {
           </div>
         </section>
       </main>
+
+      {/* ИЗМЕНЕНИЕ 2: Встроенный вызов компонента модального окна */}
+      <StatementModal 
+        isOpen={isStatementModalOpen} 
+        onClose={() => setIsStatementModalOpen(false)} 
+      />
     </div>
   );
 }

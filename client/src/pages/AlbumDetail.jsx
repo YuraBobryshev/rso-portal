@@ -3,13 +3,51 @@ import { useParams, Link } from 'react-router-dom';
 import api from '../api/axiosConfig';
 import Header from '../components/Header';
 
+// НОВАЯ ФУНКЦИЯ: Нативное сжатие изображений перед отправкой на сервер (без сторонних библиотек)
+const compressImage = async (file, maxWidth = 1920, quality = 0.8) => {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        let width = img.width;
+        let height = img.height;
+
+        // Высчитываем пропорции, если картинка больше maxWidth
+        if (width > maxWidth) {
+          height = Math.round((height * maxWidth) / width);
+          width = maxWidth;
+        }
+
+        canvas.width = width;
+        canvas.height = height;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Конвертируем обратно в файл (JPEG с качеством 80%)
+        canvas.toBlob((blob) => {
+          const newFile = new File([blob], file.name.replace(/\.[^/.]+$/, ".jpg"), {
+            type: 'image/jpeg',
+            lastModified: Date.now(),
+          });
+          resolve(newFile);
+        }, 'image/jpeg', quality);
+      };
+    };
+  });
+};
+
 export default function AlbumDetail() {
   const { id } = useParams();
   const [album, setAlbum] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
-  const [user, setUser] = useState(null); // Добавили стейт для юзера
+  const [user, setUser] = useState(null);
 
   const token = localStorage.getItem('token');
 
@@ -35,44 +73,50 @@ export default function AlbumDetail() {
 
   useEffect(() => {
     fetchAlbum();
-    if (token) fetchUser(); // Запрашиваем профиль, если есть токен
+    if (token) fetchUser();
   }, [id, token]);
 
   const handlePhotoUpload = async (e) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     
-    if (files.length > 10) {
-      alert("Максимум 10 фотографий за один раз!");
+    if (files.length > 20) {
+      alert("Максимум 20 фотографий за один раз!");
       return;
     }
 
     setIsUploading(true);
     const formData = new FormData();
-    Array.from(files).forEach(file => {
-      formData.append('photos', file);
-    });
-
+    
     try {
+      // Магия оптимизации: параллельно сжимаем все выбранные фотографии
+      const compressedFiles = await Promise.all(
+        Array.from(files).map(file => compressImage(file))
+      );
+
+      // Добавляем уже сжатые файлы в форму
+      compressedFiles.forEach(file => {
+        formData.append('photos', file);
+      });
+
       await api.post(`/albums/${id}/photos`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       fetchAlbum();
     } catch (e) {
-      alert("Ошибка при загрузке фотографий");
+      console.error(e);
+      alert("Ошибка при обработке или загрузке фотографий");
     } finally {
       setIsUploading(false);
     }
   };
 
-  // НОВАЯ ФУНКЦИЯ УДАЛЕНИЯ ФОТО
   const handleDeletePhoto = async (photoId, e) => {
-    e.stopPropagation(); // Отменяем открытие картинки на весь экран при клике на корзину
+    e.stopPropagation(); 
     if (!window.confirm("Точно удалить фотографию?")) return;
     
     try {
       await api.delete(`/photos/${photoId}`);
-      // Убираем удаленное фото из стейта, чтобы не делать лишний запрос к серверу
       setAlbum(prevAlbum => ({
         ...prevAlbum,
         photos: prevAlbum.photos.filter(p => p.id !== photoId)
@@ -83,7 +127,6 @@ export default function AlbumDetail() {
     }
   };
 
-  // Проверка прав (как в галерее)
   const isCommandStaff = ['COMMANDER', 'COMMISSAR', 'MEDIA', 'REG_HQ'].includes(user?.role);
 
   if (loading) return (
@@ -129,10 +172,9 @@ export default function AlbumDetail() {
             </div>
           </div>
 
-          {/* Загрузка фото (только для авторизованных комсостава/медиа, если нужно, либо всем авторизованным. Оставил всем авторизованным, как было у тебя) */}
           {token && (
             <label className={`cursor-pointer shrink-0 btn-primary ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
-              <span>{isUploading ? 'Загрузка...' : '+ Добавить фото'}</span>
+              <span>{isUploading ? 'Сжатие и отправка...' : '+ Добавить фото'}</span>
               <input type="file" multiple accept="image/*" onChange={handlePhotoUpload} className="hidden" />
             </label>
           )}
@@ -147,9 +189,14 @@ export default function AlbumDetail() {
                 onClick={() => setSelectedImage(photo.url)}
                 className="group relative aspect-square bg-slate-100 dark:bg-slate-800 rounded-[1.5rem] overflow-hidden cursor-zoom-in border border-rso-gray dark:border-slate-700 shadow-sm"
               >
-                <img src={photo.url} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                {/* ДОБАВЛЕН атрибут loading="lazy" для плавной прогрузки при скролле */}
+                <img 
+                  src={photo.url} 
+                  alt="" 
+                  loading="lazy"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
+                />
                 
-                {/* НОВАЯ КНОПКА: Удаление фото (показывается только комсоставу при наведении) */}
                 {isCommandStaff && (
                   <button 
                     onClick={(e) => handleDeletePhoto(photo.id, e)}
@@ -160,7 +207,6 @@ export default function AlbumDetail() {
                   </button>
                 )}
 
-                {/* Инфо при наведении */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 pointer-events-none">
                   <span className="font-stolzl text-[8px] font-bold uppercase text-white tracking-wider">
                     От: {photo.uploader?.firstName} {photo.uploader?.lastName}
@@ -176,7 +222,6 @@ export default function AlbumDetail() {
         )}
       </main>
 
-      {/* LIGHTBOX: ПОЛНОЭКРАННЫЙ ПРОСМОТР */}
       {selectedImage && (
         <div 
           className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-zoom-out"

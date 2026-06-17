@@ -56,6 +56,30 @@ export default function News() {
     }
   };
 
+  // НОВАЯ ФУНКЦИЯ УДАЛЕНИЯ НОВОСТИ
+  const handleDeletePost = async (postId, e) => {
+    e.preventDefault(); // Чтобы клик не открывал саму новость, если блок обернут в ссылку
+    e.stopPropagation();
+    
+    if (!window.confirm("Точно удалить новость навсегда?")) return;
+
+    try {
+      await api.delete(`/posts/${postId}`);
+      // Убираем из стейта без перезагрузки страницы
+      setPosts(posts.filter(p => p.id !== postId));
+    } catch (err) {
+      console.error(err);
+      alert("Ошибка при удалении новости");
+    }
+  };
+
+  // Проверка: может ли текущий юзер удалить пост (автор или комсостав)
+  const canDeletePost = (post) => {
+    if (!user) return false;
+    const isCommandStaff = ['COMMANDER', 'COMMISSAR', 'MEDIA', 'REG_HQ'].includes(user.role);
+    return isCommandStaff || user.id === post.authorId;
+  };
+
   return (
     <div className="min-h-screen transition-colors duration-300 pb-24">
       <Header />
@@ -120,6 +144,18 @@ export default function News() {
             {posts.map(post => (
               <div key={post.id} className="bg-white dark:bg-slate-800 border border-rso-gray dark:border-slate-700 rounded-[2rem] flex flex-col group hover:border-[#0804FF]/40 dark:hover:border-blue-500/40 hover:shadow-md transition-all duration-300 overflow-hidden shadow-sm h-full">
                 <div className="aspect-[16/10] overflow-hidden bg-slate-100 dark:bg-slate-900 relative border-b border-rso-gray dark:border-slate-900">
+                  
+                  {/* Кнопка удаления поверх карточки */}
+                  {canDeletePost(post) && (
+                    <button
+                      onClick={(e) => handleDeletePost(post.id, e)}
+                      className="absolute top-4 right-4 bg-red-500/90 hover:bg-red-600 text-white p-2 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity z-20 shadow-sm"
+                      title="Удалить новость"
+                    >
+                      <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                  )}
+
                   {post.imageUrl ? (
                     <img src={post.imageUrl} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt=""/>
                   ) : (

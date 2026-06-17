@@ -1710,5 +1710,46 @@ app.delete('/api/photos/:id', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR
   }
 });
 
+// 1. ИСПРАВЛЕНО: Удаление новости (теперь доступно автору + всему комсоставу и штабу)
+app.delete('/api/posts/:id', authMiddleware, async (req, res) => {
+  try {
+    const post = await prisma.post.findUnique({ where: { id: req.params.id } });
+    if (!post) return res.status(404).json({ message: "Новость не найдена" });
+
+    const isCommandStaff = ['COMMANDER', 'COMMISSAR', 'MEDIA', 'REG_HQ'].includes(req.user.role);
+    
+    // Если ты не автор и не из комсостава — удалять нельзя
+    if (post.authorId !== req.user.userId && !isCommandStaff) {
+      return res.status(403).json({ message: "Нет прав" });
+    }
+    
+    await prisma.post.delete({ where: { id: req.params.id } });
+    res.json({ message: "Новость удалена" });
+  } catch (e) { 
+    console.error("Ошибка удаления поста:", e);
+    res.status(500).json({ message: "Ошибка удаления" }); 
+  }
+});
+
+// 2. НОВОЕ: Удаление комментария (с такой же логикой прав)
+app.delete('/api/comments/:id', authMiddleware, async (req, res) => {
+  try {
+    const comment = await prisma.comment.findUnique({ where: { id: req.params.id } });
+    if (!comment) return res.status(404).json({ message: "Комментарий не найден" });
+
+    const isCommandStaff = ['COMMANDER', 'COMMISSAR', 'MEDIA', 'REG_HQ'].includes(req.user.role);
+    
+    if (comment.authorId !== req.user.userId && !isCommandStaff) {
+      return res.status(403).json({ message: "Нет прав" });
+    }
+    
+    await prisma.comment.delete({ where: { id: req.params.id } });
+    res.json({ message: "Комментарий удален" });
+  } catch (e) { 
+    console.error("Ошибка удаления комментария:", e);
+    res.status(500).json({ message: "Ошибка удаления" }); 
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));

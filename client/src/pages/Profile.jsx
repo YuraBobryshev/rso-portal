@@ -110,14 +110,15 @@ export default function Profile() {
     setMessage({ text: '', type: '' });
 
     try {
-      const res = await api.post('/api/auth/upload-avatar', formData, {
+      const res = await api.post('/auth/upload-avatar', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setUser(prev => ({ ...prev, avatarUrl: res.data.avatarUrl }));
       setMessage({ text: 'Аватар успешно обновлен', type: 'success' });
-    } catch (err) {
-      setMessage({ text: err.response?.data?.message || 'Ошибка при загрузке аватара', type: 'error' });
-    } finally {
+      } catch (err) {
+        console.error("Ошибка загрузки аватара:", err); // <-- добавили эту строку
+        setMessage({ text: err.response?.data?.message || 'Ошибка при загрузке аватара', type: 'error' });
+      } finally {
       setActionLoading(false);
     }
   };

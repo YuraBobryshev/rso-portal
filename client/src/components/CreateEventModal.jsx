@@ -7,7 +7,7 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
   const [location, setLocation] = useState('');
-  const [type, setType] = useState('LOCAL');
+ const [type, setType] = useState(userRole === 'REG_HQ' ? 'REGIONAL' : 'LOCAL');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   
@@ -193,15 +193,15 @@ export default function CreateEventModal({ isOpen, onClose, onSuccess, userRole 
             </p>
           </div>
 
-          {userRole === 'REG_HQ' && (
+{userRole === 'REG_HQ' && (
             <div className="space-y-1.5">
               <label className="font-stolzl block text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Уровень охвата</label>
               <select 
                 value={type} onChange={(e) => setType(e.target.value)}
                 className="font-stolzl w-full bg-slate-50 dark:bg-slate-900 border border-rso-gray dark:border-slate-600 rounded-xl px-4 py-3 text-xs font-bold text-[#000000] dark:text-white uppercase tracking-wider outline-none focus:border-[#0804FF] transition-all"
               >
-                <option value="LOCAL">Внутриотрядное мероприятие</option>
                 <option value="REGIONAL">Общегородское (Региональное)</option>
+                <option disabled value="LOCAL">Внутриотрядное (недоступно штабу)</option>
               </select>
             </div>
           )}

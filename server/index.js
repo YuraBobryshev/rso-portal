@@ -431,7 +431,7 @@ app.post('/api/applications/apply', authMiddleware, async (req, res) => {
 });
 
 // ИСПРАВЛЕНО: Теперь сохраняет текстовый комментарий/причину отказа в базу данных
-app.post('/api/commander/process-application', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
+app.post('/api/commander/process-application', authMiddleware, checkRole(['COMMANDER', 'REG_HQ']), async (req, res) => {
   try {
     const { appId, status, comment } = req.body;
     const application = await prisma.application.update({ 
@@ -630,7 +630,7 @@ app.patch('/api/events/attendance', authMiddleware, checkRole(['MASTER', 'COMMAN
 // 🛡️ БЛОК 5: ПАНЕЛЬ КОМАНДИРА И ЛЕНТА ПОСТОВ
 // =============================================================================
 
-app.get('/api/commander/export-members', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
+app.get('/api/commander/export-members', authMiddleware, checkRole(['COMMANDER', 'REG_HQ']), async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
     if (!user || !user.brigadeId) {
@@ -694,8 +694,7 @@ app.get('/api/commander/export-members', authMiddleware, checkRole(['COMMANDER']
     res.status(500).json({ message: "Ошибка генерации отчета" });
   }
 });
-
-app.get('/api/commander/dashboard', authMiddleware, checkRole(['COMMANDER']), async (req, res) => {
+app.get('/api/commander/dashboard', authMiddleware, checkRole(['COMMANDER', 'REG_HQ']), async (req, res) => {
   try {
     const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
     const brigade = await prisma.brigade.findUnique({ where: { id: user.brigadeId } });

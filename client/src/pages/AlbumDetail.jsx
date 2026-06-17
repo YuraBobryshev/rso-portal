@@ -9,6 +9,7 @@ export default function AlbumDetail() {
   const [loading, setLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [user, setUser] = useState(null); // Добавили стейт для юзера
 
   const token = localStorage.getItem('token');
 
@@ -23,9 +24,19 @@ export default function AlbumDetail() {
     }
   };
 
+  const fetchUser = async () => {
+    try {
+      const res = await api.get('/auth/me');
+      setUser(res.data);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchAlbum();
-  }, [id]);
+    if (token) fetchUser(); // Запрашиваем профиль, если есть токен
+  }, [id, token]);
 
   const handlePhotoUpload = async (e) => {
     const files = e.target.files;
@@ -53,6 +64,27 @@ export default function AlbumDetail() {
       setIsUploading(false);
     }
   };
+
+  // НОВАЯ ФУНКЦИЯ УДАЛЕНИЯ ФОТО
+  const handleDeletePhoto = async (photoId, e) => {
+    e.stopPropagation(); // Отменяем открытие картинки на весь экран при клике на корзину
+    if (!window.confirm("Точно удалить фотографию?")) return;
+    
+    try {
+      await api.delete(`/photos/${photoId}`);
+      // Убираем удаленное фото из стейта, чтобы не делать лишний запрос к серверу
+      setAlbum(prevAlbum => ({
+        ...prevAlbum,
+        photos: prevAlbum.photos.filter(p => p.id !== photoId)
+      }));
+    } catch (err) {
+      console.error(err);
+      alert("Ошибка при удалении фотографии");
+    }
+  };
+
+  // Проверка прав (как в галерее)
+  const isCommandStaff = ['COMMANDER', 'COMMISSAR', 'MEDIA', 'REG_HQ'].includes(user?.role);
 
   if (loading) return (
     <div className="min-h-screen pt-32 text-center font-stolzl text-xs font-bold uppercase tracking-widest text-gray-400 animate-pulse">
@@ -97,7 +129,7 @@ export default function AlbumDetail() {
             </div>
           </div>
 
-          {/* Загрузка фото (только для авторизованных) */}
+          {/* Загрузка фото (только для авторизованных комсостава/медиа, если нужно, либо всем авторизованным. Оставил всем авторизованным, как было у тебя) */}
           {token && (
             <label className={`cursor-pointer shrink-0 btn-primary ${isUploading ? 'opacity-50 pointer-events-none' : ''}`}>
               <span>{isUploading ? 'Загрузка...' : '+ Добавить фото'}</span>
@@ -106,7 +138,7 @@ export default function AlbumDetail() {
           )}
         </div>
 
-        {/* СЕТКА ФОТОГРАФИЙ (МАСОНРИ ИЛИ ГРИД) */}
+        {/* СЕТКА ФОТОГРАФИЙ */}
         {album.photos?.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
             {album.photos.map(photo => (
@@ -117,8 +149,19 @@ export default function AlbumDetail() {
               >
                 <img src={photo.url} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
                 
+                {/* НОВАЯ КНОПКА: Удаление фото (показывается только комсоставу при наведении) */}
+                {isCommandStaff && (
+                  <button 
+                    onClick={(e) => handleDeletePhoto(photo.id, e)}
+                    className="absolute top-3 right-3 bg-red-500/90 hover:bg-red-600 text-white p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 shadow-sm"
+                    title="Удалить фото"
+                  >
+                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                  </button>
+                )}
+
                 {/* Инфо при наведении */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3">
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 pointer-events-none">
                   <span className="font-stolzl text-[8px] font-bold uppercase text-white tracking-wider">
                     От: {photo.uploader?.firstName} {photo.uploader?.lastName}
                   </span>

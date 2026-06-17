@@ -1677,5 +1677,38 @@ app.get('/sitemap.xml', async (req, res) => {
   }
 });
 
+// ==========================================
+// УДАЛЕНИЕ АЛЬБОМОВ И ФОТО (МЕДИАЦЕНТР)
+// ==========================================
+
+// 1. Удалить весь альбом (доступно комсоставу, медиа и рег. штабу)
+app.delete('/api/albums/:id', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'MEDIA', 'REG_HQ']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Удаляем из БД. Благодаря onDelete: Cascade связанные фото удалятся сами
+    await prisma.album.delete({ where: { id } });
+    
+    res.json({ message: "Альбом и все его фотографии успешно удалены" });
+  } catch (error) {
+    console.error('Ошибка удаления альбома:', error);
+    res.status(500).json({ message: "Ошибка сервера при удалении альбома" });
+  }
+});
+
+// 2. Удалить конкретную фотографию из альбома
+app.delete('/api/photos/:id', authMiddleware, checkRole(['COMMANDER', 'COMMISSAR', 'MEDIA', 'REG_HQ']), async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    await prisma.photo.delete({ where: { id } });
+    
+    res.json({ message: "Фотография успешно удалена" });
+  } catch (error) {
+    console.error('Ошибка удаления фотографии:', error);
+    res.status(500).json({ message: "Ошибка сервера при удалении фотографии" });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Сервер на порту ${PORT}`));
